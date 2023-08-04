@@ -107,6 +107,10 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
   const sceneWrapper = useRef<HTMLDivElement>(null);
   const size = useSize(sceneWrapper);
 
+  // todo: material is black on first load - moving paramater fixes it. why?
+  // todo: adding new input to saved shader causes crash - source code in core
+  // graph is frog - is this because hacksource didn't change when the inputs change? use cache key as hacksource?
+
   // const {
   //   canvas,
   //   sceneData,
@@ -204,6 +208,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
 
     sceneData.current.mesh = box;
     sceneData.current.app = app;
+    console.log('Initial materialId', material.id);
   }, [playCanvasDom]);
 
   const [ctx] = useState<EngineContext>(() => {
@@ -236,7 +241,6 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     }
     // playCanvasDom.width = width;
     // playCanvasDom.height = height;
-    console.log('resize', width, height);
     app.resizeCanvas(width, height);
   }, [app, width, height]);
 
@@ -282,10 +286,6 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
 
     const graphProperties: Record<string, any> = {};
 
-    // Babylon has some internal uniforms like vAlbedoInfos that are only set
-    // if a property is set on the object. If a shader is plugged in to an image
-    // property, this code sets a placeholder image, to force Babylon to create
-    // the internal uniforms, even though they aren't used on the property image
     const physicalFragmentNode = graph.nodes.find(
       (n) =>
         'stage' in n &&
@@ -412,6 +412,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
         throw new Error('Too many mesh instances!');
       }
       sceneData.current.mesh.model.meshInstances[0].material = shaderMaterial;
+      log('created new materialId:', shaderMaterial.id);
     } else {
       console.warn('No mesh to assign the material to!');
     }
@@ -422,27 +423,29 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     if (!app) {
       return;
     }
-    const { mesh } = sceneData.current;
-    const meshInstance = mesh?.model?.meshInstances?.[0];
-    const { material } = meshInstance || {};
-    // @ts-ignore
-    window.mesh = mesh;
-    // @ts-ignore
-    window.meshInstance = meshInstance;
-    // @ts-ignore
-    window.pc = pc;
-
     // rotate the box according to the delta time since the last frame
     return (dt: any) => {
+      const { mesh } = sceneData.current;
+      const meshInstance = mesh?.model?.meshInstances?.[0];
+      const { material } = meshInstance || {};
+      // @ts-ignore
+      window.mesh = mesh;
+      // @ts-ignore
+      window.meshInstance = meshInstance;
+      // @ts-ignore
+      window.pc = pc;
+
       mesh.rotate(10 * dt, 20 * dt, 30 * dt);
       material.setParameter('time', performance.now() * 0.001);
 
       // @ts-ignore
       if (window.xxx) {
-        console.log('frame', {
+        log('frame', {
           textures,
           di: compileResult?.dataInputs,
           material,
+          sceneData: sceneData.current,
+          materialId: material?.id,
         });
       }
       // Note the uniforms are updated here every frame, but also instantiated
@@ -565,6 +568,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       window.xxx = false;
     };
   }, [app, compileResult?.dataInputs, sceneData, graph, textures]);
+  log('Playcanvas Render', compileResult?.dataInputs);
 
   useEffect(() => {
     if (!app) {

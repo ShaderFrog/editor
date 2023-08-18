@@ -222,8 +222,15 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
                     newValue
                   );
                 }
+
                 // @ts-ignore
-                material[input.property] = newValue;
+                const prop = material[input.property];
+                if (prop?.set) {
+                  prop.set(newValue);
+                } else {
+                  // @ts-ignore
+                  material[input.property] = newValue;
+                }
                 material.update();
                 // material.setParameter(input.property, newValue);
                 // meshInstance.setParameter(input.property, newValue);
@@ -308,11 +315,11 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     let mesh = new pc.Entity();
     if (previewObject === 'torusknot') {
       mesh.addComponent('model', {
-        type: 'box',
+        type: 'torus',
       });
     } else if (previewObject === 'plane') {
       mesh.addComponent('model', {
-        type: 'box',
+        type: 'plane',
       });
     } else if (previewObject === 'cube') {
       mesh.addComponent('model', {
@@ -320,7 +327,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       });
     } else if (previewObject === 'sphere') {
       mesh.addComponent('model', {
-        type: 'box',
+        type: 'sphere',
       });
     } else if (previewObject === 'icosahedron') {
       mesh.addComponent('model', {
@@ -625,8 +632,6 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       console.warn('No mesh to assign the material to!');
     }
   }, [compileResult, sceneData, app, textures]);
-
-  log('Playcanvas Render. DataInputs:', compileResult?.dataInputs);
 
   return (
     <>

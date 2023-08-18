@@ -210,6 +210,26 @@ const VectorEditor = ({
   );
 };
 
+const componentToHex = (c: number) => {
+  var hex = (c * 255).toString(16);
+  return hex.length == 1 ? '0' + hex : hex;
+};
+
+const rgbToHex = (r: number, g: number, b: number) => {
+  return '#' + componentToHex(r) + componentToHex(g) + componentToHex(b);
+};
+
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? [
+        parseInt(result[1], 16) / 255,
+        parseInt(result[2], 16) / 255,
+        parseInt(result[3], 16) / 255,
+      ]
+    : [];
+};
+
 const colorComponents = 'rgba';
 const ColorEditor = ({
   id,
@@ -226,6 +246,24 @@ const ColorEditor = ({
   };
   return (
     <div className={styles.grid}>
+      <div>
+        <label className={styles.vectorLabel}>
+          rgb
+          <div>
+            <input
+              type="color"
+              value={rgbToHex(
+                parseFloat(value[0]),
+                parseFloat(value[1]),
+                parseFloat(value[2])
+              )}
+              onChange={(e) => {
+                onChange(id, hexToRgb(e.target.value));
+              }}
+            />
+          </div>
+        </label>
+      </div>
       {value.map((_, index) => (
         <div key={index}>
           <label className={styles.vectorLabel}>

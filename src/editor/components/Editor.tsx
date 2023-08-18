@@ -283,26 +283,28 @@ const Editor = ({
   onCreateShader,
   onUpdateShader,
 }: EditorProps) => {
-  const [shader, setShader] = useState<EditorShader>(
-    initialShader || {
-      // TODO: Align these with the examples and/or the actual initial values
-      // when creating a shader
-      engine: 'playcanvas',
-      name: `New shader ${Math.random()}`,
-      visibility: 0,
-      config: {
-        graph: {
-          nodes: [],
-          edges: [],
+  const [shader, setShader] = useState<EditorShader>(() => {
+    const query = new URLSearchParams(window.location.search);
+    const engine = query.get('engine') || 'three';
+    return (
+      initialShader || {
+        engine,
+        name: `New shader ${Math.random()}`,
+        visibility: 0,
+        config: {
+          graph: {
+            nodes: [],
+            edges: [],
+          },
+          scene: {
+            bg: '',
+            lights: 'point',
+            previewObject: 'sphere',
+          },
         },
-        scene: {
-          bg: '',
-          lights: 'point',
-          previewObject: 'sphere',
-        },
-      },
-    }
-  );
+      }
+    );
+  });
   const { getRefData } = useHoisty();
 
   const updateNodeInternals = useUpdateNodeInternals();

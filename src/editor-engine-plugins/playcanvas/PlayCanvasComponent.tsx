@@ -6,7 +6,6 @@ import { Graph } from '@core/graph-types';
 import { EngineContext, EngineNodeType } from '@core/engine';
 import styles from '../../editor/styles/editor.module.css';
 
-import { useBabylon } from './usePlayCanvas';
 import { usePrevious } from '../../editor/hooks/usePrevious';
 import { UICompileGraphResult } from '../../editor/uICompileGraphResult';
 import { SamplerCubeNode, TextureNode } from '@core/nodes/data-nodes';
@@ -14,6 +13,7 @@ import { useSize } from '../../editor/hooks/useSize';
 import { Nullable } from 'babylonjs';
 import { evaluateNode } from '@core/evaluate';
 import { playengine } from '@core/plugins/playcanvas/playengine';
+import { usePlayCanvas } from './usePlayCanvas';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -111,114 +111,188 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
   // todo: adding new input to saved shader causes crash - source code in core
   // graph is frog - is this because hacksource didn't change when the inputs change? use cache key as hacksource?
 
-  // const {
-  //   canvas,
-  //   sceneData,
-  //   babylonDomRef,
-  //   scene,
-  //   camera,
-  //   engine,
-  //   loadingMaterial,
-  // } = useBabylon((time) => {
-  //   if (checkForCompileErrors.current) {
-  //     setGlResult({
-  //       fragError: capture.find((str) => str.includes('FRAGMENT SHADER ERROR')),
-  //       vertError: capture.find((str) => str.includes('VERTEX SHADER ERROR')),
-  //       programError: '',
-  //     });
-  //     checkForCompileErrors.current = false;
-  //   }
+  const { canvas, pcDomRef, app, sceneData, loadingMaterial } = usePlayCanvas(
+    (time) => {
+      // if (checkForCompileErrors.current) {
+      //   setGlResult({
+      //     fragError: capture.find((str) => str.includes('FRAGMENT SHADER ERROR')),
+      //     vertError: capture.find((str) => str.includes('VERTEX SHADER ERROR')),
+      //     programError: '',
+      //   });
+      //   checkForCompileErrors.current = false;
+      // }
 
-  //   const { lights: lightMeshes } = sceneData;
-  //   if (animatedLights) {
-  //     if (lights === 'point') {
-  //       const light = lightMeshes[0] as BABYLON.PointLight;
-  //       light.position.x = 1.2 * Math.sin(time * 0.001);
-  //       light.position.y = 1.2 * Math.cos(time * 0.001);
-  //     } else if (lights === 'spot') {
-  //       // I haven't done this yet
-  //     }
-  //   }
-  // });
+      const { mesh } = sceneData;
+      const meshInstance = mesh?.model?.meshInstances?.[0];
+      const { material } = meshInstance || {};
+      if (!mesh || !meshInstance || !material) {
+        return;
+      }
+      // @ts-ignore
+      window.mesh = mesh;
+      // @ts-ignore
+      window.meshInstance = meshInstance;
+      // @ts-ignore
+      window.pc = pc;
 
-  const [playCanvasDom, setPlayCanvasDom] = useState<HTMLCanvasElement | null>(
-    null
-  );
-  const playCanvasDomRef = useCallback((node) => setPlayCanvasDom(node), []);
+      mesh.rotate(10 * time, 20 * time, 30 * time);
+      material.setParameter('time', performance.now() * 0.001);
 
-  const [app, setApp] = useState<pc.Application>();
-  // const appRef = useRef<pc.Application>();
+      // @ts-ignore
+      if (window.xxx) {
+        log('frame', {
+          textures,
+          di: compileResult?.dataInputs,
+          material,
+          sceneData: sceneData,
+          materialId: material?.id,
+        });
+      }
+      // Note the uniforms are updated here every frame, but also instantiated
+      // in this component at RawShaderMaterial creation time. There might be
+      // some logic duplication to worry about.
+      if (textures && compileResult?.dataInputs && material) {
+        Object.entries(compileResult.dataInputs).forEach(([nodeId, inputs]) => {
+          const node = graph.nodes.find(({ id }) => id === nodeId);
+          if (!node) {
+            console.warn(
+              'While populating uniforms, no node was found from dataInputs',
+              { nodeId, dataInputs: compileResult.dataInputs, graph }
+            );
+            return;
+          }
+          inputs.forEach((input) => {
+            const edge = graph.edges.find(
+              ({ to, input: i }) => to === nodeId && i === input.id
+            );
+            if (edge) {
+              const fromNode = graph.nodes.find(({ id }) => id === edge.from);
+              // In the case where a node has been deleted from the graph,
+              // dataInputs won't have been udpated until a recompile completes
+              if (!fromNode) {
+                return;
+              }
 
-  const sceneData = useRef<any>({});
+              let value;
+              // THIS DUPLICATES OTHER LINE
+              // When a shader is plugged into the Texture node of a megashader,
+              // this happens, I'm not sure why yet. In fact, why is this branch
+              // getting called at all in useThree() ?
+              try {
+                value = evaluateNode(playengine, graph, fromNode);
+              } catch (err) {
+                console.warn(
+                  `Tried to evaluate a non-data node! ${input.displayName} on ${node.name}`
+                );
+                return;
+              }
+              let newValue = value;
+              if (fromNode.type === 'texture') {
+                // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
+                newValue = textures[(fromNode as TextureNode).value];
+                // console.log('setting texture', newValue, 'from', fromNode);
+              }
+              if (fromNode.type === 'samplerCube') {
+                newValue = textures[(fromNode as SamplerCubeNode).value];
+              }
+              // meshInstance.material.diffuse = new pc.Color(1, 1, 0, 1);
+              // meshInstance.material.update();
+              // material.diffuse = new pc.Color(1, 1, 0, 1);
+              // material.update();
+              // material.setParameter('diffuse', new pc.Color(1, 0, 0));
+              // meshInstance.setParameter('diffuse', new pc.Color(0, 1, 0));
+              // material.setParameter('material_diffuse', new pc.Color(0, 0, 1));
+              // meshInstance.setParameter(
+              //   'material_diffuse',
+              //   new pc.Color(1, 0, 1)
+              // );
+              // material.update();
 
-  useEffect(() => {
-    if (!playCanvasDom) {
-      return;
-    } else {
-      console.log(
-        '🔥🔥🔥🔥🔥🔥 initting playcanvas! 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥'
-      );
+              if (input.type === 'property' && input.property) {
+                // if (
+                //   !newValue.url ||
+                //   material[input.property]?.url !== newValue.url
+                // ) {
+                // @ts-ignore
+                if (window.xxx) {
+                  console.log(
+                    'setting property',
+                    input.property,
+                    'to',
+                    newValue
+                  );
+                }
+                // @ts-ignore
+                material[input.property] = newValue;
+                material.update();
+                // material.setParameter(input.property, newValue);
+                // meshInstance.setParameter(input.property, newValue);
+                // }
+              } else {
+                // TODO: This doesn't work for engine variables because
+                // those aren't suffixed
+                const name = mangleVar(input.displayName, playengine, node);
+                // @ts-ignore
+                if (window.xxx) {
+                  console.log('setting', name, 'to', newValue);
+                }
+                material.setParameter(name, newValue);
+                meshInstance.setParameter(name, newValue);
+
+                // @ts-ignore
+                // if (fromNode.type === 'number') {
+                // } else if (fromNode.type === 'vector2') {
+                //   material.setParameter(name, newValue);
+                // } else if (fromNode.type === 'vector3') {
+                //   material.setParameter(name, newValue);
+                // } else if (fromNode.type === 'vector4') {
+                //   material.setParameter(name, newValue);
+                // } else if (fromNode.type === 'rgb') {
+                //   material.setParameter(name, newValue);
+                // } else if (fromNode.type === 'rgba') {
+                //   // TODO: Uniforms aren't working for plugging in purple noise
+                //   // shader to Texture filler of babylon physical - was getting
+                //   // webgl warnings, but now object is black? Also I need to
+                //   // get the actual color4 alpha value here
+                //   material.setParameter(name, newValue, 1.0);
+                // } else if (fromNode.type === 'texture') {
+                //   material.setParameter(name, newValue);
+                // } else {
+                //   log(`Unknown uniform type: ${fromNode.type}`);
+                // }
+              }
+            }
+          });
+        });
+      }
+      // @ts-ignore
+      window.xxx = false;
+
+      const { lights: lightMeshes } = sceneData;
+      if (animatedLights) {
+        if (lights === 'point') {
+          const light = lightMeshes[0];
+          const p = light.getPosition();
+          light.setPosition(
+            (p.x = 1.2 * Math.sin(time * 0.001)),
+            (p.y = 1.2 * Math.cos(time * 0.001)),
+            p.z
+          );
+        } else if (lights === 'spot') {
+          // I haven't done this yet
+        }
+      }
     }
-    // create a PlayCanvas application
-    const app = new pc.Application(playCanvasDom);
-    setApp(app);
-
-    // fill the available space at full resolution
-    app.setCanvasFillMode(pc.FILLMODE_NONE);
-    app.setCanvasResolution(pc.RESOLUTION_AUTO);
-
-    // ensure canvas is resized when window changes size
-    // window.addEventListener('resize', () => app.resizeCanvas());
-
-    const material = new pc.StandardMaterial();
-    //     material.customFragmentShader = `
-    // void main() {
-    //     gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
-    // }
-    //     `;
-    // material.update();
-    app.render();
-    // console.log('after render before box', material.variants);
-
-    const box = new pc.Entity('cube');
-    box.addComponent('model', {
-      type: 'box',
-      material,
-    });
-    app.root.addChild(box);
-    // @ts-ignore
-    window.box = box;
-    // @ts-ignore
-    window.material = material;
-
-    const camera = new pc.Entity('camera');
-    camera.addComponent('camera', {
-      clearColor: new pc.Color(0.1, 0.1, 0.1),
-    });
-    app.root.addChild(camera);
-    camera.setPosition(0, 0, 3);
-
-    const light = new pc.Entity('light');
-    light.addComponent('light');
-    app.root.addChild(light);
-    light.setEulerAngles(45, 0, 0);
-
-    app.render();
-    app.start();
-
-    sceneData.current.mesh = box;
-    sceneData.current.app = app;
-    console.log('Initial materialId', material.id);
-  }, [playCanvasDom]);
+  );
 
   const [ctx] = useState<EngineContext>(() => {
     return {
       engine: 'playcanvas',
       runtime: {
-        sceneData: sceneData.current,
+        sceneData,
         // i'm not intentionally putting some things on scenedata and others on
         // runtime, it's just hacking to test out playcanvas
-        app: sceneData.current.app,
+        app,
         cache: { nodes: {}, data: {} },
       },
       nodes: {},
@@ -226,23 +300,161 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     };
   });
 
+  useEffect(() => {
+    if (sceneData.mesh) {
+      sceneData.mesh.destroy();
+    }
+
+    let mesh = new pc.Entity();
+    if (previewObject === 'torusknot') {
+      mesh.addComponent('model', {
+        type: 'box',
+      });
+    } else if (previewObject === 'plane') {
+      mesh.addComponent('model', {
+        type: 'box',
+      });
+    } else if (previewObject === 'cube') {
+      mesh.addComponent('model', {
+        type: 'box',
+      });
+    } else if (previewObject === 'sphere') {
+      mesh.addComponent('model', {
+        type: 'box',
+      });
+    } else if (previewObject === 'icosahedron') {
+      mesh.addComponent('model', {
+        type: 'box',
+      });
+    } else {
+      throw new Error('fffffff');
+    }
+
+    if (sceneData.mesh && sceneData.mesh.model) {
+      const origMat = sceneData.mesh.model.meshInstances[0].material;
+      console.log('dont yet know how to transfer mat');
+      // mesh.material = sceneData.mesh.material;
+    }
+    app.root.addChild(mesh);
+    sceneData.mesh = mesh;
+  }, [app, previewObject, sceneData]);
+
+  const prevLights = usePrevious(lights);
+  const previousShowHelpers = usePrevious(showHelpers);
+  useEffect(() => {
+    if (
+      (prevLights === lights && previousShowHelpers === showHelpers) ||
+      (prevLights === undefined && sceneData.lights.length)
+    ) {
+      return;
+    }
+    sceneData.lights.forEach((light) => light.destroy());
+
+    if (lights === 'point') {
+      const pointLight = new pc.Entity('light');
+      pointLight.addComponent('light', {
+        type: 'omni',
+        color: new pc.Color(1, 1, 1),
+        range: 10,
+      });
+      pointLight.setPosition(0, 0, 1);
+      sceneData.lights = [pointLight];
+
+      // https://forum.babylonjs.com/t/creating-a-mesh-without-adding-to-the-scene/12546/17
+      // :(
+      if (showHelpers) {
+      }
+    } else if (lights === '3point') {
+      const light1 = new pc.Entity('light');
+      light1.addComponent('light', {
+        type: 'omni',
+        color: new pc.Color(1, 1, 1),
+        range: 10,
+      });
+      light1.setPosition(2, -2, 0);
+
+      const light2 = new pc.Entity('light');
+      light2.addComponent('light', {
+        type: 'omni',
+        color: new pc.Color(1, 1, 1),
+        range: 10,
+      });
+      light2.setPosition(-1, 2, 1);
+
+      const light3 = new pc.Entity('light');
+      light3.addComponent('light', {
+        type: 'omni',
+        color: new pc.Color(1, 1, 1),
+        range: 10,
+      });
+      light3.setPosition(-1, -2, -1);
+
+      sceneData.lights = [light1, light2, light3];
+
+      if (showHelpers) {
+      }
+    } else if (lights === 'spot') {
+      const spot1 = new pc.Entity();
+      spot1.addComponent('light', {
+        type: 'spot',
+        // new BABYLON.Vector3(0, 0, 2),
+        // new BABYLON.Vector3(0, 0, -1),
+      });
+      spot1.setPosition(0, 0, 2);
+      // spot1.diffuse = new BABYLON.Color3(0, 1, 0);
+      // spot1.specular = new BABYLON.Color3(0, 1, 0);
+
+      const spot2 = new pc.Entity();
+      spot2.addComponent('light', {
+        type: 'spot',
+        // new BABYLON.Vector3(0, 0, 2),
+        // new BABYLON.Vector3(0, 0, -1),
+      });
+      spot2.setPosition(0, 0, 2);
+      // spot2.diffuse = new BABYLON.Color3(1, 0, 0);
+      // spot2.specular = new BABYLON.Color3(1, 0, 0);
+
+      sceneData.lights = [spot1, spot2];
+
+      if (showHelpers) {
+      }
+    }
+
+    sceneData.lights.forEach((obj) => {
+      app.root.addChild(obj);
+    });
+
+    if (prevLights && prevLights !== undefined && prevLights !== lights) {
+      if (sceneData.mesh && sceneData.mesh.model) {
+        sceneData.mesh.model.meshInstances[0].material = loadingMaterial;
+      }
+      compile(ctx);
+    }
+  }, [
+    app,
+    sceneData,
+    prevLights,
+    lights,
+    compile,
+    ctx,
+    previousShowHelpers,
+    showHelpers,
+    loadingMaterial,
+  ]);
+
   // Inform parent our context is created
   useEffect(() => {
-    if (!app) {
-      return;
-    }
-    ctx.runtime.app = app;
     setCtx(ctx);
-  }, [ctx, setCtx, app]);
+  }, [ctx, setCtx]);
 
   useEffect(() => {
-    if (!app) {
+    if (!canvas) {
       return;
     }
-    // playCanvasDom.width = width;
-    // playCanvasDom.height = height;
+    canvas.width = width;
+    canvas.height = height;
     app.resizeCanvas(width, height);
-  }, [app, width, height]);
+  }, [app, canvas, width, height]);
 
   const textures = useMemo<
     Record<string, pc.Texture | null> | undefined
@@ -273,7 +485,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
   }, [path, app]);
 
   useEffect(() => {
-    if (!compileResult?.fragmentResult) {
+    if (!compileResult?.fragmentResult || !app?.graphicsDevice) {
       return;
     }
     const { graph } = compileResult;
@@ -302,7 +514,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
           if (input?.dataType === 'texture') {
             if (input.property) {
               graphProperties[input.property] = new pc.Texture(
-                sceneData.current.app.graphicsDevice
+                app.graphicsDevice
               );
             } else {
               console.error(
@@ -315,8 +527,6 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       });
     }
 
-    // TODO: Babylon doesn't have a RawShaderMaterial. This hard codes the
-    // assumption there's a Physical material in the graph.
     const shaderMaterial = new pc.StandardMaterial();
     // shaderMaterial.diffuseMap = new pc.Texture(app!.graphicsDevice);
     // shaderMaterial.diffuseMap = textures!.brick;
@@ -403,188 +613,20 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
 
     shaderMaterial.update();
 
-    if (sceneData.current.mesh) {
-      if (sceneData.current.mesh.model.meshInstances.length !== 1) {
-        console.error(
-          'Too many mesh instances!',
-          sceneData.current.mesh.model.meshInstances
-        );
+    if (sceneData.mesh) {
+      const mis = sceneData?.mesh?.model?.meshInstances || [];
+      if (mis.length !== 1) {
+        console.error('Too many mesh instances!', mis);
         throw new Error('Too many mesh instances!');
       }
-      sceneData.current.mesh.model.meshInstances[0].material = shaderMaterial;
+      mis[0].material = shaderMaterial;
       log('created new materialId:', shaderMaterial.id);
     } else {
       console.warn('No mesh to assign the material to!');
     }
   }, [compileResult, sceneData, app, textures]);
 
-  const callbackRef = useRef<Function>();
-  callbackRef.current = useMemo(() => {
-    if (!app) {
-      return;
-    }
-    // rotate the box according to the delta time since the last frame
-    return (dt: any) => {
-      const { mesh } = sceneData.current;
-      const meshInstance = mesh?.model?.meshInstances?.[0];
-      const { material } = meshInstance || {};
-      // @ts-ignore
-      window.mesh = mesh;
-      // @ts-ignore
-      window.meshInstance = meshInstance;
-      // @ts-ignore
-      window.pc = pc;
-
-      mesh.rotate(10 * dt, 20 * dt, 30 * dt);
-      material.setParameter('time', performance.now() * 0.001);
-
-      // @ts-ignore
-      if (window.xxx) {
-        log('frame', {
-          textures,
-          di: compileResult?.dataInputs,
-          material,
-          sceneData: sceneData.current,
-          materialId: material?.id,
-        });
-      }
-      // Note the uniforms are updated here every frame, but also instantiated
-      // in this component at RawShaderMaterial creation time. There might be
-      // some logic duplication to worry about.
-      if (textures && compileResult?.dataInputs && material) {
-        Object.entries(compileResult.dataInputs).forEach(([nodeId, inputs]) => {
-          const node = graph.nodes.find(({ id }) => id === nodeId);
-          if (!node) {
-            console.warn(
-              'While populating uniforms, no node was found from dataInputs',
-              { nodeId, dataInputs: compileResult.dataInputs, graph }
-            );
-            return;
-          }
-          inputs.forEach((input) => {
-            const edge = graph.edges.find(
-              ({ to, input: i }) => to === nodeId && i === input.id
-            );
-            if (edge) {
-              const fromNode = graph.nodes.find(({ id }) => id === edge.from);
-              // In the case where a node has been deleted from the graph,
-              // dataInputs won't have been udpated until a recompile completes
-              if (!fromNode) {
-                return;
-              }
-
-              let value;
-              // THIS DUPLICATES OTHER LINE
-              // When a shader is plugged into the Texture node of a megashader,
-              // this happens, I'm not sure why yet. In fact, why is this branch
-              // getting called at all in useThree() ?
-              try {
-                value = evaluateNode(playengine, graph, fromNode);
-              } catch (err) {
-                console.warn(
-                  `Tried to evaluate a non-data node! ${input.displayName} on ${node.name}`
-                );
-                return;
-              }
-              let newValue = value;
-              if (fromNode.type === 'texture') {
-                // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
-                newValue = textures[(fromNode as TextureNode).value];
-                // console.log('setting texture', newValue, 'from', fromNode);
-              }
-              if (fromNode.type === 'samplerCube') {
-                newValue = textures[(fromNode as SamplerCubeNode).value];
-              }
-              // meshInstance.material.diffuse = new pc.Color(1, 1, 0, 1);
-              // meshInstance.material.update();
-              // material.diffuse = new pc.Color(1, 1, 0, 1);
-              // material.update();
-              // material.setParameter('diffuse', new pc.Color(1, 0, 0));
-              // meshInstance.setParameter('diffuse', new pc.Color(0, 1, 0));
-              // material.setParameter('material_diffuse', new pc.Color(0, 0, 1));
-              // meshInstance.setParameter(
-              //   'material_diffuse',
-              //   new pc.Color(1, 0, 1)
-              // );
-              // material.update();
-
-              if (input.type === 'property' && input.property) {
-                // if (
-                //   !newValue.url ||
-                //   material[input.property]?.url !== newValue.url
-                // ) {
-                // @ts-ignore
-                if (window.xxx) {
-                  console.log(
-                    'setting property',
-                    input.property,
-                    'to',
-                    newValue
-                  );
-                }
-                material[input.property] = newValue;
-                material.update();
-                // material.setParameter(input.property, newValue);
-                // meshInstance.setParameter(input.property, newValue);
-                // }
-              } else {
-                // TODO: This doesn't work for engine variables because
-                // those aren't suffixed
-                const name = mangleVar(input.displayName, playengine, node);
-                // @ts-ignore
-                if (window.xxx) {
-                  console.log('setting', name, 'to', newValue);
-                }
-                material.setParameter(name, newValue);
-                meshInstance.setParameter(name, newValue);
-
-                // @ts-ignore
-                // if (fromNode.type === 'number') {
-                // } else if (fromNode.type === 'vector2') {
-                //   material.setParameter(name, newValue);
-                // } else if (fromNode.type === 'vector3') {
-                //   material.setParameter(name, newValue);
-                // } else if (fromNode.type === 'vector4') {
-                //   material.setParameter(name, newValue);
-                // } else if (fromNode.type === 'rgb') {
-                //   material.setParameter(name, newValue);
-                // } else if (fromNode.type === 'rgba') {
-                //   // TODO: Uniforms aren't working for plugging in purple noise
-                //   // shader to Texture filler of babylon physical - was getting
-                //   // webgl warnings, but now object is black? Also I need to
-                //   // get the actual color4 alpha value here
-                //   material.setParameter(name, newValue, 1.0);
-                // } else if (fromNode.type === 'texture') {
-                //   material.setParameter(name, newValue);
-                // } else {
-                //   log(`Unknown uniform type: ${fromNode.type}`);
-                // }
-              }
-            }
-          });
-        });
-      }
-      // @ts-ignore
-      window.xxx = false;
-    };
-  }, [app, compileResult?.dataInputs, sceneData, graph, textures]);
-  log('Playcanvas Render', compileResult?.dataInputs);
-
-  useEffect(() => {
-    if (!app) {
-      return;
-    }
-
-    // Hack. This useEffect shouldn't be called repeatedly
-    console.log('PlayCanvas adding new scene render loop');
-    app.off('update');
-    app.on('update', (dt: any) => {
-      const cb = callbackRef.current;
-      if (cb) {
-        cb(dt);
-      }
-    });
-  }, [app, callbackRef]);
+  log('Playcanvas Render. DataInputs:', compileResult?.dataInputs);
 
   return (
     <>
@@ -692,9 +734,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
         </div>
       </div>
 
-      <div ref={sceneWrapper} className={styles.sceneContainer}>
-        <canvas ref={playCanvasDomRef}></canvas>
-      </div>
+      <div ref={pcDomRef} className={styles.sceneContainer}></div>
     </>
   );
 };

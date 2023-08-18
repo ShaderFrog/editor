@@ -1,74 +1,78 @@
 import { useCallback, useEffect, useRef, useState, useContext } from 'react';
-import * as BABYLON from 'babylonjs';
+import * as pc from 'playcanvas';
 import { useHoisty } from '../../editor/hoistedRefContext';
 
 type SceneData = {
-  lights: BABYLON.Node[];
-  mesh?: BABYLON.Mesh;
+  lights: pc.Entity[];
+  mesh?: pc.Entity;
 };
 type ScenePersistence = {
   sceneData: SceneData;
   canvas: HTMLCanvasElement;
-  engine: BABYLON.Engine;
-  scene: BABYLON.Scene;
-  camera: BABYLON.ArcRotateCamera;
-  loadingMaterial: BABYLON.Material;
+  pcDom: HTMLDivElement;
+  app: pc.Application;
+  camera: pc.Entity;
+  loadingMaterial: pc.Material;
 };
 
 type Callback = (time: number) => void;
 
-export const useBabylon = (callback: Callback) => {
+export const usePlayCanvas = (callback: Callback) => {
   const { getRefData } = useHoisty();
 
-  const { loadingMaterial, engine, camera, sceneData, canvas, scene } =
-    getRefData<ScenePersistence>('babylon', () => {
-      const canvas = document.createElement('canvas');
-      const engine = new BABYLON.Engine(canvas, true, {
-        preserveDrawingBuffer: true,
-        stencil: true,
-      });
-      const scene = new BABYLON.Scene(engine);
-      const loadingMaterial = new BABYLON.StandardMaterial('mat2', scene);
-      loadingMaterial.emissiveColor = new BABYLON.Color3(0.8, 0.2, 0.5);
-      // scene.createDefaultEnvironment();
-      // This line makes the object disappear on page load - race condition?
-      // Bad shader compile?
-      // scene.environmentTexture = hdrTexture;
-      return {
-        sceneData: {
-          lights: [],
-        },
-        canvas,
-        engine,
-        scene,
-        loadingMaterial,
-        camera: new BABYLON.ArcRotateCamera(
-          'camera1',
-          Math.PI / 2,
-          Math.PI / 2,
-          4,
-          new BABYLON.Vector3(0, 0, 0),
-          scene
-        ),
-        destroy: (data: ScenePersistence) => {
-          console.log('👋🏻 Bye Bye Babylon!');
-          data.scene.dispose();
-          data.engine.dispose();
-        },
-      };
+  const { canvas, loadingMaterial, app, camera, sceneData } = getRefData<
+    Omit<ScenePersistence, 'pcDom'>
+  >('babylon', () => {
+    const canvas = document.createElement('canvas');
+
+    const app = new pc.Application(canvas);
+    // fill the available space at full resolution
+    app.setCanvasFillMode(pc.FILLMODE_NONE);
+    app.setCanvasResolution(pc.RESOLUTION_AUTO);
+
+    app.start();
+
+    const camera = new pc.Entity('camera');
+    camera.addComponent('camera', {
+      clearColor: new pc.Color(0.1, 0.1, 0.1),
     });
+    app.root.addChild(camera);
+    camera.setPosition(0, 0, 3);
 
-  const [babylonDom, setBabylonDom] = useState<HTMLCanvasElement | null>(null);
-  const babylonDomRef = useCallback((node) => setBabylonDom(node), []);
+    const loadingMaterial = new pc.StandardMaterial();
+    loadingMaterial.diffuse.set(0.8, 0.2, 0.5);
 
-  const frameRef = useRef<number>(0);
+    return {
+      sceneData: {
+        lights: [],
+      },
+      canvas,
+      app,
+      loadingMaterial,
+      camera,
+      destroy: (data: ScenePersistence) => {
+        console.log('👋🏻 Bye Bye PlayCanvas!');
+        app.destroy();
+      },
+    };
+  });
+
+  const [pcDom, setPcDom] = useState<HTMLDivElement | null>(null);
+  const pcDomRef = useCallback((node) => setPcDom(node), []);
+
+  // useEffect(() => {
+  //   // Target the camera to scene origin
+  //   camera.setTarget(BABYLON.Vector3.Zero());
+  //   // Attach the camera to the canvas
+  //   camera.attachControl(canvas, false);
+  // }, [camera, canvas]);
 
   useEffect(() => {
-    // Target the camera to scene origin
-    camera.setTarget(BABYLON.Vector3.Zero());
-    // Attach the camera to the canvas
-    camera.attachControl(canvas, false);
-  }, [scene, camera, canvas]);
+    if (pcDom && !pcDom.childNodes.length) {
+      console.log('Re-attaching PC DOM', canvas, 'to', pcDom);
+      pcDom.appendChild(canvas);
+    }
+  }, [canvas, pcDom]);
 
   const savedCallback = useRef<Callback>(callback);
   // Remember the latest callback.
@@ -77,43 +81,38 @@ export const useBabylon = (callback: Callback) => {
   }, [callback]);
 
   useEffect(() => {
-    if (babylonDom && !babylonDom.childNodes.length) {
-      console.log('Re-attaching Babylon DOM', canvas, 'to', babylonDom);
-      babylonDom.appendChild(canvas);
+    if (pcDom && !pcDom.childNodes.length) {
+      console.log('Re-attaching Playcanvas DOM', canvas, 'to', pcDom);
+      pcDom.appendChild(canvas);
     }
-  }, [canvas, babylonDom]);
+  }, [canvas, pcDom]);
 
   const animate = useCallback(
     (time: number) => {
-      scene.render();
+      app.render();
       savedCallback.current(time);
-
-      frameRef.current = requestAnimationFrame(animate);
     },
-    [scene]
+    [app]
   );
 
   useEffect(() => {
-    if (babylonDom) {
-      console.log('🎬 Starting Babylon requestAnimationFrame');
-      frameRef.current = requestAnimationFrame(animate);
+    if (pcDom) {
+      console.log('🎬 Starting PC requestAnimationFrame');
+
+      app.on('update', animate);
     }
 
     return () => {
-      console.log('🛑 Cleaning up Babylon animationframe');
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current);
-      }
-      // TODO: How to cleanup?
-      // engine.dispose();
+      console.log('🛑 Cleaning up PC animationframe');
+      app.off('update');
     };
-  }, [engine, animate, babylonDom]);
+  }, [app, animate, pcDom]);
 
   return {
     canvas,
-    babylonDomRef,
-    engine,
-    scene,
+    pcDom,
+    pcDomRef,
+    app,
     camera,
     sceneData,
     loadingMaterial,

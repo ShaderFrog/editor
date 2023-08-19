@@ -1466,9 +1466,7 @@ const Editor = ({
           <TabPanel style={{ height: '100%' }}>
             <Tabs onSelect={setSceneTabIndex} selected={sceneTabIndex}>
               <TabGroup className={styles.secondary}>
-                <Tab className={{ [styles.errored]: uiState.fragError }}>
-                  Metadata
-                </Tab>
+                <Tab>Metadata</Tab>
                 <Tab className={{ [styles.errored]: uiState.fragError }}>
                   Fragment
                 </Tab>

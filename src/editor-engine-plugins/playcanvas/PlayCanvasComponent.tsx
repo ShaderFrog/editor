@@ -10,9 +10,12 @@ import { usePrevious } from '../../editor/hooks/usePrevious';
 import { UICompileGraphResult } from '../../editor/uICompileGraphResult';
 import { SamplerCubeNode, TextureNode } from '@core/nodes/data-nodes';
 import { useSize } from '../../editor/hooks/useSize';
-import { Nullable } from 'babylonjs';
+
 import { evaluateNode } from '@core/evaluate';
-import { playengine } from '@core/plugins/playcanvas/playengine';
+import {
+  physicalDefaultProperties,
+  playengine,
+} from '@core/plugins/playcanvas/playengine';
 import { usePlayCanvas } from './usePlayCanvas';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
@@ -23,31 +26,31 @@ let id = () => mIdx++;
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
 
-// MONKEYPATCH WARNING MONKEYPATCH WARNING MONKEYPATCH WARNING MONKEYPATCH WARNING
-const orig = pc.StandardMaterial.prototype.getShaderVariant;
-pc.StandardMaterial.prototype.getShaderVariant = function (...args) {
-  let shader = orig.apply(this, args);
-  if (this.hasOwnProperty('hortiblortfast')) {
-    // @ts-ignore
-    shader = this.hortiblortfast(shader);
+// Intercept console errors, which is the only way to get playcanvas shader
+// error logs
+const consoleError = console.error;
+let callback: Function;
+console.error = (...args: any[]) => {
+  if (callback) {
+    callback(...args);
   }
-  return shader;
+  return consoleError.apply(console, args);
 };
 
-let someCallback: ((args: any) => any) | null;
+// MONKEYPATCH WARNING. See comment in playengine.ts for "hackSource"
+let hackShaderDefinition: ((args: any) => any) | null;
 const origGsd = pc.ProgramLibrary.prototype.generateShaderDefinition;
 pc.ProgramLibrary.prototype.generateShaderDefinition = function (...args) {
-  // log('generateShaderDefinition', someCallback);
   let def = origGsd.apply(this, args);
-  if (someCallback) {
+  if (hackShaderDefinition) {
     // @ts-ignore
-    def = someCallback(def);
-    someCallback = null;
+    def = hackShaderDefinition(def);
+    hackShaderDefinition = null;
   }
   return def;
 };
 
-const horse =
+const buildTextureLoader =
   (app: pc.Application) =>
   (path: string): pc.Texture => {
     const image = new Image();
@@ -102,8 +105,6 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
   assetPrefix,
 }) => {
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
-  const checkForCompileErrors = useRef<boolean>(false);
-  const lastCompile = useRef<any>({});
   const sceneWrapper = useRef<HTMLDivElement>(null);
   const size = useSize(sceneWrapper);
 
@@ -111,20 +112,26 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
   // todo: adding new input to saved shader causes crash - source code in core
   // graph is frog - is this because hacksource didn't change when the inputs change? use cache key as hacksource?
 
+  useEffect(() => {
+    callback = (msg: string) => {
+      if (msg.toString().startsWith('Failed to compile')) {
+        const type = (msg.match(/compile (\w+)/) as string[])[1];
+        const err = msg.replace(/.*shader:\n+/m, '').replace(/\n[\s\S]*/m, '');
+        setGlResult({
+          fragError: type === 'fragment' ? err : null,
+          vertError: type === 'vertex' ? err : null,
+          programError: '',
+        });
+      }
+    };
+  }, [setGlResult]);
+
   const { canvas, pcDomRef, app, sceneData, loadingMaterial } = usePlayCanvas(
     (time) => {
-      // if (checkForCompileErrors.current) {
-      //   setGlResult({
-      //     fragError: capture.find((str) => str.includes('FRAGMENT SHADER ERROR')),
-      //     vertError: capture.find((str) => str.includes('VERTEX SHADER ERROR')),
-      //     programError: '',
-      //   });
-      //   checkForCompileErrors.current = false;
-      // }
-
       const { mesh } = sceneData;
       const meshInstance = mesh?.model?.meshInstances?.[0];
-      const { material } = meshInstance || {};
+      const { material: mMaterial } = meshInstance || {};
+      const material = mMaterial as pc.StandardMaterial;
       if (!mesh || !meshInstance || !material) {
         return;
       }
@@ -195,24 +202,8 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
               if (fromNode.type === 'samplerCube') {
                 newValue = textures[(fromNode as SamplerCubeNode).value];
               }
-              // meshInstance.material.diffuse = new pc.Color(1, 1, 0, 1);
-              // meshInstance.material.update();
-              // material.diffuse = new pc.Color(1, 1, 0, 1);
-              // material.update();
-              // material.setParameter('diffuse', new pc.Color(1, 0, 0));
-              // meshInstance.setParameter('diffuse', new pc.Color(0, 1, 0));
-              // material.setParameter('material_diffuse', new pc.Color(0, 0, 1));
-              // meshInstance.setParameter(
-              //   'material_diffuse',
-              //   new pc.Color(1, 0, 1)
-              // );
-              // material.update();
 
               if (input.type === 'property' && input.property) {
-                // if (
-                //   !newValue.url ||
-                //   material[input.property]?.url !== newValue.url
-                // ) {
                 // @ts-ignore
                 if (window.xxx) {
                   console.log(
@@ -224,17 +215,9 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
                 }
 
                 // @ts-ignore
-                const prop = material[input.property];
-                if (prop?.set) {
-                  prop.set(newValue);
-                } else {
-                  // @ts-ignore
-                  material[input.property] = newValue;
+                material[input.property] = newValue;
+                if (input.property === 'opacity') {
                 }
-                material.update();
-                // material.setParameter(input.property, newValue);
-                // meshInstance.setParameter(input.property, newValue);
-                // }
               } else {
                 // TODO: This doesn't work for engine variables because
                 // those aren't suffixed
@@ -245,32 +228,12 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
                 }
                 material.setParameter(name, newValue);
                 meshInstance.setParameter(name, newValue);
-
-                // @ts-ignore
-                // if (fromNode.type === 'number') {
-                // } else if (fromNode.type === 'vector2') {
-                //   material.setParameter(name, newValue);
-                // } else if (fromNode.type === 'vector3') {
-                //   material.setParameter(name, newValue);
-                // } else if (fromNode.type === 'vector4') {
-                //   material.setParameter(name, newValue);
-                // } else if (fromNode.type === 'rgb') {
-                //   material.setParameter(name, newValue);
-                // } else if (fromNode.type === 'rgba') {
-                //   // TODO: Uniforms aren't working for plugging in purple noise
-                //   // shader to Texture filler of babylon physical - was getting
-                //   // webgl warnings, but now object is black? Also I need to
-                //   // get the actual color4 alpha value here
-                //   material.setParameter(name, newValue, 1.0);
-                // } else if (fromNode.type === 'texture') {
-                //   material.setParameter(name, newValue);
-                // } else {
-                //   log(`Unknown uniform type: ${fromNode.type}`);
-                // }
               }
             }
           });
         });
+
+        material.update();
       }
       // @ts-ignore
       window.xxx = false;
@@ -367,8 +330,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       pointLight.setPosition(0, 0, 1);
       sceneData.lights = [pointLight];
 
-      // https://forum.babylonjs.com/t/creating-a-mesh-without-adding-to-the-scene/12546/17
-      // :(
+      // TODO: Add helpers
       if (showHelpers) {
       }
     } else if (lights === '3point') {
@@ -469,17 +431,18 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     if (!app) {
       return;
     }
-    const horser = horse(app);
-    console.log('🔥 loading textures again 🔥');
+    const textureLoader = buildTextureLoader(app);
+    // Logging to check if this happens more than once
+    log('🔥 Loading Playcanvas textures');
     return {
-      explosion: horser(path('/explosion.png')),
-      'grayscale-noise': horser(path('/grayscale-noise.png')),
-      threeTone: horser(path('/3tone.jpg')),
-      brick: horser(path('/bricks.jpeg')),
-      brickNormal: horser(path('/bricknormal.jpeg')),
-      pebbles: horser(path('/Big_pebbles_pxr128.jpeg')),
-      pebblesNormal: horser(path('/Big_pebbles_pxr128_normal.jpeg')),
-      pebblesBump: horser(path('/Big_pebbles_pxr128_bmp.jpeg')),
+      explosion: textureLoader(path('/explosion.png')),
+      'grayscale-noise': textureLoader(path('/grayscale-noise.png')),
+      threeTone: textureLoader(path('/3tone.jpg')),
+      brick: textureLoader(path('/bricks.jpeg')),
+      brickNormal: textureLoader(path('/bricknormal.jpeg')),
+      pebbles: textureLoader(path('/Big_pebbles_pxr128.jpeg')),
+      pebblesNormal: textureLoader(path('/Big_pebbles_pxr128_normal.jpeg')),
+      pebblesBump: textureLoader(path('/Big_pebbles_pxr128_bmp.jpeg')),
       pondCubeMap: null,
       // warehouseEnvTexture: new BABYLON.HDRCubeTexture(
       //   path('/envmaps/room.hdr'),
@@ -534,89 +497,31 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       });
     }
 
+    setGlResult({
+      fragError: null,
+      vertError: null,
+      programError: null,
+    });
+
     const shaderMaterial = new pc.StandardMaterial();
-    // shaderMaterial.diffuseMap = new pc.Texture(app!.graphicsDevice);
-    // shaderMaterial.diffuseMap = textures!.brick;
 
     const newProperties = {
-      // ...physicalDefaultProperties,
+      ...physicalDefaultProperties,
       ...graphProperties,
     };
     log('PlayCanvasEngine material props:', graphProperties);
     Object.assign(shaderMaterial, newProperties);
 
-    // material[input.property] = newValue;
-    /**
-     * In hell so far. Setting customFragmentShader causes
-     * to stop working. looking at playcanvas source for material_diffuse and
-     * customFragmentShader and MAPCOLOR to try to learn more
-     */
-    // @ts-ignore
-    // shaderMaterial.customFragmentShader = `/* ${Math.random()} */`;
-    // @ts-ignore
-    // shaderMaterial.customFragmentShader = compileResult.fragmentResult;
-    // console.log(
-    //   'getShaderVariant',
-    //   pc.StandardMaterial.prototype.getShaderVariant
-    // );
-    // @ts-ignore
-    shaderMaterial.SKIP__hortiblortfast = (shader: any) => {
-      log('intercepted shader in #getShaderVariant', shader);
-      shader.impl.glProgram = null;
-      const x = {
-        ...shader,
-        ready: false,
-        definition: {
-          ...shader.definition,
-          fshader: compileResult.fragmentResult,
-          vshader: compileResult.vertexResult,
-        },
-      };
-      // x.compile();
-      return x;
-      // shaderMaterial.update();
-    };
-
-    someCallback = (def) => {
+    hackShaderDefinition = (def) => {
       // log('generateShaderDefinition', def);
       def.fshader = '#version 300 es\n' + compileResult.fragmentResult;
       def.vshader = '#version 300 es\n' + compileResult.vertexResult;
       return def;
     };
 
-    // Object.defineProperty(shaderMaterial, 'customFragmentShader', {
-    //   get() {
-    //     debugger;
-    //     return compileResult.fragmentResult;
-    //   },
-    // });
-    // @ts-ignore
-    // shaderMaterial.customVertexShader = compileResult.vertexResult;
-    // @ts-ignore
-    // shaderMaterial.vshader = compileResult.vertexResult;
-
-    // test to see if this changes anything
-    // shaderMaterial.diffuse.set(Math.random(), Math.random(), Math.random());
-    // shaderMaterial.onUpdateShader = (options) => {
-    //   log('onUpdateShader callback called');
-    //   // todo: trying to force material to update. what about setting customFragmetnShader to random string?
-    //   // but seeing that code is fully regenerated in generateFragmentShader - debugging
-    //   // @ts-ignore
-    //   options.chunks.hackSource = `${compileResult.fragmentResult}${compileResult.vertexResult}`;
-    //   // options.litOptions = {
-    //   //   ...(options.litOptions || {}),
-    //   //   // @ts-ignore
-    //   //   // source: `${compileResult.fragmentResult}${compileResult.vertexResult}`,
-    //   // };
-    //   // @ts-ignore
-    //   // options.x = Math.random();
-    //   return options;
-    // };
-
+    // See hackSource comment in playengine
     // @ts-ignore
     shaderMaterial.chunks.hackSource = `${compileResult.fragmentResult}${compileResult.vertexResult}`;
-    // TODO: NEEDED???
-    // shaderMaterial.clearVariants();
 
     shaderMaterial.update();
 
@@ -631,7 +536,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     } else {
       console.warn('No mesh to assign the material to!');
     }
-  }, [compileResult, sceneData, app, textures]);
+  }, [setGlResult, compileResult, sceneData, app, textures]);
 
   return (
     <>

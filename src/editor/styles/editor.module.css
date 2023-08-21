@@ -115,7 +115,7 @@ textarea.error {
 
 /* editor specific tab styles */
 .errored {
-  background: rgb(176, 0, 0);
+  background: rgb(176, 0, 0) !important;
 }
 
 .selected.errored,

@@ -357,10 +357,10 @@ export const collapseBinaryGraphEdges = (graph: Graph): Graph => {
 
   // Then collapse them
   const updatedEdges = graph.edges.map((edge) => {
-    return edge.input in binaryEdges
+    return edge.to in binaryEdges
       ? {
           ...edge,
-          input: alphabet.charAt(binaryEdges[edge.input].indexOf(edge)),
+          input: alphabet.charAt(binaryEdges[edge.to].indexOf(edge)),
         }
       : edge;
   });

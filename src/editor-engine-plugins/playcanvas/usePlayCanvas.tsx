@@ -26,7 +26,7 @@ export const usePlayCanvas = (callback: Callback) => {
 
   const { canvas, loadingMaterial, app, camera, sceneData } = getRefData<
     Omit<ScenePersistence, 'pcDom'>
-  >('babylon', () => {
+  >('playcanvas', () => {
     const canvas = document.createElement('canvas');
 
     const app = new pc.Application(canvas);
@@ -65,13 +65,6 @@ export const usePlayCanvas = (callback: Callback) => {
 
   const [pcDom, setPcDom] = useState<HTMLDivElement | null>(null);
   const pcDomRef = useCallback((node) => setPcDom(node), []);
-
-  // useEffect(() => {
-  //   // Target the camera to scene origin
-  //   camera.setTarget(BABYLON.Vector3.Zero());
-  //   // Attach the camera to the canvas
-  //   camera.attachControl(canvas, false);
-  // }, [camera, canvas]);
 
   useEffect(() => {
     if (pcDom && !pcDom.childNodes.length) {

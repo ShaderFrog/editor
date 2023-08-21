@@ -146,12 +146,6 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       if (!mesh || !meshInstance || !material) {
         return;
       }
-      // @ts-ignore
-      window.mesh = mesh;
-      // @ts-ignore
-      window.meshInstance = meshInstance;
-      // @ts-ignore
-      window.pc = pc;
 
       mesh.rotate(10 * time, 20 * time, 30 * time);
       material.setParameter('time', performance.now() * 0.001);

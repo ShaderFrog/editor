@@ -82,7 +82,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       edgeFrom(physicalV, outputV.id, 'filler_gl_Position', 'vertex'),
     ],
   };
-  previewObject = 'torusknot';
+  previewObject = 'sphere';
 
   return [newGraph, previewObject, bg];
 };

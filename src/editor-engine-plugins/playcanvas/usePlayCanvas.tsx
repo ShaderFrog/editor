@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState, useContext } from 'react';
 import * as pc from 'playcanvas';
 import { useHoisty } from '../../editor/hoistedRefContext';
+import { physicalDefaultProperties } from '@core/plugins/playcanvas/playengine';
+
+const log = (...args: any[]) =>
+  console.log.call(console, '\x1b[36m(pc.usePc)\x1b[0m', ...args);
 
 type SceneData = {
   lights: pc.Entity[];
@@ -40,7 +44,9 @@ export const usePlayCanvas = (callback: Callback) => {
     camera.setPosition(0, 0, 3);
 
     const loadingMaterial = new pc.StandardMaterial();
+    Object.assign(loadingMaterial, physicalDefaultProperties);
     loadingMaterial.diffuse.set(0.8, 0.2, 0.5);
+    loadingMaterial.update();
 
     return {
       sceneData: {
@@ -51,7 +57,7 @@ export const usePlayCanvas = (callback: Callback) => {
       loadingMaterial,
       camera,
       destroy: (data: ScenePersistence) => {
-        console.log('👋🏻 Bye Bye PlayCanvas!');
+        log('👋🏻 Bye Bye PlayCanvas!');
         app.destroy();
       },
     };
@@ -69,7 +75,7 @@ export const usePlayCanvas = (callback: Callback) => {
 
   useEffect(() => {
     if (pcDom && !pcDom.childNodes.length) {
-      console.log('Re-attaching PC DOM', canvas, 'to', pcDom);
+      log('Re-attaching PC DOM', canvas, 'to', pcDom);
       pcDom.appendChild(canvas);
     }
   }, [canvas, pcDom]);
@@ -82,7 +88,7 @@ export const usePlayCanvas = (callback: Callback) => {
 
   useEffect(() => {
     if (pcDom && !pcDom.childNodes.length) {
-      console.log('Re-attaching Playcanvas DOM', canvas, 'to', pcDom);
+      log('Re-attaching Playcanvas DOM', canvas, 'to', pcDom);
       pcDom.appendChild(canvas);
     }
   }, [canvas, pcDom]);
@@ -97,13 +103,13 @@ export const usePlayCanvas = (callback: Callback) => {
 
   useEffect(() => {
     if (pcDom) {
-      console.log('🎬 Starting PC requestAnimationFrame');
+      log('🎬 Starting PC app.on(update)');
 
       app.on('update', animate);
     }
 
     return () => {
-      console.log('🛑 Cleaning up PC animationframe');
+      log('🛑 Cleaning up PC animationframe');
       app.off('update');
     };
   }, [app, animate, pcDom]);

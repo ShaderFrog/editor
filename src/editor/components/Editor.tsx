@@ -105,6 +105,9 @@ export type PreviewLight = 'point' | '3point' | 'spot';
 
 const SMALL_SCREEN_WIDTH = 500;
 
+const log = (...args: any[]) =>
+  console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
+
 /**
  * Where was I?
  * - Made babylon a lot better, got three<>babylon example working. Then
@@ -366,7 +369,7 @@ const Editor = ({
     const query = new URLSearchParams(window.location.search);
     const example = query.get('example') || examples.DEFAULT;
     if (initialShader) {
-      console.log('Loading shader from API', initialShader);
+      log('Loading shader from API', initialShader);
       return [
         initialShader.config.graph as Graph,
         initialShader.config.scene.previewObject,
@@ -501,9 +504,10 @@ const Editor = ({
       setContexting(false);
       setCompiling(true);
 
+      log('Starting compileGraphAsync()!');
       compileGraphAsync(graph, engine, ctx)
         .then((compileResult) => {
-          console.log(`Compile complete in ${compileResult.compileMs} ms!`, {
+          log(`Compile complete in ${compileResult.compileMs} ms!`, {
             compileResult,
           });
           setGuiError('');
@@ -611,7 +615,7 @@ const Editor = ({
             // anyway, so the graph still shows up
             setFlowElements(initialElements);
           } else {
-            console.log('Initializing flow nodes and compiling graph!', {
+            log('Initializing flow nodes and compiling graph!', {
               graph,
               newCtx,
             });
@@ -633,7 +637,7 @@ const Editor = ({
   const previousExample = usePrevious(currentExample);
   useEffect(() => {
     if (currentExample !== previousExample && previousExample !== undefined) {
-      console.log('🧶 Loading new example!', currentExample);
+      log('🧶 Loading new example!', currentExample);
       const [graph, previewObject, bg] = makeExampleGraph(
         // @ts-ignore
         currentExample || examples.DEFAULT
@@ -648,7 +652,7 @@ const Editor = ({
         const initFlowElements = graphToFlowGraph(newGraph, onInputBakedToggle);
         initializeGraph(initFlowElements, ctx, newGraph);
       } else {
-        console.log('NOT Running initializeGraph from example change!');
+        log('NOT Running initializeGraph from example change!');
       }
     }
   }, [
@@ -671,8 +675,8 @@ const Editor = ({
     (newCtx: EngineContext) => {
       if (newCtx.engine !== ctx?.engine) {
         ctx?.engine
-          ? console.log('🔀 Changing engines!', { ctx, newCtx })
-          : console.log('🌟 Initializing engine!', newCtx, '(no old context)', {
+          ? log('🔀 Changing engines!', { ctx, newCtx })
+          : log('🌟 Initializing engine!', newCtx, '(no old context)', {
               ctx,
             });
         setCtxState(newCtx);
@@ -1042,10 +1046,9 @@ const Editor = ({
           ...expanded.nodes,
           ...(newEdgeData ? [findNode(updatedGraph, newEdgeData.to)] : []),
         ];
-        console.log(
-          'Computing context for new nodes to generate their inputs...',
-          { 'New Nodes': nodesToRefresh }
-        );
+        log('Computing context for new nodes to generate their inputs...', {
+          'New Nodes': nodesToRefresh,
+        });
         await computeContextForNodes(
           ctx as EngineContext,
           engine,
@@ -1082,7 +1085,7 @@ const Editor = ({
 
         let type: EdgeType | undefined = input.dataType;
         if (!type) {
-          console.log('Could not resolve dragged edge type for', input);
+          log('Could not resolve dragged edge type for', input);
           return;
         }
 
@@ -1286,7 +1289,7 @@ const Editor = ({
       } else if (onCreateShader) {
         await onCreateShader(payload);
       }
-      console.log('saved');
+      log('saved');
     } catch (error) {
       console.error('Error saving', error);
     }

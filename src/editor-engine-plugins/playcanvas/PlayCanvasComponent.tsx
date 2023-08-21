@@ -123,10 +123,6 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
   const sceneWrapper = useRef<HTMLDivElement>(null);
   const size = useSize(sceneWrapper);
 
-  // todo: material is black on first load - moving paramater fixes it. why?
-  // todo: adding new input to saved shader causes crash - source code in core
-  // graph is frog - is this because hacksource didn't change when the inputs change? use cache key as hacksource?
-
   useEffect(() => {
     callback = (msg: string) => {
       if (msg.toString().startsWith('Failed to compile')) {

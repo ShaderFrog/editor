@@ -1,9 +1,19 @@
 import * as pc from 'playcanvas';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { mangleVar } from '@core/graph';
-import { Graph } from '@core/graph-types';
-import { EngineContext, EngineNodeType } from '@core/engine';
+import {
+  collectNodeProperties,
+  filterGraphFromNode,
+  isDataInput,
+  isDataNode,
+  mangleVar,
+} from '@core/graph';
+import { Graph, GraphNode } from '@core/graph-types';
+import {
+  EngineContext,
+  EngineNodeType,
+  collectInitialEvaluatedGraphProperties,
+} from '@core/engine';
 import styles from '../../editor/styles/editor.module.css';
 
 import { usePrevious } from '../../editor/hooks/usePrevious';
@@ -13,12 +23,15 @@ import { useSize } from '../../editor/hooks/useSize';
 
 import { evaluateNode } from '@core/evaluate';
 import {
+  defaultPropertySetting,
   physicalDefaultProperties,
   playengine,
 } from '@core/plugins/playcanvas/playengine';
 import { usePlayCanvas } from './usePlayCanvas';
 import useEffectOnlyOncePerMount from 'src/util/useEffectOnlyOncePerMount';
 import { ensure } from '@core/util/ensure';
+import { NodeInput } from '@core/nodes/core-node';
+import { CodeNode } from '@core/nodes/code-nodes';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -67,12 +80,15 @@ pc.ProgramLibrary.prototype.generateShaderDefinition = function (...args) {
 
 const buildTextureLoader =
   (app: pc.Application) =>
-  (path: string): pc.Texture => {
+  (path: string, onLoad?: (t: pc.Texture) => void): pc.Texture => {
     const image = new Image();
     image.crossOrigin = 'anonymous';
-    const texture = new pc.Texture(app.graphicsDevice);
+    const texture = new pc.Texture(app.graphicsDevice, { name: path });
     image.onload = () => {
       texture.setSource(image);
+      if (onLoad) {
+        onLoad(texture);
+      }
     };
     image.src = path;
     return texture;
@@ -177,9 +193,6 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
 
               let value;
               // THIS DUPLICATES OTHER LINE
-              // When a shader is plugged into the Texture node of a megashader,
-              // this happens, I'm not sure why yet. In fact, why is this branch
-              // getting called at all in useThree() ?
               try {
                 value = evaluateNode(playengine, graph, fromNode);
               } catch (err) {
@@ -214,8 +227,6 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
 
         material.update();
       }
-      // @ts-ignore
-      window.xxx = false;
 
       const { lights: lightMeshes } = sceneData;
       if (animatedLights) {
@@ -234,6 +245,32 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     }
   );
 
+  const textures = useMemo<
+    Record<string, pc.Texture | null> | undefined
+  >(() => {
+    const textureLoader = buildTextureLoader(app);
+    // Logging to check if this happens more than once
+    log('🔥 Loading Playcanvas textures');
+    return {
+      explosion: textureLoader(path('/explosion.png')),
+      'grayscale-noise': textureLoader(path('/grayscale-noise.png')),
+      threeTone: textureLoader(path('/3tone.jpg')),
+      brick: textureLoader(path('/bricks.jpeg')),
+      brickNormal: textureLoader(path('/bricknormal.jpeg')),
+      pebbles: textureLoader(path('/Big_pebbles_pxr128.jpeg')),
+      pebblesNormal: textureLoader(path('/Big_pebbles_pxr128_normal.jpeg')),
+      pebblesBump: textureLoader(path('/Big_pebbles_pxr128_bmp.jpeg')),
+      pondCubeMap: null,
+      // warehouseEnvTexture: new BABYLON.HDRCubeTexture(
+      //   path('/envmaps/room.hdr'),
+      //   512
+      // ),
+      // cityCourtYard: BABYLON.CubeTexture.CreateFromPrefilteredData(
+      //   path('/envmaps/citycourtyard.dds'),
+      // ),
+    };
+  }, [path, app]);
+
   const [ctx] = useState<EngineContext>(() => {
     return {
       engine: 'playcanvas',
@@ -242,6 +279,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
         // i'm not intentionally putting some things on scenedata and others on
         // runtime, it's just hacking to test out playcanvas
         app,
+        textures,
         cache: { nodes: {}, data: {} },
       },
       nodes: {},
@@ -393,8 +431,14 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
 
   useEffectOnlyOncePerMount(
     useCallback(() => {
-      setCtx(ctx);
-    }, [setCtx, ctx])
+      const textureLoader = buildTextureLoader(app);
+      textureLoader(path('/bricknormal.jpeg'), (t) => {
+        log('t', t);
+        // TODO: MIGHT NOT NEED THIS
+        ctx.runtime.loadedTexture = t;
+        setCtx(ctx);
+      });
+    }, [setCtx, ctx, app, path])
   );
 
   useEffect(() => {
@@ -405,35 +449,6 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     canvas.height = height;
     app.resizeCanvas(width, height);
   }, [app, canvas, width, height]);
-
-  const textures = useMemo<
-    Record<string, pc.Texture | null> | undefined
-  >(() => {
-    if (!app) {
-      return;
-    }
-    const textureLoader = buildTextureLoader(app);
-    // Logging to check if this happens more than once
-    log('🔥 Loading Playcanvas textures');
-    return {
-      explosion: textureLoader(path('/explosion.png')),
-      'grayscale-noise': textureLoader(path('/grayscale-noise.png')),
-      threeTone: textureLoader(path('/3tone.jpg')),
-      brick: textureLoader(path('/bricks.jpeg')),
-      brickNormal: textureLoader(path('/bricknormal.jpeg')),
-      pebbles: textureLoader(path('/Big_pebbles_pxr128.jpeg')),
-      pebblesNormal: textureLoader(path('/Big_pebbles_pxr128_normal.jpeg')),
-      pebblesBump: textureLoader(path('/Big_pebbles_pxr128_bmp.jpeg')),
-      pondCubeMap: null,
-      // warehouseEnvTexture: new BABYLON.HDRCubeTexture(
-      //   path('/envmaps/room.hdr'),
-      //   512
-      // ),
-      // cityCourtYard: BABYLON.CubeTexture.CreateFromPrefilteredData(
-      //   path('/envmaps/citycourtyard.dds'),
-      // ),
-    };
-  }, [path, app, assetPrefix]);
 
   useEffect(() => {
     if (!compileResult?.fragmentResult || !app?.graphicsDevice) {
@@ -447,48 +462,12 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       compileResult,
     });
 
-    const graphProperties: Record<string, any> = {};
-
-    const physicalFragmentNode = graph.nodes.find(
-      (n) =>
-        'stage' in n &&
-        n.stage === 'fragment' &&
-        n.type === EngineNodeType.physical
+    // Get runtime data properties to set on new shader
+    const graphProperties = collectInitialEvaluatedGraphProperties(
+      playengine,
+      graph,
+      defaultPropertySetting.bind(null, app)
     );
-    if (physicalFragmentNode) {
-      physicalFragmentNode.inputs.forEach((input) => {
-        const edge = graph.edges.find(
-          ({ to, input: i }) => to === physicalFragmentNode.id && i === input.id
-        );
-        if (edge) {
-          const fromNode = ensure(
-            graph.nodes.find(({ id }) => id === edge.from)
-          );
-          // THIS DUPLICATE OTHER LINE
-          let value;
-          try {
-            value = evaluateNode(playengine, graph, fromNode);
-          } catch (err) {
-            console.warn('Tried to evaluate a non-data node!', {
-              err,
-              dataInputs: compileResult.dataInputs,
-            });
-            return;
-          }
-          if (input.property) {
-            if (input?.dataType === 'texture') {
-              graphProperties[input.property] = new pc.Texture(
-                app.graphicsDevice
-              );
-            } else {
-              graphProperties[input.property] = value;
-            }
-          } else {
-            console.error('todo: fixme, non property input?');
-          }
-        }
-      });
-    }
 
     setGlResult({
       fragError: null,

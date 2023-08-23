@@ -26,6 +26,9 @@ import { PMREMGenerator } from 'three';
 import { RoomEnvironment } from './RoomEnvironment';
 import { evaluateNode } from '@core/evaluate';
 
+const log = (...args: any[]) =>
+  console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
+
 const loadingMaterial = new three.MeshBasicMaterial({ color: 'pink' });
 
 function mapTextureMapping(texture: three.Texture, mapping: any) {
@@ -404,10 +407,11 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
       sceneData: { mesh },
       engineMaterial,
     } = ctx.runtime as ThreeRuntime;
-    console.log('oh hai birfday boi boi boiiiii');
+
+    log('oh hai birfday boi boi boiiiii');
 
     // Note this is setting the uniforms of the shader at creation time. The
-    // uniforms are also updated every frame in the useThree() loop
+    // uniforms are also updated every frame in the useThree() loop.
     const { uniforms, properties } = Object.entries(
       compileResult.dataInputs || {}
     ).reduce<{
@@ -528,7 +532,7 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
       newMat[key] = value;
     });
 
-    console.log('🏞 Re-creating three.js material!', {
+    log('🏞 Re-creating three.js material!', {
       newMat,
       uniforms,
       properties,

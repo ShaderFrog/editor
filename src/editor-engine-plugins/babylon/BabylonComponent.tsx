@@ -41,95 +41,6 @@ BABYLON.Logger.Error = (...args) => {
   _err(...args);
 };
 
-// const dorf = (
-//   graph: Graph,
-//   textures: any,
-//   material: BABYLON.Material | BABYLON.Effect,
-//   inputs: IndexedDataInputs
-// ) => {
-//   Object.entries(inputs).forEach(([nodeId, inputs]) => {
-//     const node = graph.nodes.find(({ id }) => id === nodeId);
-//     if (!node) {
-//       console.warn(
-//         'While populating uniforms, no node was found from dataInputs',
-//         { nodeId, inputs, graph }
-//       );
-//       return;
-//     }
-//     inputs.forEach((input) => {
-//       const edge = graph.edges.find(
-//         ({ to, input: i }) => to === nodeId && i === input.id
-//       );
-//       if (edge) {
-//         const fromNode = graph.nodes.find(({ id }) => id === edge.from);
-//         // In the case where a node has been deleted from the graph,
-//         // dataInputs won't have been udpated until a recompile completes
-//         if (!fromNode) {
-//           return;
-//         }
-
-//         let value;
-//         // THIS DUPLICATES OTHER LINE
-//         // When a shader is plugged into the Texture node of a megashader,
-//         // this happens, I'm not sure why yet. In fact, why is this branch
-//         // getting called at all in useThree() ?
-//         try {
-//           value = evaluateNode(babylengine, graph, fromNode);
-//         } catch (err) {
-//           console.warn(
-//             `Tried to evaluate a non-data node! ${input.displayName} on ${node.name}`
-//           );
-//           return;
-//         }
-//         let newValue = value;
-//         if (fromNode.type === 'texture') {
-//           // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
-//           newValue = textures[(fromNode as TextureNode).value];
-//           // console.log('setting texture', newValue, 'from', fromNode);
-//         }
-//         if (fromNode.type === 'samplerCube') {
-//           newValue = textures[(fromNode as SamplerCubeNode).value];
-//         }
-
-//         if (input.type === 'property' && input.property) {
-//           // @ts-ignore
-//           if (!newValue.url || material[input.property]?.url !== newValue.url) {
-//             // @ts-ignore
-//             material[input.property] = newValue;
-//           }
-//         } else {
-//           // TODO: This doesn't work for engine variables because
-//           // those aren't suffixed
-//           const name = mangleVar(input.displayName, babylengine, node);
-
-//           // @ts-ignore
-//           if (fromNode.type === 'number') {
-//             material.setFloat(name, newValue);
-//           } else if (fromNode.type === 'vector2') {
-//             material.setVector2(name, newValue);
-//           } else if (fromNode.type === 'vector3') {
-//             material.setVector3(name, newValue);
-//           } else if (fromNode.type === 'vector4') {
-//             material.setVector4(name, newValue);
-//           } else if (fromNode.type === 'rgb') {
-//             material.setColor3(name, newValue);
-//           } else if (fromNode.type === 'rgba') {
-//             // TODO: Uniforms aren't working for plugging in purple noise
-//             // shader to Texture filler of babylon physical - was getting
-//             // webgl warnings, but now object is black? Also I need to
-//             // get the actual color4 alpha value here
-//             material.setColor4(name, newValue, 1.0);
-//           } else if (fromNode.type === 'texture') {
-//             material.setTexture(name, newValue);
-//           } else {
-//             log(`Unknown uniform type: ${fromNode.type}`);
-//           }
-//         }
-//       }
-//     });
-//   });
-// };
-
 type OnBeforeDraw = (mesh: BABYLON.Mesh) => void;
 const useOnMeshDraw = (
   mesh: BABYLON.Mesh | undefined,
@@ -515,8 +426,8 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
       compileResult,
     });
 
-    // TODO: Babylon doesn't have a RawShaderMaterial. This hard codes the
-    // assumption there's a Physical material in the graph.
+    // TODO: This hard codes the assumption there's a Physical material in the
+    // graph.
     const shaderMaterial = new BABYLON.PBRMaterial(pbrName, scene);
     // @ts-ignore
     const graphProperties: Record<string, any> = {};
@@ -538,15 +449,9 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
         );
         // @ts-ignore
         if (edge) {
-          if (input?.dataType === 'texture') {
-            if (input.property === 'albedoTexture') {
-              graphProperties.albedoTexture =
-                textures.brickNormal as BABYLON.Texture;
-            }
-            if (input.property === 'bumpTexture') {
-              graphProperties.bumpTexture =
-                textures.brickNormal as BABYLON.Texture;
-            }
+          if (input?.dataType === 'texture' && input.property) {
+            graphProperties[input.property] =
+              textures.brickNormal as BABYLON.Texture;
           }
         }
       });
@@ -607,6 +512,13 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
 
       uniforms.push('time');
 
+      // Take the data nodes from the graph and add them to the shader definition.
+      // Note dataInputs uses non-baked inputs only. Adding a Texture() to the
+      // diffuseMap property is done above physicalFragmentNode.
+      // TODO: I wrote collectInitialEvaluatedGraphProperties() to make this an
+      // engine concern, but didn't account for the different logic below
+      // (uniforms.push() for example). Are these mergable? This is a lot of code
+      // to have in the component, would be nice to move into the engine.
       if (compileResult?.dataInputs) {
         Object.entries(compileResult.dataInputs).forEach(([nodeId, inputs]) => {
           const node = graph.nodes.find(({ id }) => id === nodeId);
@@ -618,7 +530,6 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
             return;
           }
           inputs.forEach((input) => {
-            const name = mangleVar(input.displayName, babylengine, node);
             const edge = graph.edges.find(
               ({ to, input: i }) => to === nodeId && i === input.id
             );
@@ -629,6 +540,7 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
               if (!fromNode) {
                 return;
               }
+              const name = mangleVar(input.displayName, babylengine, node);
               if (input.type !== 'property') {
                 uniforms.push(name);
               }
@@ -639,8 +551,7 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
           });
         });
       }
-      // TODO: trying to get fireball to work, texture not loading? Also I can't
-      // get an image to load at all while hand modifying shader source
+
       log(`${pbrName} PBRMaterial customShaderNameResolve called...`, {
         defines,
         uniforms,

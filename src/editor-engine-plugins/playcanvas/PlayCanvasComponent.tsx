@@ -1,17 +1,10 @@
 import * as pc from 'playcanvas';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  collectNodeProperties,
-  filterGraphFromNode,
-  isDataInput,
-  isDataNode,
-  mangleVar,
-} from '@core/graph';
-import { Graph, GraphNode } from '@core/graph-types';
+import { mangleVar } from '@core/graph';
+import { Graph } from '@core/graph-types';
 import {
   EngineContext,
-  EngineNodeType,
   collectInitialEvaluatedGraphProperties,
 } from '@core/engine';
 import styles from '../../editor/styles/editor.module.css';
@@ -29,9 +22,6 @@ import {
 } from '@core/plugins/playcanvas/playengine';
 import { usePlayCanvas } from './usePlayCanvas';
 import useEffectOnlyOncePerMount from 'src/util/useEffectOnlyOncePerMount';
-import { ensure } from '@core/util/ensure';
-import { NodeInput } from '@core/nodes/core-node';
-import { CodeNode } from '@core/nodes/code-nodes';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -153,8 +143,8 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     };
   }, [setGlResult]);
 
-  const { canvas, pcDomRef, app, sceneData, loadingMaterial } = usePlayCanvas(
-    (time) => {
+  const { camera, canvas, pcDomRef, app, sceneData, loadingMaterial } =
+    usePlayCanvas((time) => {
       const { mesh } = sceneData;
       const meshInstance = mesh?.render?.meshInstances?.[0];
       const { material: mMaterial } = meshInstance || {};
@@ -242,8 +232,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
           // I haven't done this yet
         }
       }
-    }
-  );
+    });
 
   const textures = useMemo<
     Record<string, pc.Texture | null> | undefined
@@ -390,26 +379,48 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
   ]);
 
   useEffect(() => {
-    let mesh = new pc.Entity();
-    if (previewObject === 'torusknot') {
-      mesh.addComponent('render', {
-        type: 'torus',
+    let entity = new pc.Entity();
+
+    const material =
+      sceneData.mesh && sceneData.mesh.render
+        ? sceneData.mesh.render.meshInstances[0].material
+        : loadingMaterial;
+
+    if (previewObject === 'torus') {
+      const mesh = pc.createTorus(app.graphicsDevice, {
+        segments: 60,
+        sides: 32,
+      });
+      const meshInstance = new pc.MeshInstance(mesh, material);
+      entity.addComponent('render', {
+        meshInstances: [meshInstance],
       });
     } else if (previewObject === 'plane') {
-      mesh.addComponent('render', {
-        type: 'plane',
+      const mesh = pc.createPlane(app.graphicsDevice, {
+        widthSegments: 60,
+        lengthSegments: 60,
+      });
+      const meshInstance = new pc.MeshInstance(mesh, material);
+      entity.addComponent('render', {
+        meshInstances: [meshInstance],
       });
     } else if (previewObject === 'cube') {
-      mesh.addComponent('render', {
-        type: 'box',
+      const mesh = pc.createBox(app.graphicsDevice, {
+        widthSegments: 60,
+        heightSegments: 60,
+      });
+      const meshInstance = new pc.MeshInstance(mesh, material);
+      entity.addComponent('render', {
+        meshInstances: [meshInstance],
       });
     } else if (previewObject === 'sphere') {
-      mesh.addComponent('render', {
-        type: 'sphere',
+      const mesh = pc.createSphere(app.graphicsDevice, {
+        latitudeBands: 32,
+        longitudeBands: 32,
       });
-    } else if (previewObject === 'icosahedron') {
-      mesh.addComponent('render', {
-        type: 'box',
+      const meshInstance = new pc.MeshInstance(mesh, material);
+      entity.addComponent('render', {
+        meshInstances: [meshInstance],
       });
     } else {
       throw new Error('fffffff');
@@ -417,17 +428,19 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
 
     if (sceneData.mesh && sceneData.mesh.render) {
       const origMat = sceneData.mesh.render.meshInstances[0].material;
-      mesh.render!.material = origMat;
+      entity.render!.material = origMat;
     } else {
-      mesh.render!.material = loadingMaterial;
+      entity.render!.material = loadingMaterial;
     }
 
     if (sceneData.mesh) {
       sceneData.mesh.destroy();
     }
-    app.root.addChild(mesh);
-    sceneData.mesh = mesh;
-  }, [app, previewObject, sceneData, loadingMaterial]);
+    app.root.addChild(entity);
+    sceneData.mesh = entity;
+    // @ts-ignore
+    window.mesh = entity;
+  }, [app, previewObject, sceneData, loadingMaterial, camera]);
 
   useEffectOnlyOncePerMount(
     useCallback(() => {
@@ -584,8 +597,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
               <option value="sphere">Sphere</option>
               <option value="cube">Cube</option>
               <option value="plane">Plane</option>
-              <option value="torusknot">Torus</option>
-              <option value="icosahedron">Icosahedron</option>
+              <option value="torus">Torus</option>
             </select>
           </div>
 

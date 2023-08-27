@@ -136,6 +136,9 @@ const log = (...args: any[]) =>
  * Experimentation ideas
  * - ✅ Try SDF image shader https://www.youtube.com/watch?v=1b5hIMqz_wM
  * - ✅ Have uniforms added per shader in the graph
+ * - Break up editors into different types to avoid loading all 3 libraries in
+ *   a single component
+ * - Try this noise donut torus shader https://www.youtube.com/watch?v=ixEPBzrhgTg
  * - Put other images in the graph like the toon step shader
  * - Adding a rim glow to a toon lit mesh is cool - but it would be even cooler
  *   to be able to multiply the rim lighting by the threejs lighting output
@@ -195,8 +198,9 @@ const log = (...args: any[]) =>
  *   inputs/ouputs, and prevent wrong types from being connected
  * - Re-add the three > babylon conversion
  * - ✅ Add image data nodes to the graph
- * - Add persistable shaders to a db!
+ * - ✅ Add persistable shaders to a db!
  * - Shader node editor specific undo history
+ * - Add ability to show wireframe
  *
  * Bugs
  * - UI

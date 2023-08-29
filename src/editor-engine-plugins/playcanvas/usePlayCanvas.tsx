@@ -149,11 +149,10 @@ export const usePlayCanvas = (callback: Callback) => {
   const animate = useCallback(
     (deltaTime: number) => {
       app.render();
-      orbitCameraInputKeyboard.update(deltaTime, 1);
       orbitCamera.update(deltaTime);
       savedCallback.current(deltaTime);
     },
-    [app, orbitCameraInputKeyboard, orbitCamera]
+    [app, orbitCamera]
   );
 
   useEffect(() => {

@@ -78,44 +78,39 @@ let hackShaderDefinition: (event: {
   definition: any;
 }) => void;
 
-const ding = (
+const loadAsset = (
   app: pc.Application,
   name: string,
-  url: string,
-  onLoad?: (t: pc.Asset) => void
-) => {
-  var cubemapAsset = new pc.Asset(
-    name,
-    'cubemap',
-    {
-      url,
-    },
-    {}
-  );
+  url: string
+): Promise<pc.Asset> =>
+  new Promise((resolve) => {
+    const cubemapAsset = new pc.Asset(
+      name,
+      'cubemap',
+      {
+        url,
+      },
+      {}
+    );
 
-  app.assets.add(cubemapAsset);
-  app.assets.load(cubemapAsset);
-  cubemapAsset.ready(function () {
-    onLoad && onLoad(cubemapAsset);
+    app.assets.add(cubemapAsset);
+    app.assets.load(cubemapAsset);
+    cubemapAsset.ready(() => resolve(cubemapAsset));
   });
-  return cubemapAsset;
-};
 
 const buildTextureLoader =
   (app: pc.Application) =>
-  (path: string, onLoad?: (t: pc.Texture) => void): pc.Texture => {
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    const texture = new pc.Texture(app.graphicsDevice, { name: path });
-    image.onload = () => {
-      texture.setSource(image);
-      if (onLoad) {
-        onLoad(texture);
-      }
-    };
-    image.src = path;
-    return texture;
-  };
+  async (path: string): Promise<pc.Texture> =>
+    new Promise((resolve) => {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      const texture = new pc.Texture(app.graphicsDevice, { name: path });
+      image.onload = () => {
+        texture.setSource(image);
+        resolve(texture);
+      };
+      image.src = path;
+    });
 
 type AnyFn = (...args: any) => any;
 type PlayCanvasComponentProps = {
@@ -271,25 +266,39 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       }
     });
 
-  const textures = useMemo<
+  const [textures, setTextures] = useState<
     Record<string, pc.Texture | pc.Asset | null> | undefined
-  >(() => {
-    const textureLoader = buildTextureLoader(app);
-    // Logging to check if this happens more than once
-    log('🔥 Loading Playcanvas textures');
-    return {
-      explosion: textureLoader(path('/explosion.png')),
-      'grayscale-noise': textureLoader(path('/grayscale-noise.png')),
-      threeTone: textureLoader(path('/3tone.jpg')),
-      brick: textureLoader(path('/bricks.jpeg')),
-      brickNormal: textureLoader(path('/bricknormal.jpeg')),
-      pebbles: textureLoader(path('/Big_pebbles_pxr128.jpeg')),
-      pebblesNormal: textureLoader(path('/Big_pebbles_pxr128_normal.jpeg')),
-      pebblesBump: textureLoader(path('/Big_pebbles_pxr128_bmp.jpeg')),
-      pondCubeMap: null,
-      cityCourtYard: ding(app, 'city', path('/envmaps/citycourtyard.dds')),
-      warehouseEnvTexture: ding(app, 'city', path('/envmaps/room.hdr')),
+  >();
+  useEffect(() => {
+    const load = async () => {
+      const textureLoader = buildTextureLoader(app);
+      // Logging to check if this happens more than once
+      log('🔥 Loading Playcanvas textures');
+      setTextures({
+        explosion: await textureLoader(path('/explosion.png')),
+        'grayscale-noise': await textureLoader(path('/grayscale-noise.png')),
+        threeTone: await textureLoader(path('/3tone.jpg')),
+        brick: await textureLoader(path('/bricks.jpeg')),
+        brickNormal: await textureLoader(path('/bricknormal.jpeg')),
+        pebbles: await textureLoader(path('/Big_pebbles_pxr128.jpeg')),
+        pebblesNormal: await textureLoader(
+          path('/Big_pebbles_pxr128_normal.jpeg')
+        ),
+        pebblesBump: await textureLoader(path('/Big_pebbles_pxr128_bmp.jpeg')),
+        pondCubeMap: null,
+        cityCourtYard: await loadAsset(
+          app,
+          'city',
+          path('/envmaps/citycourtyard.dds')
+        ),
+        warehouseEnvTexture: await loadAsset(
+          app,
+          'city',
+          path('/envmaps/room.hdr')
+        ),
+      });
     };
+    load();
   }, [path, app]);
 
   useEffect(() => {
@@ -499,13 +508,22 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
   }, [app, previewObject, sceneData, loadingMaterial, camera]);
 
   const previousBg = usePrevious(bg);
+  const previousTextures = usePrevious(textures);
   useEffect(() => {
-    if (!textures || bg === previousBg) {
+    if (!textures || (textures === previousTextures && bg === previousBg)) {
       return;
     }
     const newBg = bg ? (textures[bg] as pc.Asset).resources : null;
     app.scene.setSkybox(newBg as pc.Texture[]);
-  }, [bg, previousBg, sceneData, previewObject, textures, app]);
+  }, [
+    bg,
+    previousBg,
+    sceneData,
+    previewObject,
+    textures,
+    previousTextures,
+    app,
+  ]);
 
   useEffectOnlyOncePerMount(
     useCallback(() => {

@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { mangleVar } from '@core/graph';
 import { Graph } from '@core/graph-types';
@@ -21,7 +21,6 @@ import {
   playengine,
 } from '@core/plugins/playcanvas/playengine';
 import { usePlayCanvas } from './usePlayCanvas';
-import useEffectOnlyOncePerMount from 'src/util/useEffectOnlyOncePerMount';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -507,6 +506,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     window.mesh = entity;
   }, [app, previewObject, sceneData, loadingMaterial, camera]);
 
+  const hasSetctx = useRef(false);
   const previousBg = usePrevious(bg);
   const previousTextures = usePrevious(textures);
   useEffect(() => {
@@ -515,6 +515,11 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     }
     const newBg = bg ? (textures[bg] as pc.Asset).resources : null;
     app.scene.setSkybox(newBg as pc.Texture[]);
+
+    if (!hasSetctx.current) {
+      hasSetctx.current = true;
+      setCtx(ctx);
+    }
   }, [
     bg,
     previousBg,
@@ -523,13 +528,9 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     textures,
     previousTextures,
     app,
+    ctx,
+    setCtx,
   ]);
-
-  useEffectOnlyOncePerMount(
-    useCallback(() => {
-      setCtx(ctx);
-    }, [setCtx, ctx])
-  );
 
   useEffect(() => {
     if (!canvas) {

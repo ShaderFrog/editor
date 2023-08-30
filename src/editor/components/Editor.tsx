@@ -1205,63 +1205,6 @@ const Editor = ({
     [setFlowElements, setGraph]
   );
 
-  const engineSelectorElement = (
-    <div className="inlinecontrol">
-      <div>
-        <label className="label" htmlFor="engineSelect">
-          Engine
-        </label>
-      </div>
-      <div>
-        <select
-          id="engineSelect"
-          className="select"
-          onChange={(e) => {
-            setEngine({
-              lastEngine: engine.name,
-              engine: e.currentTarget.value,
-            });
-            // const urlParams = new URLSearchParams(window.location.search);
-            // urlParams.set('engine', e.currentTarget.value);
-            // window.location.href = `${
-            //   window.location.pathname
-            // }?${urlParams.toString()}`;
-          }}
-          value={engine.name}
-        >
-          <option value="three">Three.js</option>
-          <option value="babylon">Babylon</option>
-          <option value="playcanvas">Playcanvas</option>
-        </select>
-      </div>
-    </div>
-  );
-
-  const exampleSelectorElement = (
-    <div className="inlinecontrol">
-      <div>
-        <label className="label" htmlFor="exampleSelect">
-          Select an example!
-        </label>
-      </div>
-      <div>
-        <select
-          id="exampleSelect"
-          className="select"
-          onChange={(e) => setExample(e.currentTarget.value || null)}
-          value={currentExample || undefined}
-        >
-          <option value="">None</option>
-          {Object.entries(examples).map(([key, name]) => (
-            <option key={key} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-
   const onClickSave = async (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     if (!ctx || (!onUpdateShader && !onCreateShader)) {
@@ -1321,8 +1264,6 @@ const Editor = ({
               Save
             </button>
           </div>
-          <div className="m-right-15">{engineSelectorElement}</div>
-          {exampleSelectorElement}
           {isLocal ? (
             <>
               <button
@@ -1399,8 +1340,22 @@ const Editor = ({
                 onConnectEnd={onConnectEnd}
               />
               <div className={styles.graphFooter}>
+                <span className={styles.footerSecondary}>Engine: </span>
+                {engine.name === 'playcanvas'
+                  ? 'PlayCanvas'
+                  : engine.name === 'three'
+                  ? 'Three.js'
+                  : engine.name === 'babylon'
+                  ? 'Babylon.js'
+                  : 'Wtf'}
                 {compileResult?.compileMs ? (
-                  <>Compile took {compileResult?.compileMs}ms</>
+                  <>
+                    <span className={styles.divider}>|</span>
+                    <span className={styles.footerSecondary}>
+                      Compile time:{' '}
+                    </span>
+                    {compileResult?.compileMs}ms
+                  </>
                 ) : null}
               </div>
             </div>

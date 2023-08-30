@@ -552,6 +552,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     const newProperties = {
       ...physicalDefaultProperties,
       ...graphProperties,
+      opacity: 1,
       userId: 'shaderfrog',
     };
     log('PlayCanvasEngine material props:', newProperties);

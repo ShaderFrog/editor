@@ -354,8 +354,12 @@ textarea.error {
   box-shadow: 0 0 20px #000;
 }
 
+.graphFooter .divider {
+  color: #182a0b;
+  text-shadow: 1px 0 0px #68775d;
+}
 .graphFooter span {
-  color: #66715e;
+  color: #a2ba91;
   padding: 0 4px;
 }
 .graphFooter a {

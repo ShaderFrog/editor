@@ -72,25 +72,11 @@ const makeLightHelper = () => {
  * call, and lets this component define an intercept function.
  */
 const RUNTIME_CHUNK_HACK_NAME = 'runtimeHackSource';
-let hackShaderDefinition: ((args: any) => any) | null;
-const origGsd = pc.ProgramLibrary.prototype.generateShaderDefinition;
-pc.ProgramLibrary.prototype.generateShaderDefinition = function (...args) {
-  // Apply the core PC function
-  let def = origGsd.apply(this, args);
-
-  // Every time we hijack the source, we clear the hijack function. The intended
-  // program flow is this component generates a new pc.Material() with a hack
-  // property set on it ("runtimeHackSource") to force a new compilation/cache
-  // key internally to PC, and then when the material gets hydrated with GLSL,
-  // we clear the hijack fn. The runtimeHackSource check is an extra safety
-  // check to make sure we're not overwriting a different material. See also
-  // "engineHackSource" in playengine.ts
-  if (args[3]?.chunks?.[RUNTIME_CHUNK_HACK_NAME] && hackShaderDefinition) {
-    def = hackShaderDefinition(def);
-    hackShaderDefinition = null;
-  }
-  return def;
-};
+let hackShaderDefinition: (event: {
+  userMaterialId: string;
+  shaderPassInfo: any;
+  definition: any;
+}) => void;
 
 const buildTextureLoader =
   (app: pc.Application) =>
@@ -261,6 +247,15 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
         }
       }
     });
+
+  useEffect(() => {
+    app.graphicsDevice.on('shader:generate', (info) => {
+      hackShaderDefinition && hackShaderDefinition(info);
+      return () => {
+        app.graphicsDevice.off('shader:generate');
+      };
+    });
+  }, [app]);
 
   const textures = useMemo<
     Record<string, pc.Texture | null> | undefined
@@ -530,15 +525,19 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     const newProperties = {
       ...physicalDefaultProperties,
       ...graphProperties,
+      userId: 'shaderfrog',
     };
     log('PlayCanvasEngine material props:', newProperties);
     Object.assign(shaderMaterial, newProperties);
 
-    hackShaderDefinition = (def) => {
-      log('Hacking the shader definition!');
-      def.fshader = '#version 300 es\n' + compileResult.fragmentResult;
-      def.vshader = '#version 300 es\n' + compileResult.vertexResult;
-      return def;
+    hackShaderDefinition = (info) => {
+      log('Hacking the shader definition!', info);
+      if (info.userMaterialId === 'shaderfrog') {
+        info.definition.fshader =
+          '#version 300 es\n' + compileResult.fragmentResult;
+        info.definition.vshader =
+          '#version 300 es\n' + compileResult.vertexResult;
+      }
     };
 
     shaderMaterial.chunks[RUNTIME_CHUNK_HACK_NAME] = `${Math.random()}`;

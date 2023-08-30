@@ -78,6 +78,29 @@ let hackShaderDefinition: (event: {
   definition: any;
 }) => void;
 
+const ding = (
+  app: pc.Application,
+  name: string,
+  url: string,
+  onLoad?: (t: pc.Asset) => void
+) => {
+  var cubemapAsset = new pc.Asset(
+    name,
+    'cubemap',
+    {
+      url,
+    },
+    {}
+  );
+
+  app.assets.add(cubemapAsset);
+  app.assets.load(cubemapAsset);
+  cubemapAsset.ready(function () {
+    onLoad && onLoad(cubemapAsset);
+  });
+  return cubemapAsset;
+};
+
 const buildTextureLoader =
   (app: pc.Application) =>
   (path: string, onLoad?: (t: pc.Texture) => void): pc.Texture => {
@@ -248,17 +271,8 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       }
     });
 
-  useEffect(() => {
-    app.graphicsDevice.on('shader:generate', (info) => {
-      hackShaderDefinition && hackShaderDefinition(info);
-      return () => {
-        app.graphicsDevice.off('shader:generate');
-      };
-    });
-  }, [app]);
-
   const textures = useMemo<
-    Record<string, pc.Texture | null> | undefined
+    Record<string, pc.Texture | pc.Asset | null> | undefined
   >(() => {
     const textureLoader = buildTextureLoader(app);
     // Logging to check if this happens more than once
@@ -273,15 +287,19 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       pebblesNormal: textureLoader(path('/Big_pebbles_pxr128_normal.jpeg')),
       pebblesBump: textureLoader(path('/Big_pebbles_pxr128_bmp.jpeg')),
       pondCubeMap: null,
-      // warehouseEnvTexture: new BABYLON.HDRCubeTexture(
-      //   path('/envmaps/room.hdr'),
-      //   512
-      // ),
-      // cityCourtYard: BABYLON.CubeTexture.CreateFromPrefilteredData(
-      //   path('/envmaps/citycourtyard.dds'),
-      // ),
+      cityCourtYard: ding(app, 'city', path('/envmaps/citycourtyard.dds')),
+      warehouseEnvTexture: ding(app, 'city', path('/envmaps/room.hdr')),
     };
   }, [path, app]);
+
+  useEffect(() => {
+    app.graphicsDevice.on('shader:generate', (info) => {
+      hackShaderDefinition && hackShaderDefinition(info);
+      return () => {
+        app.graphicsDevice.off('shader:generate');
+      };
+    });
+  }, [app, textures]);
 
   const [ctx] = useState<EngineContext>(() => {
     return {
@@ -480,6 +498,15 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
     window.mesh = entity;
   }, [app, previewObject, sceneData, loadingMaterial, camera]);
 
+  const previousBg = usePrevious(bg);
+  useEffect(() => {
+    if (!textures || bg === previousBg) {
+      return;
+    }
+    const newBg = bg ? (textures[bg] as pc.Asset).resources : null;
+    app.scene.setSkybox(newBg as pc.Texture[]);
+  }, [bg, previousBg, sceneData, previewObject, textures, app]);
+
   useEffectOnlyOncePerMount(
     useCallback(() => {
       setCtx(ctx);
@@ -654,9 +681,8 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
               value={bg ? bg : 'none'}
             >
               <option value="none">None</option>
-              <option value="warehouseEnvTexture">Warehouse</option>
-              <option value="pondCubeMap">Pond Cube Map</option>
-              <option value="modelviewer">Model Viewer</option>
+              <option value="cityCourtYard">City Court Yard</option>
+              <option value="warehouseEnvTexture">Horrible Lord?</option>
             </select>
           </div>
         </div>

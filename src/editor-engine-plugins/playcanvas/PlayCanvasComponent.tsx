@@ -479,8 +479,8 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       });
     } else if (previewObject === 'sphere') {
       const mesh = pc.createSphere(app.graphicsDevice, {
-        latitudeBands: 32,
-        longitudeBands: 32,
+        latitudeBands: 128,
+        longitudeBands: 128,
       });
       const meshInstance = new pc.MeshInstance(mesh, material);
       entity.addComponent('render', {

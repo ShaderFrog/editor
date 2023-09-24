@@ -1,6 +1,5 @@
 import { texture2DStrategy, uniformStrategy } from '@core/strategy';
-import { sourceNode } from '@core/nodes/engine-node';
-import { NodePosition } from '@core/nodes/core-node';
+import { NodePosition, sourceNode } from '@core/graph';
 
 const solidColorNode = (id: string, position: NodePosition) =>
   sourceNode(

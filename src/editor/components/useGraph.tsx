@@ -1,17 +1,8 @@
 import {
-  collectConnectedNodes,
-  compileGraph,
-  filterGraphNodes,
-  isDataInput,
-} from '@core/graph';
-import { Graph, GraphNode } from '@core/graph-types';
-import { Edge as GraphEdge, makeEdge } from '@core/nodes/edge';
-import { Engine, EngineContext, convertNode } from '@core/engine';
-import { UICompileGraphResult } from '../uICompileGraphResult';
-import { generate } from '@shaderfrog/glsl-parser';
-import { shaderSectionsToProgram } from '@core/ast/shader-sections';
-
-import {
+  Graph,
+  GraphNode,
+  Edge as GraphEdge,
+  makeEdge,
   arrayNode,
   colorNode,
   numberNode,
@@ -21,41 +12,15 @@ import {
   Vector3,
   Vector4,
   vectorNode,
-} from '@core/nodes/data-nodes';
+  compileSource,
+} from '@core/graph';
+import { Engine, EngineContext, convertNode } from '@core/engine';
+import { UICompileGraphResult } from '../uICompileGraphResult';
 
-import { fireFrag, fireVert } from '../../shaders/fireNode';
-import fluidCirclesNode from '../../shaders/fluidCirclesNode';
-import {
-  heatShaderFragmentNode,
-  heatShaderVertexNode,
-} from '../../shaders/heatmapShaderNode';
-import perlinCloudsFNode from '../../shaders/perlinClouds';
-import { hellOnEarthFrag, hellOnEarthVert } from '../../shaders/hellOnEarth';
-import { outlineShaderF, outlineShaderV } from '../../shaders/outlineShader';
-import purpleNoiseNode from '../../shaders/purpleNoiseNode';
-import solidColorNode from '../../shaders/solidColorNode';
-import staticShaderNode from '../../shaders/staticShaderNode';
-import { checkerboardF, checkerboardV } from '../../shaders/checkboardNode';
-import {
-  cubemapReflectionF,
-  cubemapReflectionV,
-} from '../../shaders/cubemapReflectionNode';
-import normalMapify from '../../shaders/normalmapifyNode';
 import { makeId } from '../../editor-util/id';
-import {
-  addNode,
-  multiplyNode,
-  phongNode,
-  sourceNode,
-} from '@core/nodes/engine-node';
+import { addNode, multiplyNode, sourceNode } from '@core/graph';
 import { texture2DStrategy, uniformStrategy } from '@core/strategy';
-import { serpentF, serpentV } from '../../shaders/serpentNode';
-import { badTvFrag } from '../../shaders/badTvNode';
-import whiteNoiseNode from '../../shaders/whiteNoiseNode';
 import { babylengine } from '@core/plugins/babylon/bablyengine';
-import sinCosVertWarp from '../../shaders/sinCosVertWarp';
-import { juliaF, juliaV } from '../../shaders/juliaNode';
-import { computeGraphContext } from '@core/context';
 
 const compileGraphAsync = async (
   graph: Graph,
@@ -68,49 +33,18 @@ const compileGraphAsync = async (
 
       const allStart = performance.now();
 
-      let result;
-
       try {
-        await computeGraphContext(ctx, engine, graph);
-        result = compileGraph(ctx, engine, graph);
+        const {
+          compileResult,
+          fragmentResult,
+          vertexResult,
+          dataNodes,
+          dataInputs,
+        } = await compileSource(graph, engine, ctx);
 
-        const fragmentResult = generate(
-          shaderSectionsToProgram(result.fragment, engine.mergeOptions).program
-        );
-        const vertexResult = generate(
-          shaderSectionsToProgram(result.vertex, engine.mergeOptions).program
-        );
-
-        const dataInputs = filterGraphNodes(
-          graph,
-          [result.outputFrag, result.outputVert],
-          { input: isDataInput }
-        ).inputs;
-
-        // Find which nodes flow up into uniform inputs, for colorizing and for
-        // not recompiling when their data changes
-        const dataNodes = Object.entries(dataInputs).reduce<
-          Record<string, GraphNode>
-        >((acc, [nodeId, inputs]) => {
-          return inputs.reduce((iAcc, input) => {
-            const fromEdge = graph.edges.find(
-              (edge) => edge.to === nodeId && edge.input === input.id
-            );
-            const fromNode =
-              fromEdge && graph.nodes.find((node) => node.id === fromEdge.from);
-            return fromNode
-              ? {
-                  ...iAcc,
-                  ...collectConnectedNodes(graph, fromNode),
-                }
-              : iAcc;
-          }, acc);
-        }, {});
-
-        const now = performance.now();
         resolve({
-          compileMs: (now - allStart).toFixed(3),
-          result,
+          compileMs: (performance.now() - allStart).toFixed(3),
+          compileResult,
           fragmentResult,
           vertexResult,
           dataNodes,
@@ -300,102 +234,6 @@ const createGraphNode = (
     newGns = [multiplyNode(id, position)];
   } else if (nodeDataType === 'add') {
     newGns = [addNode(id, position)];
-  } else if (nodeDataType === 'phong') {
-    newGns = [
-      phongNode(id, 'Phong', groupId, position, 'fragment'),
-      phongNode(makeId(), 'Phong', groupId, position, 'vertex', id),
-    ];
-  } else if (nodeDataType === 'physical') {
-    newGns = [
-      engine.constructors.physical(
-        id,
-        'Physical',
-        groupId,
-        position,
-        [],
-        'fragment'
-      ),
-      engine.constructors.physical(
-        makeId(),
-        'Physical',
-        groupId,
-        position,
-        [],
-        'vertex',
-        id
-      ),
-    ];
-  } else if (nodeDataType === 'toon') {
-    newGns = [
-      engine.constructors.toon(id, 'Toon', groupId, position, [], 'fragment'),
-      engine.constructors.toon(
-        makeId(),
-        'Toon',
-        groupId,
-        position,
-        [],
-        'vertex',
-        id
-      ),
-    ];
-  } else if (nodeDataType === 'simpleVertex') {
-    newGns = [sinCosVertWarp(makeId(), position)];
-  } else if (nodeDataType === 'julia') {
-    newGns = [juliaF(id, position), juliaV(makeId(), id, position)];
-  } else if (nodeDataType === 'fireNode') {
-    newGns = [fireFrag(id, position), fireVert(makeId(), id, position)];
-  } else if (nodeDataType === 'badTv') {
-    newGns = [badTvFrag(id, position)];
-  } else if (nodeDataType === 'whiteNoiseNode') {
-    newGns = [whiteNoiseNode(id, position)];
-  } else if (nodeDataType === 'checkerboardF') {
-    newGns = [
-      checkerboardF(id, position),
-      checkerboardV(makeId(), id, position),
-    ];
-  } else if (nodeDataType === 'serpent') {
-    newGns = [serpentF(id, position), serpentV(makeId(), id, position)];
-  } else if (nodeDataType === 'cubemapReflection') {
-    newGns = [
-      cubemapReflectionF(id, position),
-      cubemapReflectionV(makeId(), id, position),
-    ];
-  } else if (nodeDataType === 'fluidCirclesNode') {
-    newGns = [fluidCirclesNode(id, position)];
-  } else if (nodeDataType === 'heatmapShaderNode') {
-    newGns = [
-      heatShaderFragmentNode(id, position),
-      heatShaderVertexNode(makeId(), id, position),
-    ];
-  } else if (nodeDataType === 'hellOnEarth') {
-    newGns = [
-      hellOnEarthFrag(id, position),
-      hellOnEarthVert(makeId(), id, position),
-    ];
-  } else if (nodeDataType === 'outlineShader') {
-    newGns = [
-      outlineShaderF(id, position),
-      outlineShaderV(makeId(), id, position),
-    ];
-  } else if (nodeDataType === 'perlinClouds') {
-    newGns = [perlinCloudsFNode(id, position)];
-  } else if (nodeDataType === 'purpleNoiseNode') {
-    newGns = [purpleNoiseNode(id, position)];
-  } else if (nodeDataType === 'solidColorNode') {
-    newGns = [solidColorNode(id, position)];
-  } else if (nodeDataType === 'staticShaderNode') {
-    newGns = [staticShaderNode(id, position)];
-  } else if (nodeDataType === 'normalMapify') {
-    newGns = [normalMapify(id, position)];
-  } else if (nodeDataType === 'samplerCube') {
-    newGns = [
-      samplerCubeNode(
-        id,
-        makeName('samplerCube'),
-        position,
-        'warehouseEnvTexture'
-      ),
-    ];
   } else if (nodeDataType === 'fragment' || nodeDataType === 'vertex') {
     newGns = [
       sourceNode(
@@ -417,6 +255,15 @@ const createGraphNode = (
 }`,
         nodeDataType,
         engine.name
+      ),
+    ];
+  } else if (nodeDataType === 'samplerCube') {
+    newGns = [
+      samplerCubeNode(
+        id,
+        makeName('samplerCube'),
+        position,
+        'warehouseEnvTexture'
       ),
     ];
   } else {

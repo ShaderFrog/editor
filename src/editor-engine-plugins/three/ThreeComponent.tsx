@@ -6,25 +6,32 @@ import React, {
   useState,
 } from 'react';
 import * as three from 'three';
-import { mangleVar } from '@core/graph';
-import { Graph } from '@core/graph-types';
+import {
+  Graph,
+  mangleVar,
+  SamplerCubeNode,
+  TextureNode,
+  evaluateNode,
+} from '@core/graph';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import { EngineContext } from '@core/engine';
 
 import styles from '../../editor/styles/editor.module.css';
 
-import { threngine, ThreeRuntime } from '@core/plugins/three/threngine';
+import {
+  threngine,
+  ThreeRuntime,
+  createMaterial,
+} from '@core/plugins/three/threngine';
 
 import { useThree } from './useThree';
 import { usePrevious } from '../../editor/hooks/usePrevious';
 import { UICompileGraphResult } from '../../editor/uICompileGraphResult';
 import { PreviewLight } from '../../editor/components/Editor';
 import { ensure } from '../../editor-util/ensure';
-import { SamplerCubeNode, TextureNode } from '@core/nodes/data-nodes';
 import { useSize } from '../../editor/hooks/useSize';
 import { PMREMGenerator } from 'three';
 import { RoomEnvironment } from './RoomEnvironment';
-import { evaluateNode } from '@core/evaluate';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
@@ -402,10 +409,11 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
     if (!compileResult?.fragmentResult) {
       return;
     }
-    const { graph } = compileResult;
+    const material = createMaterial(compileResult, ctx);
+    // const { graph } = compileResult;
     const {
       sceneData: { mesh },
-      engineMaterial,
+      // engineMaterial,
     } = ctx.runtime as ThreeRuntime;
 
     log('oh hai birfday boi boi boiiiii');
@@ -472,77 +480,28 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
       }
     );
 
-    const finalUniforms = {
-      // TODO: Get these from threngine
-      ...three.ShaderLib.phong.uniforms,
-      ...three.ShaderLib.toon.uniforms,
-      ...three.ShaderLib.physical.uniforms,
-      ...uniforms,
-      time: { value: 0 },
-    };
-
-    const initialProperties = {
-      name: 'ShaderFrog Material',
-      lights: true,
-      uniforms: {
-        ...finalUniforms,
-      },
-      transparent: true,
-      opacity: 1.0,
-      vertexShader: compileResult?.vertexResult,
-      fragmentShader: compileResult?.fragmentResult,
-    };
-
-    const additionalProperties = Object.entries({
-      ...engineMaterial,
-      ...properties,
-    })
-      .filter(
-        ([property]) =>
-          // Ignore three material "hidden" properties
-          property.charAt(0) !== '_' &&
-          // Ignore uuid since it should probably be unique?
-          property !== 'uuid' &&
-          // I'm not sure what three does with type under the hood, ignore it
-          property !== 'type' &&
-          // "precision" adds a precision preprocessor line
-          property !== 'precision' &&
-          // Ignore existing properties
-          !(property in initialProperties) &&
-          // Ignore STANDARD and PHYSICAL defines to the top of the shader in
-          // WebGLProgram
-          // https://github.com/mrdoob/three.js/blob/e7042de7c1a2c70e38654a04b6fd97d9c978e781/src/renderers/webgl/WebGLProgram.js#L392
-          // which occurs if we set isMeshPhysicalMaterial/isMeshStandardMaterial
-          property !== 'defines'
-      )
-      .reduce(
-        (acc, [key, value]) => ({
-          ...acc,
-          [key]: value,
-        }),
-        {}
-      );
-
-    const newMat = new three.RawShaderMaterial(initialProperties);
-
     // This prevents a deluge of warnings from three on the constructor saying
     // that each of these properties is not a property of the material
-    Object.entries(additionalProperties).forEach(([key, value]) => {
+    Object.entries(properties).forEach(([key, value]) => {
       // @ts-ignore
-      newMat[key] = value;
+      material[key] = value;
     });
 
+    material.uniforms = {
+      ...material.uniforms,
+      ...uniforms,
+    };
+
     log('🏞 Re-creating three.js material!', {
-      newMat,
-      uniforms,
+      material,
       properties,
-      finalUniforms,
+      uniforms: material.uniforms,
       engineMaterial: ctx.runtime.engineMaterial,
     });
 
-    mesh.material = newMat;
+    mesh.material = material;
     shadersUpdated.current = true;
-  }, [compileResult, ctx.runtime, textures]);
+  }, [compileResult, ctx, graph, textures]);
 
   const prevLights = usePrevious(lights);
   const previousShowHelpers = usePrevious(showHelpers);

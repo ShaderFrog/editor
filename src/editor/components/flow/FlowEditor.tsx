@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import ConnectionLine from './ConnectionLine';
-import create from 'zustand';
+import { create } from 'zustand';
 
 import ReactFlow, {
   Background,
@@ -18,11 +18,10 @@ import ReactFlow, {
   ReactFlowInstance,
 } from 'reactflow';
 
-import { NodeType } from '@core/graph-types';
+import { NodeType, GraphDataType } from '@core/graph';
 import { EngineNodeType } from '@core/engine';
 import FlowEdgeComponent from './FlowEdge';
 import { DataNodeComponent, SourceNodeComponent } from './FlowNode';
-import { GraphDataType } from '@core/nodes/data-nodes';
 import { FlowEventHack } from '../../flowEventHack';
 
 import styles from './context.menu.module.css';
@@ -93,6 +92,7 @@ export type MouseData = { real: XYPosition; projected: XYPosition };
 
 type FlowEditorProps =
   | {
+      menuItems: MenuItems;
       mouse: React.MutableRefObject<MouseData>;
       onNodeValueChange: (id: string, value: any) => void;
       onMenuAdd: (type: string) => void;
@@ -115,6 +115,7 @@ type FlowEditorProps =
 
 const FlowEditor = ({
   mouse,
+  menuItems,
   onMenuAdd,
   nodes,
   edges,
@@ -163,9 +164,42 @@ const FlowEditor = ({
     []
   );
 
+  const allMenuItems: MenuItems = [
+    [
+      'Source Code',
+      [
+        ['Fragment', 'fragment'],
+        ['Vertex', 'vertex'],
+      ],
+    ],
+    [
+      'Data',
+      [
+        ['Number', 'number'],
+        ['Texture', 'texture'],
+        ['Sampler Cube', 'samplerCube'],
+        ['Vector2', 'vector2'],
+        ['Vector3', 'vector3'],
+        ['Vector4', 'vector4'],
+        ['Color (RGB)', 'rgb'],
+        ['Color (RGBA)', 'rgba'],
+      ],
+    ],
+    [
+      'Math',
+      [
+        ['Add', 'add'],
+        ['Multiply', 'multiply'],
+      ],
+    ],
+    ...menuItems,
+  ];
+
   return (
     <div onContextMenu={onContextMenu} className={styles.flowContainer}>
-      {menuPos ? <ContextMenu position={menuPos} onAdd={onMenuAdd} /> : null}
+      {menuPos ? (
+        <ContextMenu menu={allMenuItems} position={menuPos} onAdd={onMenuAdd} />
+      ) : null}
       <FlowEventHack onChange={onNodeValueChange}>
         <ReactFlow
           defaultViewport={defaultViewport}
@@ -204,75 +238,22 @@ const FlowEditor = ({
 
 FlowEditor.displayName = 'FlowEditor';
 
-type Menu = [string, string | Menu][];
-const ctxNodes: Menu = [
-  [
-    'Source Code',
-    [
-      ['Fragment', 'fragment'],
-      ['Vertex', 'vertex'],
-    ],
-  ],
-  [
-    'Data',
-    [
-      ['Number', 'number'],
-      ['Texture', 'texture'],
-      ['Sampler Cube', 'samplerCube'],
-      ['Vector2', 'vector2'],
-      ['Vector3', 'vector3'],
-      ['Vector4', 'vector4'],
-      ['Color (RGB)', 'rgb'],
-      ['Color (RGBA)', 'rgba'],
-    ],
-  ],
-  [
-    'Math',
-    [
-      ['Add', 'add'],
-      ['Multiply', 'multiply'],
-    ],
-  ],
-  [
-    'Example Shader',
-    [
-      ['Physical', 'physical'],
-      ['Phong', 'phong'],
-      ['Toon', 'toon'],
-      ['Serpent', 'serpent'],
-      ['Fireball', 'fireNode'],
-      ['Julia', 'julia'],
-      ['Bad TV', 'badTv'],
-      ['Checkerboard', 'checkerboardF'],
-      ['Fluid Circles', 'fluidCirclesNode'],
-      ['Heatmap', 'heatmapShaderNode'],
-      ['Hell', 'hellOnEarth'],
-      ['Outline', 'outlineShader'],
-      ['Perlin Clouds', 'perlinClouds'],
-      ['Purple Noise', 'purpleNoiseNode'],
-      ['Solid Color', 'solidColorNode'],
-      ['White Noise', 'whiteNoiseNode'],
-      ['Tangent Noise', 'staticShaderNode'],
-      ['Normal Map-ify', 'normalMapify'],
-      ['Vertex Noise', 'simpleVertex'],
-      ['Cube Map Reflection', 'cubemapReflection'],
-    ],
-  ],
-];
+export type MenuItems = [string, string | MenuItems][];
+
 const ContextMenu = ({
   position,
   onAdd,
-  menu = ctxNodes,
+  menu,
   title = 'Add a node',
   onMouseEnter,
 }: {
   onAdd: (name: string) => void;
   position: XYPosition;
-  menu?: Menu;
+  menu: MenuItems;
   title?: string;
   onMouseEnter?: (e: MouseEvent<any>) => void;
 }) => {
-  const [childMenu, setChildMenu] = useState<[string, Menu]>();
+  const [childMenu, setChildMenu] = useState<[string, MenuItems, number]>();
 
   const timeout = useRef<NodeJS.Timeout>();
   const onParentMenuEnter = useCallback(() => {
@@ -303,7 +284,7 @@ const ContextMenu = ({
         onMouseEnter={onMouseEnter}
       >
         <div className={styles.contextHeader}>{title}</div>
-        {menu.map(([display, typeOrChildren]) =>
+        {menu.map(([display, typeOrChildren], index) =>
           typeof typeOrChildren === 'string' ? (
             <div
               key={display}
@@ -321,7 +302,7 @@ const ContextMenu = ({
                 if (timeout.current) {
                   clearTimeout(timeout.current);
                 }
-                setChildMenu([display, typeOrChildren]);
+                setChildMenu([display, typeOrChildren, index]);
               }}
             >
               {display} ➤
@@ -332,7 +313,7 @@ const ContextMenu = ({
       {childMenu ? (
         <ContextMenu
           onAdd={onAdd}
-          position={{ ...position, x: position.x + 128 }}
+          position={{ y: position.y + childMenu[2] * 24, x: position.x + 138 }}
           title={childMenu[0]}
           menu={childMenu[1]}
           onMouseEnter={() => {

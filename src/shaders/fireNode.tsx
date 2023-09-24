@@ -1,10 +1,10 @@
-import { NodePosition } from '@core/nodes/core-node';
 import {
+  NodePosition,
+  sourceNode,
   numberUniformData,
   textureUniformData,
   UniformDataType,
-} from '@core/nodes/data-nodes';
-import { sourceNode } from '@core/nodes/engine-node';
+} from '@core/graph';
 import { namedAttributeStrategy, uniformStrategy } from '@core/strategy';
 
 const fireFrag = (id: string, position: NodePosition) =>

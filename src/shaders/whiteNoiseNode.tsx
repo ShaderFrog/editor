@@ -1,6 +1,4 @@
-import { NodePosition } from '@core/nodes/core-node';
-import { numberUniformData } from '@core/nodes/data-nodes';
-import { sourceNode } from '@core/nodes/engine-node';
+import { NodePosition, sourceNode, numberUniformData } from '@core/graph';
 import { uniformStrategy } from '@core/strategy';
 
 const whiteNoiseNode = (

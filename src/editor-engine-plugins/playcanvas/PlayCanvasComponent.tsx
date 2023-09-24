@@ -1,8 +1,13 @@
 import * as pc from 'playcanvas';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { mangleVar } from '@core/graph';
-import { Graph } from '@core/graph-types';
+import {
+  Graph,
+  mangleVar,
+  SamplerCubeNode,
+  TextureNode,
+  evaluateNode,
+} from '@core/graph';
 import {
   EngineContext,
   collectInitialEvaluatedGraphProperties,
@@ -11,10 +16,8 @@ import styles from '../../editor/styles/editor.module.css';
 
 import { usePrevious } from '../../editor/hooks/usePrevious';
 import { UICompileGraphResult } from '../../editor/uICompileGraphResult';
-import { SamplerCubeNode, TextureNode } from '@core/nodes/data-nodes';
 import { useSize } from '../../editor/hooks/useSize';
 
-import { evaluateNode } from '@core/evaluate';
 import {
   defaultPropertySetting,
   physicalDefaultProperties,

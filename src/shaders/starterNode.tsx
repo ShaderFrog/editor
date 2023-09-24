@@ -1,5 +1,4 @@
-import { NodePosition } from '@core/nodes/core-node';
-import { sourceNode } from '@core/nodes/engine-node';
+import { NodePosition, sourceNode } from '@core/graph';
 import { uniformStrategy } from '@core/strategy';
 
 const starterVertex = (id: string, position: NodePosition) =>

@@ -1,6 +1,4 @@
-import { NodePosition } from '@core/nodes/core-node';
-import { samplerCubeUniformData } from '@core/nodes/data-nodes';
-import { sourceNode } from '@core/nodes/engine-node';
+import { NodePosition, sourceNode, samplerCubeUniformData } from '@core/graph';
 import { uniformStrategy } from '@core/strategy';
 
 const cubemapReflectionF = (id: string, position: NodePosition) =>

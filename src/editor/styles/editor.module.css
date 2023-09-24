@@ -369,3 +369,21 @@ textarea.error {
   text-decoration: underline;
   color: #d1f72a;
 }
+
+.infoMsg {
+  font-size: 14px;
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: rgba(87, 87, 87, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.403);
+  color: #fff;
+}
+
+.errorPill {
+  font-size: 14px;
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid rgb(135, 77, 77);
+  color: #fff;
+}

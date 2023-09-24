@@ -5,22 +5,20 @@ import {
   Position,
   Node as FlowNode,
   Edge as FlowEdge,
-  HandleProps,
 } from 'reactflow';
 
 import styles from './flownode.module.css';
 const cx = classnames.bind(styles);
 
-import { ShaderStage } from '@core/graph-types';
-
-import { useUpdateNodeInternals } from 'reactflow';
 import {
+  ShaderStage,
   GraphDataType,
   Vector2,
   Vector3,
   Vector4,
-} from '@core/nodes/data-nodes';
-import { InputCategory } from '@core/nodes/core-node';
+  InputCategory,
+} from '@core/graph';
+
 import { ChangeHandler, useFlowEventHack } from '../../flowEventHack';
 import { replaceAt } from '../../../editor-util/replaceAt';
 import groupBy from 'lodash.groupby';

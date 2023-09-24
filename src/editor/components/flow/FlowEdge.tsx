@@ -5,7 +5,7 @@ import {
   // getEdgeCenter,
   // getMarkerEnd,
 } from 'reactflow';
-import { EdgeType } from '@core/nodes/edge';
+import { EdgeType } from '@core/graph';
 
 export type LinkEdgeData = {
   type: 'link';

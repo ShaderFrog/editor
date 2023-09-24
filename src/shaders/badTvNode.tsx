@@ -1,6 +1,9 @@
-import { NodePosition } from '@core/nodes/core-node';
-import { numberUniformData, textureUniformData } from '@core/nodes/data-nodes';
-import { sourceNode } from '@core/nodes/engine-node';
+import {
+  NodePosition,
+  sourceNode,
+  numberUniformData,
+  textureUniformData,
+} from '@core/graph';
 import { texture2DStrategy, uniformStrategy } from '@core/strategy';
 
 const badTvFrag = (id: string, position: NodePosition) =>

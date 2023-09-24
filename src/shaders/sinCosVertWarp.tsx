@@ -1,11 +1,5 @@
-import { NodePosition } from '@core/nodes/core-node';
-import { numberUniformData } from '@core/nodes/data-nodes';
-import { sourceNode } from '@core/nodes/engine-node';
-import {
-  namedAttributeStrategy,
-  texture2DStrategy,
-  uniformStrategy,
-} from '@core/strategy';
+import { NodePosition, sourceNode, numberUniformData } from '@core/graph';
+import { namedAttributeStrategy, uniformStrategy } from '@core/strategy';
 
 const sinCosVertWarp = (id: string, position: NodePosition) =>
   sourceNode(

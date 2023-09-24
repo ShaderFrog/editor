@@ -7,7 +7,7 @@ import { EngineContext } from '@core/engine';
 
 import { Strategy, StrategyType } from '@core/strategy';
 
-import { SourceNode, SourceType } from '@core/nodes/code-nodes';
+import { SourceNode, SourceType } from '@core/graph';
 
 const StrategyEditor = ({
   node,
@@ -45,7 +45,11 @@ const StrategyEditor = ({
             }}
           ></input>
         </div>
-        <h2 className={cx(styles.uiHeader, 'mTop1')}>Node Strategies</h2>
+        <div className="m-top-25 secondary">
+          Node configuration. Define how Shaderfrog finds the inputs and outputs
+          from the GLSL of this node.
+        </div>
+        <h2 className={cx(styles.uiHeader, 'm-top-15')}>Node Strategies</h2>
         <div className={styles.autocolmax}>
           {node.config.strategies.map((strategy, index) => (
             <React.Fragment key={strategy.type}>
@@ -91,7 +95,7 @@ const StrategyEditor = ({
             onSave();
           }}
         >
-          <h2 className={cx(styles.uiHeader, 'mTop1')}>Add Strategy</h2>
+          <h2 className={cx(styles.uiHeader, 'm-top-15')}>Add Strategy</h2>
           <div className={styles.colcolauto}>
             <div>
               <select name="strategy" className="select">

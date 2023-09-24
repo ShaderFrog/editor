@@ -1,6 +1,9 @@
-import { NodePosition } from '@core/nodes/core-node';
-import { colorUniformData, numberUniformData } from '@core/nodes/data-nodes';
-import { sourceNode } from '@core/nodes/engine-node';
+import {
+  NodePosition,
+  sourceNode,
+  numberUniformData,
+  colorUniformData,
+} from '@core/graph';
 import { uniformStrategy } from '@core/strategy';
 
 const outlineShaderF = (id: string, position: NodePosition) =>

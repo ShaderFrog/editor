@@ -1,6 +1,4 @@
-import { NodePosition } from '@core/nodes/core-node';
-import { numberUniformData, UniformDataType } from '@core/nodes/data-nodes';
-import { sourceNode } from '@core/nodes/engine-node';
+import { NodePosition, sourceNode, numberUniformData } from '@core/graph';
 import { texture2DStrategy, uniformStrategy } from '@core/strategy';
 
 const normalMapify = (id: string, position: NodePosition) =>

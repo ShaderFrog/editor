@@ -1,13 +1,16 @@
 import groupBy from 'lodash.groupby';
-import { isSourceNode, findNode } from '@core/graph';
 import {
+  isSourceNode,
+  findNode,
   Graph,
   GraphNode,
   ShaderStage,
   MAGIC_OUTPUT_STMTS,
   NodeType,
-} from '@core/graph-types';
-import { Edge as GraphEdge } from '@core/nodes/edge';
+  NodeInput,
+  alphabet,
+  Edge as GraphEdge,
+} from '@core/graph';
 import { Node as FlowNode, Edge as FlowEdge, XYPosition } from 'reactflow';
 import { FlowEdgeData } from './FlowEdge';
 import {
@@ -16,8 +19,6 @@ import {
   flowOutput,
   InputNodeHandle,
 } from './FlowNode';
-import { NodeInput } from '@core/nodes/core-node';
-import { alphabet } from '@core/parsers';
 
 export type FlowElement = FlowNode<FlowNodeData> | FlowEdge<FlowEdgeData>;
 export type FlowEdgeOrLink = FlowEdge<FlowEdgeData>;

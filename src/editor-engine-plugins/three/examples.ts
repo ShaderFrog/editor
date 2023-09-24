@@ -1,5 +1,5 @@
-import { Graph } from '@core/graph-types';
 import {
+  Graph,
   colorNode,
   colorUniformData,
   DataNode,
@@ -8,9 +8,29 @@ import {
   textureNode,
   textureUniformData,
   vectorUniformData,
-} from '@core/nodes/data-nodes';
-import { EdgeType, makeEdge } from '@core/nodes/edge';
-import { outputNode } from '@core/nodes/engine-node';
+  EdgeType,
+  makeEdge,
+  outputNode,
+  CoreNode,
+  GraphNode,
+  Edge,
+  samplerCubeNode,
+} from '@core/graph';
+import fluidCirclesNode from '../../shaders/fluidCirclesNode';
+
+import perlinCloudsFNode from '../../shaders/perlinClouds';
+import { hellOnEarthFrag, hellOnEarthVert } from '../../shaders/hellOnEarth';
+import { outlineShaderF, outlineShaderV } from '../../shaders/outlineShader';
+import solidColorNode from '../../shaders/solidColorNode';
+import {
+  cubemapReflectionF,
+  cubemapReflectionV,
+} from '../../shaders/cubemapReflectionNode';
+
+import { serpentF, serpentV } from '../../shaders/serpentNode';
+import { badTvFrag } from '../../shaders/badTvNode';
+import whiteNoiseNode from '../../shaders/whiteNoiseNode';
+
 import { fireFrag, fireVert } from '../../shaders/fireNode';
 import {
   heatShaderFragmentNode,
@@ -19,14 +39,18 @@ import {
 } from '../../shaders/heatmapShaderNode';
 import purpleNoiseNode from '../../shaders/purpleNoiseNode';
 import staticShaderNode, { variation1 } from '../../shaders/staticShaderNode';
-import { makeId } from '../../editor-util/id';
 import { checkerboardF, checkerboardV } from '../../shaders/checkboardNode';
 import normalMapify from '../../shaders/normalmapifyNode';
-import { CoreNode } from '@core/nodes/core-node';
-import { threngine } from '@core/plugins/three/threngine';
 import perlinCloudsF from '../../shaders/perlinClouds';
 import sinCosVertWarp from '../../shaders/sinCosVertWarp';
+
 import starterVertex from '../../shaders/starterNode';
+
+import { juliaF, juliaV } from '@editor/shaders/juliaNode';
+import { makeId } from '../../editor-util/id';
+import { threngine } from '@core/plugins/three/threngine';
+import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
+import { MenuItems } from '@editor/editor/components/flow/FlowEditor';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',
@@ -64,7 +88,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 20 }, 'vertex');
 
     const physicalGroupId = makeId();
-    const physicalF = threngine.constructors.physical(
+    const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -72,7 +96,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = threngine.constructors.physical(
+    const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -190,7 +214,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 16 }, 'vertex');
 
     const toonGroupId = makeId();
-    const toonF = threngine.constructors.toon(
+    const toonF = threngine.constructors.toon!(
       makeId(),
       'Toon',
       toonGroupId,
@@ -198,7 +222,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const toonV = threngine.constructors.toon(
+    const toonV = threngine.constructors.toon!(
       makeId(),
       'Toon',
       toonGroupId,
@@ -271,7 +295,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 16 }, 'vertex');
 
     const physicalGroupId = makeId();
-    const physicalF = threngine.constructors.physical(
+    const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -279,7 +303,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = threngine.constructors.physical(
+    const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -368,7 +392,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     ];
 
     const physicalGroupId = makeId();
-    const physicalF = threngine.constructors.physical(
+    const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -376,7 +400,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = threngine.constructors.physical(
+    const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -456,7 +480,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     ];
 
     const physicalGroupId = makeId();
-    const physicalF = threngine.constructors.physical(
+    const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -464,7 +488,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = threngine.constructors.physical(
+    const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -515,7 +539,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 20 }, 'vertex');
 
     const physicalGroupId = makeId();
-    const physicalF = threngine.constructors.physical(
+    const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -523,7 +547,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = threngine.constructors.physical(
+    const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -635,7 +659,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 20 }, 'vertex');
 
     const physicalGroupId = makeId();
-    const physicalF = threngine.constructors.physical(
+    const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -643,7 +667,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = threngine.constructors.physical(
+    const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -677,4 +701,183 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
   }
 
   return [newGraph, previewObject, bg];
+};
+
+export const menuItems: MenuItems = [
+  [
+    `Three.js Materials`,
+    [
+      ['Physical', 'physical'],
+      ['Phong', 'phong'],
+      ['Toon', 'toon'],
+    ],
+  ],
+  [
+    'Example Shaders',
+    [
+      ['Serpent', 'serpent'],
+      ['Fireball', 'fireNode'],
+      ['Julia', 'julia'],
+      ['Bad TV', 'badTv'],
+      ['Checkerboard', 'checkerboardF'],
+      ['Fluid Circles', 'fluidCirclesNode'],
+      ['Heatmap', 'heatmapShaderNode'],
+      ['Hell', 'hellOnEarth'],
+      ['Outline', 'outlineShader'],
+      ['Perlin Clouds', 'perlinClouds'],
+      ['Purple Noise', 'purpleNoiseNode'],
+      ['Solid Color', 'solidColorNode'],
+      ['White Noise', 'whiteNoiseNode'],
+      ['Tangent Noise', 'staticShaderNode'],
+      ['Normal Map-ify', 'normalMapify'],
+      ['Vertex Noise', 'simpleVertex'],
+      ['Cube Map Reflection', 'cubemapReflection'],
+    ],
+  ],
+];
+
+export const engineAddNode = (
+  nodeDataType: string,
+  name: string,
+  position: { x: number; y: number },
+  newEdgeData?: Omit<Edge, 'id' | 'from'>,
+  defaultValue?: any
+): [Set<string>, Graph] | undefined => {
+  const makeName = (type: string) => name || type;
+  const id = makeId();
+  const groupId = makeId();
+  let newGns: GraphNode[] = [];
+
+  if (nodeDataType === 'phong') {
+    newGns = [
+      threngine.constructors.phong!(
+        id,
+        'Phong',
+        groupId,
+        position,
+        [],
+        'fragment'
+      ),
+      threngine.constructors.phong!(
+        makeId(),
+        'Phong',
+        groupId,
+        position,
+        [],
+        'vertex',
+        id
+      ),
+    ];
+  } else if (nodeDataType === 'physical') {
+    newGns = [
+      threngine.constructors!.physical!(
+        id,
+        'Physical',
+        groupId,
+        position,
+        [],
+        'fragment'
+      ),
+      threngine.constructors!.physical!(
+        makeId(),
+        'Physical',
+        groupId,
+        position,
+        [],
+        'vertex',
+        id
+      ),
+    ];
+  } else if (nodeDataType === 'toon') {
+    newGns = [
+      threngine.constructors.toon!(
+        id,
+        'Toon',
+        groupId,
+        position,
+        [],
+        'fragment'
+      ),
+      threngine.constructors.toon!(
+        makeId(),
+        'Toon',
+        groupId,
+        position,
+        [],
+        'vertex',
+        id
+      ),
+    ];
+  } else if (nodeDataType === 'simpleVertex') {
+    newGns = [sinCosVertWarp(makeId(), position)];
+  } else if (nodeDataType === 'julia') {
+    newGns = [juliaF(id, position), juliaV(makeId(), id, position)];
+  } else if (nodeDataType === 'fireNode') {
+    newGns = [fireFrag(id, position), fireVert(makeId(), id, position)];
+  } else if (nodeDataType === 'badTv') {
+    newGns = [badTvFrag(id, position)];
+  } else if (nodeDataType === 'whiteNoiseNode') {
+    newGns = [whiteNoiseNode(id, position)];
+  } else if (nodeDataType === 'checkerboardF') {
+    newGns = [
+      checkerboardF(id, position),
+      checkerboardV(makeId(), id, position),
+    ];
+  } else if (nodeDataType === 'serpent') {
+    newGns = [serpentF(id, position), serpentV(makeId(), id, position)];
+  } else if (nodeDataType === 'cubemapReflection') {
+    newGns = [
+      cubemapReflectionF(id, position),
+      cubemapReflectionV(makeId(), id, position),
+    ];
+  } else if (nodeDataType === 'fluidCirclesNode') {
+    newGns = [fluidCirclesNode(id, position)];
+  } else if (nodeDataType === 'heatmapShaderNode') {
+    newGns = [
+      heatShaderFragmentNode(id, position),
+      heatShaderVertexNode(makeId(), id, position),
+    ];
+  } else if (nodeDataType === 'hellOnEarth') {
+    newGns = [
+      hellOnEarthFrag(id, position),
+      hellOnEarthVert(makeId(), id, position),
+    ];
+  } else if (nodeDataType === 'outlineShader') {
+    newGns = [
+      outlineShaderF(id, position),
+      outlineShaderV(makeId(), id, position),
+    ];
+  } else if (nodeDataType === 'perlinClouds') {
+    newGns = [perlinCloudsFNode(id, position)];
+  } else if (nodeDataType === 'purpleNoiseNode') {
+    newGns = [purpleNoiseNode(id, position)];
+  } else if (nodeDataType === 'solidColorNode') {
+    newGns = [solidColorNode(id, position)];
+  } else if (nodeDataType === 'staticShaderNode') {
+    newGns = [staticShaderNode(id, position)];
+  } else if (nodeDataType === 'normalMapify') {
+    newGns = [normalMapify(id, position)];
+  }
+
+  if (newGns.length) {
+    let newGEs: Edge[] = newEdgeData
+      ? [
+          makeEdge(
+            makeId(),
+            id,
+            newEdgeData.to,
+            newEdgeData.output,
+            newEdgeData.input,
+            newEdgeData.type
+          ),
+        ]
+      : [];
+
+    // Expand uniforms on new nodes automatically
+    const originalNodes = new Set<string>(newGns.map((n) => n.id));
+    return [
+      originalNodes,
+      expandUniformDataNodes({ nodes: newGns, edges: newGEs }),
+    ];
+  }
 };

@@ -1,12 +1,12 @@
-import { NodePosition } from '@core/nodes/core-node';
 import {
-  colorUniformData,
+  NodePosition,
+  sourceNode,
   numberUniformData,
   textureUniformData,
+  colorUniformData,
   UniformDataType,
   vectorUniformData,
-} from '@core/nodes/data-nodes';
-import { sourceNode } from '@core/nodes/engine-node';
+} from '@core/graph';
 import { texture2DStrategy, uniformStrategy } from '@core/strategy';
 
 const perlinCloudsF = (

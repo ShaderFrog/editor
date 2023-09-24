@@ -1,29 +1,16 @@
-import { Graph } from '@core/graph-types';
 import {
-  colorNode,
-  DataNode,
-  numberNode,
-  numberUniformData,
-  textureNode,
-  vectorUniformData,
-} from '@core/nodes/data-nodes';
-import { EdgeType, makeEdge } from '@core/nodes/edge';
-import { outputNode } from '@core/nodes/engine-node';
-import { fireFrag, fireVert } from '../../shaders/fireNode';
-import {
-  heatShaderFragmentNode,
-  heatShaderVertexNode,
-  variation1 as heatmapV1,
-} from '../../shaders/heatmapShaderNode';
-import purpleNoiseNode from '../../shaders/purpleNoiseNode';
-import staticShaderNode, { variation1 } from '../../shaders/staticShaderNode';
+  Graph,
+  EdgeType,
+  makeEdge,
+  CoreNode,
+  outputNode,
+  Edge,
+  GraphNode,
+} from '@core/graph';
 import { makeId } from '../../editor-util/id';
-import { checkerboardF, checkerboardV } from '../../shaders/checkboardNode';
-import normalMapify from '../../shaders/normalmapifyNode';
-import { convertNode } from '@core/engine';
 import { engine as playengine } from '@core/plugins/playcanvas';
-import { CoreNode } from '@core/nodes/core-node';
-import { SourceNode } from '@core/nodes/code-nodes';
+import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
+import { MenuItems } from '@editor/editor/components/flow/FlowEditor';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',
@@ -49,7 +36,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
   let bg: string = '';
 
   const physicalGroupId = makeId();
-  const physicalF = playengine.constructors.physical(
+  const physicalF = playengine.constructors.physical!(
     makeId(),
     'Physical',
     physicalGroupId,
@@ -57,7 +44,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     [],
     'fragment'
   );
-  const physicalV = playengine.constructors.physical(
+  const physicalV = playengine.constructors.physical!(
     makeId(),
     'Physical',
     physicalGroupId,
@@ -85,4 +72,105 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
   previewObject = 'sphere';
 
   return [newGraph, previewObject, bg];
+};
+
+export const menuItems: MenuItems = [
+  [`PlayCanvas Materials`, [['Physical', 'physical']]],
+];
+
+export const engineAddNode = (
+  nodeDataType: string,
+  name: string,
+  position: { x: number; y: number },
+  newEdgeData?: Omit<Edge, 'id' | 'from'>,
+  defaultValue?: any
+): [Set<string>, Graph] | undefined => {
+  const makeName = (type: string) => name || type;
+  const id = makeId();
+  const groupId = makeId();
+  let newGns: GraphNode[] = [];
+
+  if (nodeDataType === 'phong') {
+    newGns = [
+      playengine.constructors.phong!(
+        id,
+        'Phong',
+        groupId,
+        position,
+        [],
+        'fragment'
+      ),
+      playengine.constructors.phong!(
+        makeId(),
+        'Phong',
+        groupId,
+        position,
+        [],
+        'vertex',
+        id
+      ),
+    ];
+  } else if (nodeDataType === 'physical') {
+    newGns = [
+      playengine.constructors!.physical!(
+        id,
+        'Physical',
+        groupId,
+        position,
+        [],
+        'fragment'
+      ),
+      playengine.constructors!.physical!(
+        makeId(),
+        'Physical',
+        groupId,
+        position,
+        [],
+        'vertex',
+        id
+      ),
+    ];
+  } else if (nodeDataType === 'toon') {
+    newGns = [
+      playengine.constructors.toon!(
+        id,
+        'Toon',
+        groupId,
+        position,
+        [],
+        'fragment'
+      ),
+      playengine.constructors.toon!(
+        makeId(),
+        'Toon',
+        groupId,
+        position,
+        [],
+        'vertex',
+        id
+      ),
+    ];
+  }
+
+  if (newGns.length) {
+    let newGEs: Edge[] = newEdgeData
+      ? [
+          makeEdge(
+            makeId(),
+            id,
+            newEdgeData.to,
+            newEdgeData.output,
+            newEdgeData.input,
+            newEdgeData.type
+          ),
+        ]
+      : [];
+
+    // Expand uniforms on new nodes automatically
+    const originalNodes = new Set<string>(newGns.map((n) => n.id));
+    return [
+      originalNodes,
+      expandUniformDataNodes({ nodes: newGns, edges: newGEs }),
+    ];
+  }
 };

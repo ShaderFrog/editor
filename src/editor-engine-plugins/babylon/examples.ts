@@ -1,14 +1,19 @@
-import { Graph } from '@core/graph-types';
 import {
+  Graph,
   colorNode,
   DataNode,
   numberNode,
   numberUniformData,
   textureNode,
   vectorUniformData,
-} from '@core/nodes/data-nodes';
-import { EdgeType, makeEdge } from '@core/nodes/edge';
-import { outputNode } from '@core/nodes/engine-node';
+  EdgeType,
+  makeEdge,
+  outputNode,
+  CoreNode,
+  SourceNode,
+  Edge,
+  GraphNode,
+} from '@core/graph';
 import { fireFrag, fireVert } from '../../shaders/fireNode';
 import {
   heatShaderFragmentNode,
@@ -22,8 +27,8 @@ import { checkerboardF, checkerboardV } from '../../shaders/checkboardNode';
 import normalMapify from '../../shaders/normalmapifyNode';
 import { convertNode } from '@core/engine';
 import { babylengine } from '@core/plugins/babylon/bablyengine';
-import { CoreNode } from '@core/nodes/core-node';
-import { SourceNode } from '@core/nodes/code-nodes';
+import { MenuItems } from '@editor/editor/components/flow/FlowEditor';
+import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',
@@ -62,7 +67,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 20 }, 'vertex');
 
     const physicalGroupId = makeId();
-    const physicalF = babylengine.constructors.physical(
+    const physicalF = babylengine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -70,7 +75,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = babylengine.constructors.physical(
+    const physicalV = babylengine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -180,7 +185,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 16 }, 'vertex');
 
     const toonGroupId = makeId();
-    const toonF = babylengine.constructors.toon(
+    const toonF = babylengine.constructors.toon!(
       makeId(),
       'Toon',
       toonGroupId,
@@ -188,7 +193,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const toonV = babylengine.constructors.toon(
+    const toonV = babylengine.constructors.toon!(
       makeId(),
       'Toon',
       toonGroupId,
@@ -244,7 +249,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 16 }, 'vertex');
 
     const physicalGroupId = makeId();
-    const physicalF = babylengine.constructors.physical(
+    const physicalF = babylengine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -252,7 +257,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = babylengine.constructors.physical(
+    const physicalV = babylengine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -332,7 +337,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     );
 
     const physicalGroupId = makeId();
-    const physicalF = babylengine.constructors.physical(
+    const physicalF = babylengine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -340,7 +345,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = babylengine.constructors.physical(
+    const physicalV = babylengine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -389,7 +394,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 20 }, 'vertex');
 
     const physicalGroupId = makeId();
-    const physicalF = babylengine.constructors.physical(
+    const physicalF = babylengine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -397,7 +402,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = babylengine.constructors.physical(
+    const physicalV = babylengine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -472,7 +477,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 20 }, 'vertex');
 
     const physicalGroupId = makeId();
-    const physicalF = babylengine.constructors.physical(
+    const physicalF = babylengine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -480,7 +485,7 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
       [],
       'fragment'
     );
-    const physicalV = babylengine.constructors.physical(
+    const physicalV = babylengine.constructors.physical!(
       makeId(),
       'Physical',
       physicalGroupId,
@@ -509,4 +514,105 @@ export const makeExampleGraph = (example: Example): [Graph, string, string] => {
   }
 
   return [newGraph, previewObject, bg];
+};
+
+export const menuItems: MenuItems = [
+  [`Babylon.js Materials`, [['Physical', 'physical']]],
+];
+
+export const engineAddNode = (
+  nodeDataType: string,
+  name: string,
+  position: { x: number; y: number },
+  newEdgeData?: Omit<Edge, 'id' | 'from'>,
+  defaultValue?: any
+): [Set<string>, Graph] | undefined => {
+  const makeName = (type: string) => name || type;
+  const id = makeId();
+  const groupId = makeId();
+  let newGns: GraphNode[] = [];
+
+  if (nodeDataType === 'phong') {
+    newGns = [
+      babylengine.constructors.phong!(
+        id,
+        'Phong',
+        groupId,
+        position,
+        [],
+        'fragment'
+      ),
+      babylengine.constructors.phong!(
+        makeId(),
+        'Phong',
+        groupId,
+        position,
+        [],
+        'vertex',
+        id
+      ),
+    ];
+  } else if (nodeDataType === 'physical') {
+    newGns = [
+      babylengine.constructors!.physical!(
+        id,
+        'Physical',
+        groupId,
+        position,
+        [],
+        'fragment'
+      ),
+      babylengine.constructors!.physical!(
+        makeId(),
+        'Physical',
+        groupId,
+        position,
+        [],
+        'vertex',
+        id
+      ),
+    ];
+  } else if (nodeDataType === 'toon') {
+    newGns = [
+      babylengine.constructors.toon!(
+        id,
+        'Toon',
+        groupId,
+        position,
+        [],
+        'fragment'
+      ),
+      babylengine.constructors.toon!(
+        makeId(),
+        'Toon',
+        groupId,
+        position,
+        [],
+        'vertex',
+        id
+      ),
+    ];
+  }
+
+  if (newGns.length) {
+    let newGEs: Edge[] = newEdgeData
+      ? [
+          makeEdge(
+            makeId(),
+            id,
+            newEdgeData.to,
+            newEdgeData.output,
+            newEdgeData.input,
+            newEdgeData.type
+          ),
+        ]
+      : [];
+
+    // Expand uniforms on new nodes automatically
+    const originalNodes = new Set<string>(newGns.map((n) => n.id));
+    return [
+      originalNodes,
+      expandUniformDataNodes({ nodes: newGns, edges: newGEs }),
+    ];
+  }
 };

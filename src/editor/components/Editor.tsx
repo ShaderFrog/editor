@@ -1,7 +1,11 @@
 import styles from '../styles/editor.module.css';
 import debounce from 'lodash.debounce';
 
-import FlowEditor, { MouseData, useEditorStore } from './flow/FlowEditor';
+import FlowEditor, {
+  MenuItems,
+  MouseData,
+  useEditorStore,
+} from './flow/FlowEditor';
 
 import { SplitPane } from '@andrewray/react-multi-split-pane';
 import cx from 'classnames';
@@ -29,9 +33,18 @@ import {
   OnConnectStartParams,
 } from 'reactflow';
 
-import { findNode } from '@core/graph';
-import { Graph, GraphNode } from '@core/graph-types';
-import { Edge as GraphEdge, EdgeType } from '@core/nodes/edge';
+import {
+  findNode,
+  Graph,
+  GraphNode,
+  Edge as GraphEdge,
+  EdgeType,
+  CodeNode,
+  SourceNode,
+  NodeInput,
+  computeAllContexts,
+  computeContextForNodes,
+} from '@core/graph';
 
 import { Engine, EngineContext, convertToEngine } from '@core/engine';
 
@@ -50,6 +63,8 @@ import {
   Editor as ThreeComponent,
   makeExampleGraph as threeMakeExampleGraph,
   Example as ThreeExample,
+  engineAddNode as threngineAddNode,
+  menuItems as threngineMenuItems,
 } from '../../editor-engine-plugins/three';
 
 import { engine as babylengine } from '@core/plugins/babylon';
@@ -57,6 +72,7 @@ import {
   Editor as BabylonComponent,
   makeExampleGraph as babylonMakeExampleGraph,
   Example as BabylonExample,
+  menuItems as babylengineMenuItems,
 } from '../../editor-engine-plugins/babylon';
 
 import { engine as playengine } from '@core/plugins/playcanvas';
@@ -64,6 +80,7 @@ import {
   Editor as PlayCanvasComponent,
   makeExampleGraph as playCanvasMakeExampleGraph,
   Example as PlayCanvasExample,
+  menuItems as playcanvasMenuItems,
 } from '../../editor-engine-plugins/playcanvas';
 
 import { Hoisty, useHoisty } from '../hoistedRefContext';
@@ -71,11 +88,9 @@ import { UICompileGraphResult } from '../uICompileGraphResult';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { ensure } from '../../editor-util/ensure';
 
-import { CodeNode, SourceNode } from '@core/nodes/code-nodes';
 import { makeId } from '../../editor-util/id';
 import { hasParent } from '../../editor-util/hasParent';
 import { useWindowSize } from '../hooks/useWindowSize';
-import { NodeInput } from '@core/nodes/core-node';
 import {
   FlowElements,
   toFlowInputs,
@@ -98,7 +113,6 @@ import {
   createGraphNode,
   expandUniformDataNodes,
 } from './useGraph';
-import { computeAllContexts, computeContextForNodes } from '@core/context';
 import StrategyEditor from './StrategyEditor';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
@@ -279,6 +293,7 @@ type ShaderCreateInput = Omit<
 
 type EditorProps = {
   assetPrefix: string;
+  saveError?: string;
   shader?: EditorShader;
   onCreateShader?: (shader: ShaderCreateInput) => Promise<void>;
   onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
@@ -286,6 +301,7 @@ type EditorProps = {
 
 const Editor = ({
   assetPrefix,
+  saveError,
   shader: initialShader,
   onCreateShader,
   onUpdateShader,
@@ -510,12 +526,12 @@ const Editor = ({
 
       log('Starting compileGraphAsync()!');
       compileGraphAsync(graph, engine, ctx)
-        .then((compileResult) => {
-          log(`Compile complete in ${compileResult.compileMs} ms!`, {
-            compileResult,
+        .then((result) => {
+          log(`Compile complete in ${result.compileMs} ms!`, {
+            compileResult: result,
           });
           setGuiError('');
-          setCompileResult(compileResult);
+          setCompileResult(result);
 
           const byId = graph.nodes.reduce<Record<string, GraphNode>>(
             (acc, node) => ({ ...acc, [node.id]: node }),
@@ -529,7 +545,7 @@ const Editor = ({
               data: {
                 ...node.data,
                 inputs: toFlowInputs(byId[node.id]),
-                active: compileResult.result.activeNodeIds.has(node.id),
+                active: result.compileResult.activeNodeIds.has(node.id),
               },
             };
           });
@@ -540,7 +556,7 @@ const Editor = ({
                 ...flowElements,
                 nodes: updatedFlowNodes,
               },
-              compileResult.dataNodes
+              result.dataNodes
             )
           );
 
@@ -1006,28 +1022,44 @@ const Editor = ({
     ) => {
       setContexting(true);
 
-      // Expand uniforms on new nodes automatically
-      const [originalNodes, expanded] = createGraphNode(
-        nodeDataType,
-        name,
-        position,
-        engine,
-        newEdgeData,
-        defaultValue
-      );
+      let originalNodes: Set<string> | undefined;
+      let expanded: Graph | undefined;
+
+      if (engine.name === 'three') {
+        [originalNodes, expanded] =
+          threngineAddNode(
+            nodeDataType,
+            name,
+            position,
+            newEdgeData,
+            defaultValue
+          ) || [];
+      }
+
+      if (!originalNodes || !expanded) {
+        // Expand uniforms on new nodes automatically
+        [originalNodes, expanded] = createGraphNode(
+          nodeDataType,
+          name,
+          position,
+          engine,
+          newEdgeData,
+          defaultValue
+        );
+      }
 
       setFlowElements((fe) => ({
-        edges: [...fe.edges, ...expanded.edges.map(graphEdgeToFlowEdge)],
+        edges: [...fe.edges, ...expanded!.edges.map(graphEdgeToFlowEdge)],
         nodes: [
           ...fe.nodes,
-          ...expanded.nodes.map((newGn, index) =>
+          ...expanded!.nodes.map((newGn, index) =>
             graphNodeToFlowNode(
               newGn,
               onInputBakedToggle,
               // We only want to position the originally created nodes, to
               // separate vertex/fragment. The auto-expanded uniforms get placed
               // by the expand fn
-              originalNodes.has(newGn.id)
+              originalNodes!.has(newGn.id)
                 ? {
                     x: position.x + index * 20,
                     y: position.y + index * 40,
@@ -1042,12 +1074,12 @@ const Editor = ({
       setTimeout(async () => {
         const updatedGraph = {
           ...graph,
-          edges: [...graph.edges, ...expanded.edges],
-          nodes: [...graph.nodes, ...expanded.nodes],
+          edges: [...graph.edges, ...expanded!.edges],
+          nodes: [...graph.nodes, ...expanded!.nodes],
         };
         // Create new inputs for new nodes added to the graph
         const nodesToRefresh = [
-          ...expanded.nodes,
+          ...expanded!.nodes,
           ...(newEdgeData ? [findNode(updatedGraph, newEdgeData.to)] : []),
         ];
         log('Computing context for new nodes to generate their inputs...', {
@@ -1211,7 +1243,7 @@ const Editor = ({
       return;
     }
     setIsSaving(true);
-    // TODO: These values liek engine and bg all have their own state, vs
+    // TODO: These values like engine and bg all have their own state, vs
     // setShader() copies all those values
     const payload = {
       engine: engineName,
@@ -1227,19 +1259,16 @@ const Editor = ({
         },
       },
     };
-    try {
-      if (shader?.id && onUpdateShader) {
-        await onUpdateShader({
-          id: shader.id,
-          ...payload,
-        });
-      } else if (onCreateShader) {
-        await onCreateShader(payload);
-      }
-      log('saved');
-    } catch (error) {
-      console.error('Error saving', error);
+    if (shader?.id && onUpdateShader) {
+      await onUpdateShader({
+        id: shader.id,
+        ...payload,
+      });
+    } else if (onCreateShader) {
+      await onCreateShader(payload);
     }
+    log('saved');
+
     setIsSaving(false);
   };
 
@@ -1249,12 +1278,26 @@ const Editor = ({
     }
   }, [isSmallScreen, syncSceneSize]);
 
+  const menuItems: MenuItems =
+    engine.name === 'playcanvas'
+      ? playcanvasMenuItems
+      : engine.name === 'three'
+      ? threngineMenuItems
+      : engine.name === 'babylon'
+      ? babylengineMenuItems
+      : [];
+
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
   const editorElements = (
     <>
       {isSmallScreen ? null : (
         <div className={cx(styles.tabControls, { [styles.col3]: isLocal })}>
+          {saveError ? (
+            <div className={cx(styles.errorPill, 'm-right-10')}>
+              {saveError}
+            </div>
+          ) : null}
           <div className="m-right-15">
             <button
               disabled={isSaving}
@@ -1306,6 +1349,11 @@ const Editor = ({
           >
             Shader
           </Tab>
+          {editorTabIndex === 0 ? (
+            <div className="secondary m-left-25 m-top-5">
+              Double click nodes to edit GLSL!
+            </div>
+          ) : null}
         </TabGroup>
         <TabPanels>
           {/* Graph tab */}
@@ -1322,6 +1370,7 @@ const Editor = ({
               }}
             >
               <FlowEditor
+                menuItems={menuItems}
                 mouse={mouseRef}
                 onMenuAdd={onMenuAdd}
                 onNodeValueChange={onNodeValueChange}
@@ -1366,19 +1415,27 @@ const Editor = ({
               <SplitPane split="horizontal">
                 <div className={styles.splitInner}>
                   <div className={styles.editorControls}>
-                    <button
-                      className="buttonauto formbutton"
-                      onClick={() =>
-                        compile(
-                          engine,
-                          ctx as EngineContext,
-                          graph,
-                          flowElements
-                        )
-                      }
-                    >
-                      Compile
-                    </button>
+                    {activeNode.config?.properties?.length ||
+                    activeNode.engine ? (
+                      <div className={styles.infoMsg}>
+                        Read-only: This node&apos;s source code is generated by{' '}
+                        {engine.displayName}, and can&apos;t be edited directly.
+                      </div>
+                    ) : (
+                      <button
+                        className="buttonauto formbutton"
+                        onClick={() =>
+                          compile(
+                            engine,
+                            ctx as EngineContext,
+                            graph,
+                            flowElements
+                          )
+                        }
+                      >
+                        Compile
+                      </button>
+                    )}
                   </div>
                   <CodeEditor
                     engine={engine}

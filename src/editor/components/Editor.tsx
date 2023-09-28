@@ -91,6 +91,7 @@ import { ensure } from '../../editor-util/ensure';
 import { makeId } from '../../editor-util/id';
 import { hasParent } from '../../editor-util/hasParent';
 import { useWindowSize } from '../hooks/useWindowSize';
+import useTimeout from '../hooks/useTimeout';
 import {
   FlowElements,
   toFlowInputs,
@@ -263,6 +264,7 @@ export type EditorShader = {
   createdAt?: Date;
   updatedAt?: Date;
   userId?: string;
+  image?: string | null;
   name: string;
   description?: string | null;
   visibility: number;
@@ -299,6 +301,60 @@ type EditorProps = {
   onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
 };
 
+const randomArr = <T extends unknown>(arr: Array<T>): T =>
+  arr[Math.floor(Math.random() * arr.length)];
+const words1 = [
+  'Screaming',
+  'Happy',
+  'Ecstatic',
+  'Decisive',
+  'Global',
+  'Spectacular',
+  'Tiny',
+  'Bitter',
+  'Overconfident',
+  'Sneaky',
+  'Jumbled',
+  'Supreme',
+  'Infamous',
+  'Visible',
+  'Lucky',
+  'Bright',
+  'Abundant',
+  'Melodic',
+  'Flagrant',
+  'Faulty',
+  'Tedious',
+  'Divergent',
+  'Youthful',
+  'Drunken',
+  'Remarkable',
+  'Imaginary',
+];
+const words2 = [
+  'Frog',
+  'Gecko',
+  'Hippo',
+  'Gopher',
+  'Kangaroo',
+  'Deer',
+  'Newt',
+  'Hamster',
+  'Turtle',
+  'Otter',
+  'Mouse',
+  'Camel',
+  'Marmoset',
+  'Monkey',
+  'Ferret',
+  'Bear',
+  'Cheetah',
+  'Dingo',
+  'Elephant',
+  'Bat',
+  'Buffalo',
+];
+
 const Editor = ({
   assetPrefix,
   saveError,
@@ -312,8 +368,9 @@ const Editor = ({
     return (
       initialShader || {
         engine,
-        name: `New shader ${Math.random()}`,
+        name: `${randomArr(words1)} ${randomArr(words2)}`,
         visibility: 0,
+        imageData: '',
         config: {
           graph: {
             nodes: [],
@@ -329,6 +386,16 @@ const Editor = ({
     );
   });
   const { getRefData } = useHoisty();
+
+  const [screenshotData, setScreenshotData] = useState<string>('');
+  const takeScreenshotRef = useRef<() => string>();
+  const takeScreenshot = useCallback(() => {
+    if (!takeScreenshotRef.current) {
+      return;
+    }
+    console.log('new screenshot data!');
+    setScreenshotData(takeScreenshotRef.current());
+  }, []);
 
   const updateNodeInternals = useUpdateNodeInternals();
 
@@ -424,6 +491,13 @@ const Editor = ({
   );
   const [showHelpers, setShowHelpers] = useState<boolean>(false);
   const [animatedLights, setAnimatedLights] = useState<boolean>(true);
+
+  useEffect(() => {
+    const t = setTimeout(takeScreenshot, 500);
+    return () => {
+      window.clearTimeout(t);
+    };
+  }, [takeScreenshot, previewObject, bg, graph, lights, animatedLights]);
 
   const [activeNode, setActiveNode] = useState<SourceNode>(
     (graph.nodes.find((n) => n.type === 'source') ||
@@ -1250,6 +1324,7 @@ const Editor = ({
       name: shader?.name || `Andy's new shader ${Math.random()}`,
       description: shader?.description || 'description',
       visibility: shader?.visibility || 1,
+      imageData: screenshotData,
       config: {
         graph: updateGraphFromFlowGraph(graph, flowElements),
         scene: {
@@ -1495,7 +1570,17 @@ const Editor = ({
               </TabGroup>
               <TabPanels>
                 {/* final fragment shader subtab */}
-                <TabPanel style={{ height: '100%' }}>
+                <TabPanel
+                  style={{
+                    height: '100%',
+                    // Total hack to avoid dealing with making this a grid layout
+                    // and allowing scrolling in the pane, which also still somehow
+                    // cuts off the bottom of the pane, so paddingBottom to force
+                    // button at bottom into view
+                    overflow: 'scroll',
+                    paddingBottom: '100px',
+                  }}
+                >
                   <div className={styles.uiGroup}>
                     <h2 className={styles.uiHeader}>Shader Name</h2>
                     <input
@@ -1509,6 +1594,26 @@ const Editor = ({
                         });
                       }}
                     ></input>
+                    <h2 className={cx(styles.uiHeader, 'm-top-25')}>
+                      Screenshot
+                    </h2>
+                    {screenshotData ? (
+                      <img
+                        src={screenshotData}
+                        alt={`${shader.name} screenshot`}
+                      />
+                    ) : null}
+                    <div className="m-top-15">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          takeScreenshot();
+                        }}
+                        className="buttonauto formbutton"
+                      >
+                        Update Screenshot
+                      </button>
+                    </div>
                   </div>
                 </TabPanel>
                 <TabPanel style={{ height: '100%' }}>
@@ -1606,6 +1711,7 @@ const Editor = ({
             width={uiState.sceneWidth}
             height={uiState.sceneHeight}
             assetPrefix={assetPrefix}
+            takeScreenshotRef={takeScreenshotRef}
           />
         ) : (
           <BabylonComponent

@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  MutableRefObject,
 } from 'react';
 import * as three from 'three';
 import {
@@ -47,6 +48,75 @@ function mapTextureMapping(texture: three.Texture, mapping: any) {
   return texture;
 }
 
+const copyUIntToImageData = (data: Uint8Array, imageData: ImageData) => {
+  for (let i = 0; i < data.length; i += 4) {
+    let index = data.length - i; // flip how data is read
+    imageData.data[index] = data[i]; //red
+    imageData.data[index + 1] = data[i + 1]; //green
+    imageData.data[index + 2] = data[i + 2]; //blue
+    imageData.data[index + 3] = data[i + 3]; //alpha
+  }
+};
+
+export const SceneAngles = {
+  TOP_LEFT: 'topleft',
+  TOP_MIDDLE: 'topmid',
+  TOP_RIGHT: 'topright',
+  MIDDLE_LEFT: 'midleft',
+  MIDDLE_MIDDLE: 'midmid',
+  MIDDLE_RIGHT: 'midright',
+  BOTTOM_LEFT: 'botleft',
+  BOTTOM_MIDDLE: 'botmid',
+  BOTTOM_RIGHT: 'botright',
+};
+
+const calculateViewPosition =
+  (xPosition: number, yPosition: number) => (radius: number) => {
+    const spread = 0.8;
+    const position = new three.Vector3(0, 0, radius);
+    position.applyAxisAngle(new three.Vector3(1, 0, 0), yPosition * spread);
+    position.applyAxisAngle(new three.Vector3(0, 1, 0), xPosition * spread);
+    return position;
+  };
+
+export const SceneAngleVectors = {
+  [SceneAngles.TOP_LEFT]: calculateViewPosition(-1, -1),
+  [SceneAngles.TOP_MIDDLE]: calculateViewPosition(0, -1),
+  [SceneAngles.TOP_RIGHT]: calculateViewPosition(1, -1),
+  [SceneAngles.MIDDLE_LEFT]: calculateViewPosition(-1, 0),
+  [SceneAngles.MIDDLE_MIDDLE]: calculateViewPosition(0, 0),
+  [SceneAngles.MIDDLE_RIGHT]: calculateViewPosition(1, 0),
+  [SceneAngles.BOTTOM_LEFT]: calculateViewPosition(-1, 1),
+  [SceneAngles.BOTTOM_MIDDLE]: calculateViewPosition(0, 1),
+  [SceneAngles.BOTTOM_RIGHT]: calculateViewPosition(1, 1),
+};
+
+export const SceneDefaultAngles: Record<string, string> = {
+  sphere: SceneAngles.MIDDLE_MIDDLE,
+  cube: SceneAngles.TOP_LEFT,
+  torusknot: SceneAngles.MIDDLE_MIDDLE,
+  torus: SceneAngles.BOTTOM_MIDDLE,
+  teapot: SceneAngles.MIDDLE_MIDDLE,
+  bunny: SceneAngles.MIDDLE_MIDDLE,
+  icosahedron: SceneAngles.MIDDLE_MIDDLE,
+  plane: SceneAngles.MIDDLE_MIDDLE,
+  cylinder: SceneAngles.TOP_MIDDLE,
+  cone: SceneAngles.MIDDLE_MIDDLE,
+};
+
+export const CameraDistances: Record<string, number> = {
+  sphere: 0.55,
+  cube: 0.45,
+  torusknot: 0.5,
+  icosahedron: 0.5,
+  torus: 0.38,
+  teapot: 0.9,
+  bunny: 0.54,
+  plane: 0.485,
+  cylinder: 0.38,
+  cone: 0.35,
+};
+
 type AnyFn = (...args: any) => any;
 type ThreeSceneProps = {
   compile: AnyFn;
@@ -68,6 +138,7 @@ type ThreeSceneProps = {
   width: number;
   height: number;
   assetPrefix: string;
+  takeScreenshotRef: MutableRefObject<(() => string) | undefined>;
 };
 
 const repeat = (t: three.Texture, x: number, y: number) => {
@@ -94,6 +165,7 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
   bg,
   setBg,
   assetPrefix,
+  takeScreenshotRef,
 }) => {
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
   const shadersUpdated = useRef<boolean>(false);
@@ -404,6 +476,62 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
       setCtx(ctx);
     }
   }, [ctx, setCtx]);
+
+  takeScreenshotRef.current = useCallback(() => {
+    const viewAngle = SceneDefaultAngles[previewObject];
+    // this.props.shader.scene.angle ||
+
+    const screenshotCanvas = document.createElement('canvas');
+    const context2d = screenshotCanvas.getContext('2d');
+    if (!context2d) {
+      throw new Error('No context');
+    }
+    const screenshotHeight = 400;
+    const screenshotWidth = 400;
+    screenshotCanvas.height = screenshotHeight;
+    screenshotCanvas.width = screenshotWidth;
+    const target = new three.WebGLRenderTarget(
+      screenshotWidth,
+      screenshotHeight
+    );
+    target.texture.minFilter = three.LinearMipMapLinearFilter;
+
+    const camera = new three.PerspectiveCamera(
+      45,
+      screenshotWidth / screenshotHeight,
+      0.1,
+      1000
+    );
+    scene.add(camera);
+
+    const pixelBuffer = new Uint8Array(screenshotHeight * screenshotHeight * 4);
+    const imageData = context2d.createImageData(
+      screenshotWidth,
+      screenshotHeight
+    );
+
+    camera.position.copy(
+      SceneAngleVectors[viewAngle](5 * CameraDistances[previewObject])
+    );
+    camera.lookAt(new three.Vector3(0, 0, 0));
+
+    renderer.setRenderTarget(target);
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(null);
+    renderer.readRenderTargetPixels(
+      target,
+      0,
+      0,
+      screenshotWidth,
+      screenshotHeight,
+      pixelBuffer
+    );
+    copyUIntToImageData(pixelBuffer, imageData);
+    context2d.putImageData(imageData, 0, 0);
+
+    const data = screenshotCanvas.toDataURL('image/jpeg', 0.9);
+    return data;
+  }, [previewObject, renderer, scene]);
 
   useEffect(() => {
     if (!compileResult?.fragmentResult) {

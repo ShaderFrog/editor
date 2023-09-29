@@ -1,5 +1,12 @@
 import * as BABYLON from 'babylonjs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   mangleVar,
@@ -26,6 +33,77 @@ export type PreviewLight = 'point' | '3point' | 'spot';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
+
+export const SceneAngles = {
+  TOP_LEFT: 'topleft',
+  TOP_MIDDLE: 'topmid',
+  TOP_RIGHT: 'topright',
+  MIDDLE_LEFT: 'midleft',
+  MIDDLE_MIDDLE: 'midmid',
+  MIDDLE_RIGHT: 'midright',
+  BOTTOM_LEFT: 'botleft',
+  BOTTOM_MIDDLE: 'botmid',
+  BOTTOM_RIGHT: 'botright',
+};
+
+const calculateViewPosition =
+  (xPosition: number, yPosition: number) => (radius: number) => {
+    const spread = 0.8;
+    const position = new BABYLON.Vector3(0, 0, radius);
+
+    // No idea if this is righ tlol
+    const matrixX = BABYLON.Matrix.RotationAxis(
+      BABYLON.Axis.X,
+      yPosition * spread
+    );
+    const matrixY = BABYLON.Matrix.RotationAxis(
+      BABYLON.Axis.Y,
+      yPosition * spread
+    );
+    const transformed = BABYLON.Vector3.TransformCoordinates(
+      BABYLON.Vector3.TransformCoordinates(position, matrixX),
+      matrixY
+    );
+    return transformed;
+  };
+
+export const SceneAngleVectors = {
+  [SceneAngles.TOP_LEFT]: calculateViewPosition(-1, -1),
+  [SceneAngles.TOP_MIDDLE]: calculateViewPosition(0, -1),
+  [SceneAngles.TOP_RIGHT]: calculateViewPosition(1, -1),
+  [SceneAngles.MIDDLE_LEFT]: calculateViewPosition(-1, 0),
+  [SceneAngles.MIDDLE_MIDDLE]: calculateViewPosition(0, 0),
+  [SceneAngles.MIDDLE_RIGHT]: calculateViewPosition(1, 0),
+  [SceneAngles.BOTTOM_LEFT]: calculateViewPosition(-1, 1),
+  [SceneAngles.BOTTOM_MIDDLE]: calculateViewPosition(0, 1),
+  [SceneAngles.BOTTOM_RIGHT]: calculateViewPosition(1, 1),
+};
+
+export const SceneDefaultAngles: Record<string, string> = {
+  sphere: SceneAngles.MIDDLE_MIDDLE,
+  cube: SceneAngles.TOP_LEFT,
+  torusknot: SceneAngles.MIDDLE_MIDDLE,
+  torus: SceneAngles.BOTTOM_MIDDLE,
+  teapot: SceneAngles.MIDDLE_MIDDLE,
+  bunny: SceneAngles.MIDDLE_MIDDLE,
+  icosahedron: SceneAngles.MIDDLE_MIDDLE,
+  plane: SceneAngles.MIDDLE_MIDDLE,
+  cylinder: SceneAngles.TOP_MIDDLE,
+  cone: SceneAngles.MIDDLE_MIDDLE,
+};
+
+export const CameraDistances: Record<string, number> = {
+  sphere: 0.55,
+  cube: 0.45,
+  torusknot: 0.5,
+  icosahedron: 0.5,
+  torus: 0.38,
+  teapot: 0.9,
+  bunny: 0.54,
+  plane: 0.485,
+  cylinder: 0.38,
+  cone: 0.35,
+};
 
 let mIdx = 0;
 let id = () => mIdx++;
@@ -104,6 +182,7 @@ type BabylonComponentProps = {
   width: number;
   height: number;
   assetPrefix: string;
+  takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
 };
 const BabylonComponent: React.FC<BabylonComponentProps> = ({
   compile,
@@ -124,12 +203,14 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
   width,
   height,
   assetPrefix,
+  takeScreenshotRef,
 }) => {
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
   const checkForCompileErrors = useRef<boolean>(false);
   const lastCompile = useRef<any>({});
   const sceneWrapper = useRef<HTMLDivElement>(null);
   const size = useSize(sceneWrapper);
+  const isScreenshotting = useRef<boolean>(false);
 
   const {
     canvas,
@@ -159,6 +240,10 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
         // I haven't done this yet
       }
     }
+
+    engine.beginFrame();
+    scene.render();
+    engine.endFrame();
   });
 
   const textures = useMemo<
@@ -734,6 +819,38 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
     canvas.height = height;
     engine.resize();
   }, [engine, canvas, width, height, ctx.runtime]);
+
+  takeScreenshotRef.current = useCallback(async () => {
+    const viewAngle = SceneDefaultAngles[previewObject];
+    // this.props.shader.scene.angle ||
+
+    const screenshotCanvas = document.createElement('canvas');
+    const context2d = screenshotCanvas.getContext('2d');
+    if (!context2d) {
+      throw new Error('No context');
+    }
+    const screenshotHeight = 400;
+    const screenshotWidth = 400;
+
+    const camera = new BABYLON.FreeCamera(
+      'screenshotCamera',
+      SceneAngleVectors[viewAngle](5 * CameraDistances[previewObject]),
+      scene
+    );
+    camera.setTarget(BABYLON.Vector3.Zero());
+
+    return new Promise<string>((resolve) => {
+      BABYLON.Tools.CreateScreenshotUsingRenderTarget(
+        engine,
+        camera,
+        {
+          width: screenshotWidth,
+          height: screenshotHeight,
+        },
+        resolve
+      );
+    });
+  }, [previewObject, scene, engine]);
 
   return (
     <>

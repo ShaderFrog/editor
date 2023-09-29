@@ -91,7 +91,7 @@ import { ensure } from '../../editor-util/ensure';
 import { makeId } from '../../editor-util/id';
 import { hasParent } from '../../editor-util/hasParent';
 import { useWindowSize } from '../hooks/useWindowSize';
-import useTimeout from '../hooks/useTimeout';
+
 import {
   FlowElements,
   toFlowInputs,
@@ -115,6 +115,7 @@ import {
   expandUniformDataNodes,
 } from './useGraph';
 import StrategyEditor from './StrategyEditor';
+import randomShaderName from '@api/randomShaderName';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -301,60 +302,6 @@ type EditorProps = {
   onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
 };
 
-const randomArr = <T extends unknown>(arr: Array<T>): T =>
-  arr[Math.floor(Math.random() * arr.length)];
-const words1 = [
-  'Screaming',
-  'Happy',
-  'Ecstatic',
-  'Decisive',
-  'Global',
-  'Spectacular',
-  'Tiny',
-  'Bitter',
-  'Overconfident',
-  'Sneaky',
-  'Jumbled',
-  'Supreme',
-  'Infamous',
-  'Visible',
-  'Lucky',
-  'Bright',
-  'Abundant',
-  'Melodic',
-  'Flagrant',
-  'Faulty',
-  'Tedious',
-  'Divergent',
-  'Youthful',
-  'Drunken',
-  'Remarkable',
-  'Imaginary',
-];
-const words2 = [
-  'Frog',
-  'Gecko',
-  'Hippo',
-  'Gopher',
-  'Kangaroo',
-  'Deer',
-  'Newt',
-  'Hamster',
-  'Turtle',
-  'Otter',
-  'Mouse',
-  'Camel',
-  'Marmoset',
-  'Monkey',
-  'Ferret',
-  'Bear',
-  'Cheetah',
-  'Dingo',
-  'Elephant',
-  'Bat',
-  'Buffalo',
-];
-
 const Editor = ({
   assetPrefix,
   saveError,
@@ -368,7 +315,7 @@ const Editor = ({
     return (
       initialShader || {
         engine,
-        name: `${randomArr(words1)} ${randomArr(words2)}`,
+        name: randomShaderName(),
         visibility: 0,
         imageData: '',
         config: {
@@ -388,13 +335,13 @@ const Editor = ({
   const { getRefData } = useHoisty();
 
   const [screenshotData, setScreenshotData] = useState<string>('');
-  const takeScreenshotRef = useRef<() => string>();
-  const takeScreenshot = useCallback(() => {
+  const takeScreenshotRef = useRef<() => Promise<string>>();
+  const takeScreenshot = useCallback(async () => {
     if (!takeScreenshotRef.current) {
       return;
     }
-    console.log('new screenshot data!');
-    setScreenshotData(takeScreenshotRef.current());
+    const data = await takeScreenshotRef.current();
+    setScreenshotData(data);
   }, []);
 
   const updateNodeInternals = useUpdateNodeInternals();
@@ -1733,6 +1680,7 @@ const Editor = ({
             width={uiState.sceneWidth}
             height={uiState.sceneHeight}
             assetPrefix={assetPrefix}
+            takeScreenshotRef={takeScreenshotRef}
           />
         )}
       </div>

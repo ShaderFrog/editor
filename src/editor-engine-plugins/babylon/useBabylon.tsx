@@ -83,15 +83,10 @@ export const useBabylon = (callback: Callback) => {
     }
   }, [canvas, babylonDom]);
 
-  const animate = useCallback(
-    (time: number) => {
-      scene.render();
-      savedCallback.current(time);
-
-      frameRef.current = requestAnimationFrame(animate);
-    },
-    [scene]
-  );
+  const animate = useCallback((time: number) => {
+    savedCallback.current(time);
+    frameRef.current = requestAnimationFrame(animate);
+  }, []);
 
   useEffect(() => {
     if (babylonDom) {

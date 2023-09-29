@@ -138,7 +138,7 @@ type ThreeSceneProps = {
   width: number;
   height: number;
   assetPrefix: string;
-  takeScreenshotRef: MutableRefObject<(() => string) | undefined>;
+  takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
 };
 
 const repeat = (t: three.Texture, x: number, y: number) => {
@@ -477,7 +477,7 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
     }
   }, [ctx, setCtx]);
 
-  takeScreenshotRef.current = useCallback(() => {
+  takeScreenshotRef.current = useCallback(async () => {
     const viewAngle = SceneDefaultAngles[previewObject];
     // this.props.shader.scene.angle ||
 

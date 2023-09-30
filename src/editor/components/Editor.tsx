@@ -1636,6 +1636,7 @@ const Editor = ({
             width={uiState.sceneWidth}
             height={uiState.sceneHeight}
             assetPrefix={assetPrefix}
+            takeScreenshotRef={takeScreenshotRef}
           />
         ) : engine.name === 'three' ? (
           <ThreeComponent

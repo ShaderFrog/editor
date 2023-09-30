@@ -210,7 +210,6 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
   const lastCompile = useRef<any>({});
   const sceneWrapper = useRef<HTMLDivElement>(null);
   const size = useSize(sceneWrapper);
-  const isScreenshotting = useRef<boolean>(false);
 
   const {
     canvas,
@@ -822,13 +821,7 @@ const BabylonComponent: React.FC<BabylonComponentProps> = ({
 
   takeScreenshotRef.current = useCallback(async () => {
     const viewAngle = SceneDefaultAngles[previewObject];
-    // this.props.shader.scene.angle ||
 
-    const screenshotCanvas = document.createElement('canvas');
-    const context2d = screenshotCanvas.getContext('2d');
-    if (!context2d) {
-      throw new Error('No context');
-    }
     const screenshotHeight = 400;
     const screenshotWidth = 400;
 

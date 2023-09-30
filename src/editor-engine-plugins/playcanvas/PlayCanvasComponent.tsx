@@ -1,5 +1,11 @@
 import * as pc from 'playcanvas';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   Graph,
@@ -33,6 +39,16 @@ let id = () => mIdx++;
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(pc.component)\x1b[0m', ...args);
 
+const copyUIntToImageData = (data: Uint8Array, imageData: ImageData) => {
+  for (let i = 0; i < data.length; i += 4) {
+    let index = data.length - i; // flip how data is read
+    imageData.data[index] = data[i]; //red
+    imageData.data[index + 1] = data[i + 1]; //green
+    imageData.data[index + 2] = data[i + 2]; //blue
+    imageData.data[index + 3] = data[i + 3]; //alpha
+  }
+};
+
 // Intercept console errors, which is the only way to get playcanvas shader
 // error logs
 const consoleError = console.error;
@@ -42,6 +58,63 @@ console.error = (...args: any[]) => {
     callback(...args);
   }
   return consoleError.apply(console, args);
+};
+
+export const SceneAngles = {
+  TOP_LEFT: 'topleft',
+  TOP_MIDDLE: 'topmid',
+  TOP_RIGHT: 'topright',
+  MIDDLE_LEFT: 'midleft',
+  MIDDLE_MIDDLE: 'midmid',
+  MIDDLE_RIGHT: 'midright',
+  BOTTOM_LEFT: 'botleft',
+  BOTTOM_MIDDLE: 'botmid',
+  BOTTOM_RIGHT: 'botright',
+};
+
+const calculateViewPosition =
+  (xPosition: number, yPosition: number) => (radius: number) => {
+    const spread = 0.8;
+    const position = new pc.Vec3(0, 0, radius);
+    return position;
+  };
+
+export const SceneAngleVectors = {
+  [SceneAngles.TOP_LEFT]: calculateViewPosition(-1, -1),
+  [SceneAngles.TOP_MIDDLE]: calculateViewPosition(0, -1),
+  [SceneAngles.TOP_RIGHT]: calculateViewPosition(1, -1),
+  [SceneAngles.MIDDLE_LEFT]: calculateViewPosition(-1, 0),
+  [SceneAngles.MIDDLE_MIDDLE]: calculateViewPosition(0, 0),
+  [SceneAngles.MIDDLE_RIGHT]: calculateViewPosition(1, 0),
+  [SceneAngles.BOTTOM_LEFT]: calculateViewPosition(-1, 1),
+  [SceneAngles.BOTTOM_MIDDLE]: calculateViewPosition(0, 1),
+  [SceneAngles.BOTTOM_RIGHT]: calculateViewPosition(1, 1),
+};
+
+export const SceneDefaultAngles: Record<string, string> = {
+  sphere: SceneAngles.MIDDLE_MIDDLE,
+  cube: SceneAngles.TOP_LEFT,
+  torusknot: SceneAngles.MIDDLE_MIDDLE,
+  torus: SceneAngles.BOTTOM_MIDDLE,
+  teapot: SceneAngles.MIDDLE_MIDDLE,
+  bunny: SceneAngles.MIDDLE_MIDDLE,
+  icosahedron: SceneAngles.MIDDLE_MIDDLE,
+  plane: SceneAngles.MIDDLE_MIDDLE,
+  cylinder: SceneAngles.TOP_MIDDLE,
+  cone: SceneAngles.MIDDLE_MIDDLE,
+};
+
+export const CameraDistances: Record<string, number> = {
+  sphere: 1,
+  cube: 1.5,
+  torusknot: 2.5,
+  icosahedron: 2.5,
+  torus: 0.8,
+  teapot: 2.9,
+  bunny: 2.54,
+  plane: 0.7,
+  cylinder: 2.38,
+  cone: 2.35,
 };
 
 const makeLightHelper = () => {
@@ -134,6 +207,7 @@ type PlayCanvasComponentProps = {
   width: number;
   height: number;
   assetPrefix: string;
+  takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
 };
 const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
   compile,
@@ -154,6 +228,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
   width,
   height,
   assetPrefix,
+  takeScreenshotRef,
 }) => {
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
   const sceneWrapper = useRef<HTMLDivElement>(null);
@@ -457,6 +532,7 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
         segments: 60,
         sides: 32,
       });
+      entity.rotate(90, 0, 0);
       const meshInstance = new pc.MeshInstance(mesh, material);
       entity.addComponent('render', {
         meshInstances: [meshInstance],
@@ -606,6 +682,119 @@ const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
       console.warn('No mesh to assign the material to!');
     }
   }, [setGlResult, compileResult, sceneData, app, textures]);
+
+  takeScreenshotRef.current = useCallback(async () => {
+    const viewAngle = SceneDefaultAngles[previewObject];
+
+    const screenshotHeight = 400;
+    const screenshotWidth = 400;
+
+    const device = app.graphicsDevice;
+
+    // Create a new texture based on the current width and height
+    const colorBuffer = new pc.Texture(device, {
+      width: screenshotWidth,
+      height: screenshotHeight,
+      format: pc.PIXELFORMAT_R8_G8_B8_A8,
+    });
+
+    const depthBuffer = new pc.Texture(device, {
+      format: pc.PIXELFORMAT_DEPTHSTENCIL,
+      width: screenshotWidth,
+      height: screenshotHeight,
+      mipmaps: false,
+      addressU: pc.ADDRESS_CLAMP_TO_EDGE,
+      addressV: pc.ADDRESS_CLAMP_TO_EDGE,
+    });
+
+    colorBuffer.minFilter = pc.FILTER_LINEAR;
+    colorBuffer.magFilter = pc.FILTER_LINEAR;
+    const renderTarget = new pc.RenderTarget({
+      colorBuffer: colorBuffer,
+      depthBuffer: depthBuffer,
+      samples: 4, // Enable anti-alias
+    });
+
+    const camera = new pc.Entity('camera');
+    camera.addComponent('camera', {
+      fov: 75,
+      frustumCulling: true,
+      clearColor: new pc.Color(0, 0, 0, 0),
+    });
+    const pos = SceneAngleVectors[viewAngle](CameraDistances[previewObject]);
+    camera.setPosition(pos.x, pos.y, pos.z);
+    app.root.addChild(camera);
+
+    camera.camera!.renderTarget = renderTarget;
+
+    const canvas = window.document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('No context');
+    }
+
+    canvas.width = screenshotWidth;
+    canvas.height = screenshotHeight;
+
+    const imageData = context.createImageData(
+      screenshotWidth,
+      screenshotHeight
+    );
+
+    const pixels = new Uint8Array(screenshotWidth * screenshotHeight * 4);
+    app.render();
+
+    // @ts-ignore
+    const gl = app.graphicsDevice.gl;
+    // @ts-ignore
+    const fb = app.graphicsDevice.gl.createFramebuffer();
+
+    // We are accessing a private property here that has changed between
+    // Engine v1.51.7 and v1.52.2
+    const colorGlTexture = colorBuffer.impl
+      ? colorBuffer.impl._glTexture
+      : // @ts-ignore
+        colorBuffer._glTexture;
+    const depthGlTexture = depthBuffer.impl
+      ? depthBuffer.impl._glTexture
+      : // @ts-ignore
+        depthBuffer._glTexture;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      colorGlTexture,
+      0
+    );
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.DEPTH_STENCIL_ATTACHMENT,
+      gl.TEXTURE_2D,
+      depthGlTexture,
+      0
+    );
+    gl.readPixels(
+      0,
+      0,
+      screenshotWidth,
+      screenshotHeight,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels
+    );
+
+    gl.deleteFramebuffer(fb);
+
+    copyUIntToImageData(pixels, imageData);
+    context.putImageData(imageData, 0, 0);
+
+    const data = canvas.toDataURL('image/jpeg', 0.9);
+    app.root.removeChild(camera);
+
+    return data;
+  }, [previewObject, app]);
 
   return (
     <>

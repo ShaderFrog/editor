@@ -39,15 +39,6 @@ const log = (...args: any[]) =>
 
 const loadingMaterial = new three.MeshBasicMaterial({ color: 'pink' });
 
-function mapTextureMapping(texture: three.Texture, mapping: any) {
-  if (mapping === three.EquirectangularReflectionMapping) {
-    texture.mapping = three.CubeReflectionMapping;
-  } else if (mapping === three.EquirectangularRefractionMapping) {
-    texture.mapping = three.CubeRefractionMapping;
-  }
-  return texture;
-}
-
 const copyUIntToImageData = (data: Uint8Array, imageData: ImageData) => {
   for (let i = 0; i < data.length; i += 4) {
     let index = data.length - i; // flip how data is read
@@ -530,6 +521,7 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
     context2d.putImageData(imageData, 0, 0);
 
     const data = screenshotCanvas.toDataURL('image/jpeg', 0.9);
+    scene.remove(camera);
     return data;
   }, [previewObject, renderer, scene]);
 

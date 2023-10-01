@@ -1,14 +1,7 @@
 import * as pc from 'playcanvas';
-import {
-  MutableRefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
-  Graph,
   mangleVar,
   SamplerCubeNode,
   TextureNode,
@@ -21,7 +14,6 @@ import {
 import styles from '../../editor/styles/editor.module.css';
 
 import { usePrevious } from '../../editor/hooks/usePrevious';
-import { UICompileGraphResult } from '../../editor/uICompileGraphResult';
 import { useSize } from '../../editor/hooks/useSize';
 
 import {

@@ -1,5 +1,11 @@
 import dynamic from 'next/dynamic';
-import styles from '../editor/styles/Home.module.css';
+import { threngine } from '@core/plugins/three/threngine';
+import {
+  makeExampleGraph,
+  menuItems,
+  addEngineNode,
+  Editor as SceneComponent,
+} from '../editor-engine-plugins/three';
 
 const DynamicComponentWithNoSSR = dynamic(
   () => import('../editor/components/Editor'),
@@ -10,7 +16,18 @@ const DynamicComponentWithNoSSR = dynamic(
 );
 
 function Editor() {
-  return <DynamicComponentWithNoSSR />;
+  return (
+    <DynamicComponentWithNoSSR
+      assetPrefix=""
+      engine={threngine}
+      example="DEFAULT"
+      examples={{}}
+      makeExampleGraph={makeExampleGraph}
+      menuItems={menuItems}
+      addEngineNode={addEngineNode}
+      SceneComponent={SceneComponent}
+    />
+  );
 }
 
 export default Editor;

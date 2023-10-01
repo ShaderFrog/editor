@@ -14,13 +14,12 @@ import {
   vectorNode,
   compileSource,
 } from '@core/graph';
-import { Engine, EngineContext, convertNode } from '@core/engine';
+import { Engine, EngineContext } from '@core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
 
 import { makeId } from '../../editor-util/id';
 import { addNode, multiplyNode, sourceNode } from '@core/graph';
 import { texture2DStrategy, uniformStrategy } from '@core/strategy';
-import { babylengine } from '@core/plugins/babylon/bablyengine';
 
 const compileGraphAsync = async (
   graph: Graph,
@@ -271,14 +270,6 @@ const createGraphNode = (
       `Could not create node: Unknown node type "${nodeDataType}'"`
     );
   }
-
-  // Hack: Auto-converting nodes to threejs for testing
-  newGns = newGns.map((gn) => {
-    if (gn.type === 'source' && engine.name === 'babylon') {
-      return convertNode(gn, babylengine.importers.three);
-    }
-    return gn;
-  });
 
   let newGEs: GraphEdge[] = newEdgeData
     ? [

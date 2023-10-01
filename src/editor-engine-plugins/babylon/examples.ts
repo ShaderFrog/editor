@@ -50,7 +50,7 @@ const outFrom = (node: CoreNode) => node.outputs[0].name;
 const konvert = (node: SourceNode) =>
   convertNode(node, babylengine.importers.three);
 
-export const makeExampleGraph = (example: Example): [Graph, string, string] => {
+export const makeExampleGraph = (example: string): [Graph, string, string] => {
   console.log('🌈 Making new graph!!');
   let newGraph: Graph;
   let previewObject: string;
@@ -520,7 +520,7 @@ export const menuItems: MenuItems = [
   [`Babylon.js Materials`, [['Physical', 'physical']]],
 ];
 
-export const engineAddNode = (
+export const addEngineNode = (
   nodeDataType: string,
   name: string,
   position: { x: number; y: number },

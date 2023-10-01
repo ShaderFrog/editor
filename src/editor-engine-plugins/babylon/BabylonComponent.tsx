@@ -28,6 +28,7 @@ import { usePrevious } from '../../editor/hooks/usePrevious';
 import { UICompileGraphResult } from '../../editor/uICompileGraphResult';
 import { useSize } from '../../editor/hooks/useSize';
 import { Nullable } from 'babylonjs';
+import { SceneProps } from '@editor/editor/components/Editor';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -162,29 +163,7 @@ const lightHelper = (scene: BABYLON.Scene, parent: BABYLON.Light) => {
   return helper;
 };
 
-type AnyFn = (...args: any) => any;
-type BabylonComponentProps = {
-  compile: AnyFn;
-  compileResult: UICompileGraphResult | undefined;
-  graph: Graph;
-  lights: PreviewLight;
-  animatedLights: boolean;
-  setAnimatedLights: AnyFn;
-  previewObject: string;
-  setCtx: (ctx: EngineContext) => void;
-  setGlResult: AnyFn;
-  setLights: AnyFn;
-  setPreviewObject: AnyFn;
-  showHelpers: boolean;
-  setShowHelpers: AnyFn;
-  bg: string | undefined;
-  setBg: AnyFn;
-  width: number;
-  height: number;
-  assetPrefix: string;
-  takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
-};
-const BabylonComponent: React.FC<BabylonComponentProps> = ({
+const BabylonComponent: React.FC<SceneProps> = ({
   compile,
   compileResult,
   graph,

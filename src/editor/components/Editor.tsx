@@ -17,6 +17,8 @@ import React, {
   useRef,
   useState,
   MouseEvent,
+  MutableRefObject,
+  FunctionComponent,
 } from 'react';
 
 import {
@@ -25,7 +27,6 @@ import {
   Connection,
   applyNodeChanges,
   applyEdgeChanges,
-  Edge,
   ReactFlowProvider,
   useUpdateNodeInternals,
   useReactFlow,
@@ -37,7 +38,7 @@ import {
   findNode,
   Graph,
   GraphNode,
-  Edge as GraphEdge,
+  Edge,
   EdgeType,
   CodeNode,
   SourceNode,
@@ -57,31 +58,6 @@ import { FlowNodeSourceData, FlowNodeDataData } from './flow/FlowNode';
 
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import CodeEditor from './CodeEditor';
-
-import { engine as threngine } from '@core/plugins/three';
-import {
-  Editor as ThreeComponent,
-  makeExampleGraph as threeMakeExampleGraph,
-  Example as ThreeExample,
-  engineAddNode as threngineAddNode,
-  menuItems as threngineMenuItems,
-} from '../../editor-engine-plugins/three';
-
-import { engine as babylengine } from '@core/plugins/babylon';
-import {
-  Editor as BabylonComponent,
-  makeExampleGraph as babylonMakeExampleGraph,
-  Example as BabylonExample,
-  menuItems as babylengineMenuItems,
-} from '../../editor-engine-plugins/babylon';
-
-import { engine as playengine } from '@core/plugins/playcanvas';
-import {
-  Editor as PlayCanvasComponent,
-  makeExampleGraph as playCanvasMakeExampleGraph,
-  Example as PlayCanvasExample,
-  menuItems as playcanvasMenuItems,
-} from '../../editor-engine-plugins/playcanvas';
 
 import { Hoisty, useHoisty } from '../hoistedRefContext';
 import { UICompileGraphResult } from '../uICompileGraphResult';
@@ -294,12 +270,51 @@ type ShaderCreateInput = Omit<
   'id' | 'createdAt' | 'updatedAt' | 'userId'
 >;
 
-type EditorProps = {
+type AnyFn = (...args: any) => any;
+export type SceneProps = {
+  compile: AnyFn;
+  compileResult: UICompileGraphResult | undefined;
+  graph: Graph;
+  lights: PreviewLight;
+  animatedLights: boolean;
+  setAnimatedLights: AnyFn;
+  previewObject: string;
+  setCtx: (ctx: EngineContext) => void;
+  setGlResult: AnyFn;
+  setLights: AnyFn;
+  setPreviewObject: AnyFn;
+  showHelpers: boolean;
+  setShowHelpers: AnyFn;
+  bg: string | undefined;
+  setBg: AnyFn;
+  width: number;
+  height: number;
+  assetPrefix: string;
+  takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
+};
+
+export type EditorProps = {
   assetPrefix: string;
   saveError?: string;
   shader?: EditorShader;
   onCreateShader?: (shader: ShaderCreateInput) => Promise<void>;
   onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
+};
+
+export type EngineProps = {
+  engine: Engine;
+  example: string;
+  examples: Record<string, string>;
+  makeExampleGraph: (example: string) => [Graph, string, string];
+  menuItems: MenuItems;
+  addEngineNode: (
+    nodeDataType: string,
+    name: string,
+    position: { x: number; y: number },
+    newEdgeData?: Omit<Edge, 'id' | 'from'>,
+    defaultValue?: any
+  ) => [Set<string>, Graph] | undefined;
+  SceneComponent: FunctionComponent<SceneProps>;
 };
 
 const Editor = ({
@@ -308,13 +323,18 @@ const Editor = ({
   shader: initialShader,
   onCreateShader,
   onUpdateShader,
-}: EditorProps) => {
+  engine,
+  example,
+  examples,
+  makeExampleGraph,
+  menuItems,
+  SceneComponent,
+  addEngineNode,
+}: EditorProps & EngineProps) => {
   const [shader, setShader] = useState<EditorShader>(() => {
-    const query = new URLSearchParams(window.location.search);
-    const engine = query.get('engine') || 'three';
     return (
       initialShader || {
-        engine,
+        engine: engine.name,
         name: randomShaderName(),
         visibility: 0,
         imageData: '',
@@ -346,31 +366,6 @@ const Editor = ({
 
   const updateNodeInternals = useUpdateNodeInternals();
 
-  // const query = new URLSearchParams(window.location.search);
-  // const queryEngine = query.get('engine') || '';
-
-  const [{ lastEngine: lastEngineName, engine: engineName }, setEngine] =
-    useState<{
-      lastEngine: string | null;
-      engine: string;
-    }>({
-      lastEngine: null,
-      engine: shader?.engine || 'three',
-    });
-  const lastEngine = lastEngineName
-    ? lastEngineName === 'playcanvas'
-      ? playengine
-      : lastEngineName === 'babylon'
-      ? babylengine
-      : threngine
-    : null;
-  const engine =
-    engineName === 'playcanvas'
-      ? playengine
-      : engineName === 'babylon'
-      ? babylengine
-      : threngine;
-
   // Store the engine context in state. There's a separate function for passing
   // to children to update the engine context, which has more side effects
   const [ctx, setCtxState] = useState<EngineContext>();
@@ -382,17 +377,6 @@ const Editor = ({
     }
   );
 
-  const [examples, makeExampleGraph] = useMemo<
-    | [typeof BabylonExample, typeof babylonMakeExampleGraph]
-    | [typeof ThreeExample, typeof threeMakeExampleGraph]
-  >(() => {
-    return engineName === 'playcanvas'
-      ? [PlayCanvasExample, playCanvasMakeExampleGraph]
-      : engineName === 'babylon'
-      ? [BabylonExample, babylonMakeExampleGraph]
-      : [ThreeExample, threeMakeExampleGraph];
-  }, [engineName]);
-
   const [
     initialGraph,
     initialPreviewObject,
@@ -401,9 +385,8 @@ const Editor = ({
     initialExample,
   ] = useMemo(() => {
     const query = new URLSearchParams(window.location.search);
-    const example = query.get('example') || examples.DEFAULT;
+    const exampleGraph = query.get('example') || example;
     if (initialShader) {
-      log('Loading shader from API', initialShader);
       return [
         initialShader.config.graph as Graph,
         initialShader.config.scene.previewObject,
@@ -412,9 +395,9 @@ const Editor = ({
       ];
     }
     // @ts-ignore
-    const [graph, a, b] = makeExampleGraph(example);
-    return [expandUniformDataNodes(graph), a, 'point', b, example];
-  }, [makeExampleGraph, examples, initialShader]);
+    const [graph, a, b] = makeExampleGraph(exampleGraph);
+    return [expandUniformDataNodes(graph), a, 'point', b, exampleGraph];
+  }, [makeExampleGraph, example, initialShader]);
 
   const [currentExample, setExample] = useState<string | null | undefined>(
     initialExample
@@ -697,7 +680,6 @@ const Editor = ({
       }
     }
   }, [
-    engineName,
     currentExample,
     previousExample,
     setGraph,
@@ -722,17 +704,17 @@ const Editor = ({
             });
         setCtxState(newCtx);
         let newGraph = graph;
-        if (lastEngine) {
-          newGraph = convertToEngine(lastEngine, engine, graph);
+        // if (lastEngine) {
+        //   newGraph = convertToEngine(lastEngine, engine, graph);
 
-          if (ctx?.engine) {
-            const currentScene = getRefData(ctx.engine);
-            if (currentScene) {
-              // @ts-ignore
-              currentScene.destroy(currentScene);
-            }
-          }
-        }
+        //   if (ctx?.engine) {
+        //     const currentScene = getRefData(ctx.engine);
+        //     if (currentScene) {
+        //       // @ts-ignore
+        //       currentScene.destroy(currentScene);
+        //     }
+        //   }
+        // }
         initializeGraph(
           graphToFlowGraph(newGraph, onInputBakedToggle),
           newCtx,
@@ -747,16 +729,7 @@ const Editor = ({
         setCtxState(newCtx);
       }
     },
-    [
-      ctx,
-      lastEngine,
-      engine,
-      setCtxState,
-      initializeGraph,
-      getRefData,
-      graph,
-      onInputBakedToggle,
-    ]
+    [ctx, setCtxState, initializeGraph, graph, onInputBakedToggle]
   );
 
   /**
@@ -824,7 +797,7 @@ const Editor = ({
           .stage || edgeType) as EdgeType;
         const isCode = sourceGraphNode.type === 'source';
 
-        const addedEdge: GraphEdge = {
+        const addedEdge: Edge = {
           id: newEdgeId,
           from: sourceId,
           to: targetId,
@@ -1038,7 +1011,7 @@ const Editor = ({
       nodeDataType: string,
       name: string,
       position: XYPosition,
-      newEdgeData?: Omit<GraphEdge, 'id' | 'from'>,
+      newEdgeData?: Omit<Edge, 'id' | 'from'>,
       defaultValue?: any
     ) => {
       setContexting(true);
@@ -1048,7 +1021,7 @@ const Editor = ({
 
       if (engine.name === 'three') {
         [originalNodes, expanded] =
-          threngineAddNode(
+          addEngineNode(
             nodeDataType,
             name,
             position,
@@ -1224,7 +1197,7 @@ const Editor = ({
 
   // onEdgesChange is what applies the edge changes to the flow graph.
   const onEdgesDelete = useCallback(
-    (edges: Edge[]) => {
+    (edges: FlowEdge[]) => {
       const ids = edges.reduce<Record<string, boolean>>(
         (acc, e) => ({ ...acc, [e.id]: true }),
         {}
@@ -1267,7 +1240,7 @@ const Editor = ({
     // TODO: These values like engine and bg all have their own state, vs
     // setShader() copies all those values
     const payload = {
-      engine: engineName,
+      engine: engine.name,
       name: shader?.name || `Andy's new shader ${Math.random()}`,
       description: shader?.description || 'description',
       visibility: shader?.visibility || 1,
@@ -1300,15 +1273,6 @@ const Editor = ({
     }
   }, [isSmallScreen, syncSceneSize]);
 
-  const menuItems: MenuItems =
-    engine.name === 'playcanvas'
-      ? playcanvasMenuItems
-      : engine.name === 'three'
-      ? threngineMenuItems
-      : engine.name === 'babylon'
-      ? babylengineMenuItems
-      : [];
-
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
   const editorElements = (
@@ -1329,35 +1293,6 @@ const Editor = ({
               Save
             </button>
           </div>
-          {isLocal ? (
-            <>
-              <button
-                className="buttonauto formbutton"
-                onClick={() => {
-                  if (!ctx) {
-                    return;
-                  }
-                  if (engine === babylengine) {
-                    setCompileResult(undefined);
-                    setEngine({
-                      lastEngine: engine.name,
-                      engine: threngine.name,
-                    });
-                  } else {
-                    setCompileResult(undefined);
-                    setEngine({
-                      lastEngine: engine.name,
-                      engine: babylengine.name,
-                    });
-                  }
-                }}
-              >
-                {engine === babylengine
-                  ? 'Switch to Three.js'
-                  : 'Switch to Babylon.js'}
-              </button>
-            </>
-          ) : null}
         </div>
       )}
       <Tabs onSelect={setEditorTabIndex} selected={editorTabIndex}>
@@ -1616,74 +1551,27 @@ const Editor = ({
         </div>
       ) : null}
       <div className={styles.sceneAndControls}>
-        {engine.name === 'playcanvas' ? (
-          <PlayCanvasComponent
-            bg={bg}
-            setBg={setBg}
-            setCtx={setCtx}
-            graph={graph}
-            setShowHelpers={setShowHelpers}
-            showHelpers={showHelpers}
-            lights={lights}
-            setLights={setLights}
-            animatedLights={animatedLights}
-            setAnimatedLights={setAnimatedLights}
-            previewObject={previewObject}
-            setPreviewObject={setPreviewObject}
-            compile={childCompile}
-            compileResult={compileResult}
-            setGlResult={setGlResult}
-            width={uiState.sceneWidth}
-            height={uiState.sceneHeight}
-            assetPrefix={assetPrefix}
-            takeScreenshotRef={takeScreenshotRef}
-          />
-        ) : engine.name === 'three' ? (
-          <ThreeComponent
-            initialCtx={ctx}
-            bg={bg}
-            setBg={setBg}
-            setCtx={setCtx}
-            graph={graph}
-            setShowHelpers={setShowHelpers}
-            showHelpers={showHelpers}
-            lights={lights}
-            setLights={setLights}
-            animatedLights={animatedLights}
-            setAnimatedLights={setAnimatedLights}
-            previewObject={previewObject}
-            setPreviewObject={setPreviewObject}
-            compile={childCompile}
-            compileResult={compileResult}
-            setGlResult={setGlResult}
-            width={uiState.sceneWidth}
-            height={uiState.sceneHeight}
-            assetPrefix={assetPrefix}
-            takeScreenshotRef={takeScreenshotRef}
-          />
-        ) : (
-          <BabylonComponent
-            setCtx={setCtx}
-            graph={graph}
-            bg={bg}
-            setShowHelpers={setShowHelpers}
-            showHelpers={showHelpers}
-            setBg={setBg}
-            lights={lights}
-            setLights={setLights}
-            animatedLights={animatedLights}
-            setAnimatedLights={setAnimatedLights}
-            previewObject={previewObject}
-            setPreviewObject={setPreviewObject}
-            compile={childCompile}
-            compileResult={compileResult}
-            setGlResult={setGlResult}
-            width={uiState.sceneWidth}
-            height={uiState.sceneHeight}
-            assetPrefix={assetPrefix}
-            takeScreenshotRef={takeScreenshotRef}
-          />
-        )}
+        <SceneComponent
+          bg={bg}
+          setBg={setBg}
+          setCtx={setCtx}
+          graph={graph}
+          setShowHelpers={setShowHelpers}
+          showHelpers={showHelpers}
+          lights={lights}
+          setLights={setLights}
+          animatedLights={animatedLights}
+          setAnimatedLights={setAnimatedLights}
+          previewObject={previewObject}
+          setPreviewObject={setPreviewObject}
+          compile={childCompile}
+          compileResult={compileResult}
+          setGlResult={setGlResult}
+          width={uiState.sceneWidth}
+          height={uiState.sceneHeight}
+          assetPrefix={assetPrefix}
+          takeScreenshotRef={takeScreenshotRef}
+        />
       </div>
     </div>
   );
@@ -1736,7 +1624,7 @@ const Editor = ({
 
 // Use React Flow Provider to get project(), to figure out the mouse position
 // in the graph
-const WithProvider = (props: EditorProps) => (
+const WithProvider = (props: EditorProps & EngineProps) => (
   <ReactFlowProvider>
     <Hoisty>
       <Editor {...props} />

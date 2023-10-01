@@ -72,7 +72,7 @@ const edgeFrom = (
 
 const outFrom = (node: CoreNode) => node.outputs[0].name;
 
-export const makeExampleGraph = (example: Example): [Graph, string, string] => {
+export const makeExampleGraph = (example: string): [Graph, string, string] => {
   console.log('🌈 Making new graph!!');
   let newGraph: Graph;
   let previewObject: string;
@@ -736,7 +736,7 @@ export const menuItems: MenuItems = [
   ],
 ];
 
-export const engineAddNode = (
+export const addEngineNode = (
   nodeDataType: string,
   name: string,
   position: { x: number; y: number },

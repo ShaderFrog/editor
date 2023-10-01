@@ -4,9 +4,34 @@ import React, {
   useMemo,
   useRef,
   useState,
-  MutableRefObject,
 } from 'react';
-import * as three from 'three';
+import {
+  MeshBasicMaterial,
+  BoxGeometry,
+  BufferGeometry,
+  Color,
+  CubeTextureLoader,
+  DataTexture,
+  IcosahedronGeometry,
+  LinearMipMapLinearFilter,
+  Mesh,
+  NearestFilter,
+  Object3D,
+  PerspectiveCamera,
+  PlaneGeometry,
+  PointLight,
+  PointLightHelper,
+  RepeatWrapping,
+  SphereGeometry,
+  SpotLight,
+  SpotLightHelper,
+  Texture,
+  TextureLoader,
+  TorusKnotGeometry,
+  Vector2,
+  Vector3,
+  WebGLRenderTarget,
+} from 'three';
 import {
   Graph,
   mangleVar,
@@ -27,17 +52,16 @@ import {
 
 import { useThree } from './useThree';
 import { usePrevious } from '../../editor/hooks/usePrevious';
-import { UICompileGraphResult } from '../../editor/uICompileGraphResult';
-import { PreviewLight } from '../../editor/components/Editor';
 import { ensure } from '../../editor-util/ensure';
 import { useSize } from '../../editor/hooks/useSize';
 import { PMREMGenerator } from 'three';
 import { RoomEnvironment } from './RoomEnvironment';
+import { SceneProps } from '@editor/editor/components/Editor';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
 
-const loadingMaterial = new three.MeshBasicMaterial({ color: 'pink' });
+const loadingMaterial = new MeshBasicMaterial({ color: 'pink' });
 
 const copyUIntToImageData = (data: Uint8Array, imageData: ImageData) => {
   for (let i = 0; i < data.length; i += 4) {
@@ -64,9 +88,9 @@ export const SceneAngles = {
 const calculateViewPosition =
   (xPosition: number, yPosition: number) => (radius: number) => {
     const spread = 0.8;
-    const position = new three.Vector3(0, 0, radius);
-    position.applyAxisAngle(new three.Vector3(1, 0, 0), yPosition * spread);
-    position.applyAxisAngle(new three.Vector3(0, 1, 0), xPosition * spread);
+    const position = new Vector3(0, 0, radius);
+    position.applyAxisAngle(new Vector3(1, 0, 0), yPosition * spread);
+    position.applyAxisAngle(new Vector3(0, 1, 0), xPosition * spread);
     return position;
   };
 
@@ -108,37 +132,13 @@ export const CameraDistances: Record<string, number> = {
   cone: 0.35,
 };
 
-type AnyFn = (...args: any) => any;
-type ThreeSceneProps = {
-  compile: AnyFn;
-  compileResult: UICompileGraphResult | undefined;
-  graph: Graph;
-  lights: PreviewLight;
-  animatedLights: boolean;
-  setAnimatedLights: AnyFn;
-  previewObject: string;
-  bg: string | undefined;
-  setBg: AnyFn;
-  setCtx: (ctx: EngineContext) => void;
-  initialCtx: any;
-  setGlResult: AnyFn;
-  setLights: AnyFn;
-  setPreviewObject: AnyFn;
-  showHelpers: boolean;
-  setShowHelpers: AnyFn;
-  width: number;
-  height: number;
-  assetPrefix: string;
-  takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
-};
-
-const repeat = (t: three.Texture, x: number, y: number) => {
-  t.repeat = new three.Vector2(x, y);
-  t.wrapS = t.wrapT = three.RepeatWrapping;
+const repeat = (t: Texture, x: number, y: number) => {
+  t.repeat = new Vector2(x, y);
+  t.wrapS = t.wrapT = RepeatWrapping;
   return t;
 };
 
-const ThreeComponent: React.FC<ThreeSceneProps> = ({
+const ThreeComponent: React.FC<SceneProps> = ({
   compile,
   compileResult,
   graph,
@@ -147,7 +147,6 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
   setAnimatedLights,
   previewObject,
   setCtx,
-  initialCtx,
   setGlResult,
   setLights,
   showHelpers,
@@ -211,13 +210,13 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
           const light = sceneData.lights[0];
           light.position.x = 1.2 * Math.sin(time * 0.001);
           light.position.y = 1.2 * Math.cos(time * 0.001);
-          light.lookAt(new three.Vector3(0, 0, 0));
+          light.lookAt(new Vector3(0, 0, 0));
 
           const light1 = sceneData.lights[1];
           light1.position.x = 1.3 * Math.cos(time * 0.0015);
           light1.position.y = 1.3 * Math.sin(time * 0.0015);
 
-          light1.lookAt(new three.Vector3(0, 0, 0));
+          light1.lookAt(new Vector3(0, 0, 0));
         }
       }
 
@@ -300,38 +299,36 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
 
   const textures = useMemo<Record<string, any>>(
     () => ({
-      explosion: new three.TextureLoader().load(path('/explosion.png')),
-      'grayscale-noise': new three.TextureLoader().load(
-        path('/grayscale-noise.png')
-      ),
+      explosion: new TextureLoader().load(path('/explosion.png')),
+      'grayscale-noise': new TextureLoader().load(path('/grayscale-noise.png')),
       threeTone: (() => {
-        const image = new three.TextureLoader().load(path('/3tone.jpg'));
-        image.minFilter = three.NearestFilter;
-        image.magFilter = three.NearestFilter;
+        const image = new TextureLoader().load(path('/3tone.jpg'));
+        image.minFilter = NearestFilter;
+        image.magFilter = NearestFilter;
         return image;
       })(),
-      brick: repeat(new three.TextureLoader().load(path('/bricks.jpeg')), 3, 3),
+      brick: repeat(new TextureLoader().load(path('/bricks.jpeg')), 3, 3),
       brickNormal: repeat(
-        new three.TextureLoader().load(path('/bricknormal.jpeg')),
+        new TextureLoader().load(path('/bricknormal.jpeg')),
         3,
         3
       ),
       pebbles: repeat(
-        new three.TextureLoader().load(path('/Big_pebbles_pxr128.jpeg')),
+        new TextureLoader().load(path('/Big_pebbles_pxr128.jpeg')),
         3,
         3
       ),
       pebblesNormal: repeat(
-        new three.TextureLoader().load(path('/Big_pebbles_pxr128_normal.jpeg')),
+        new TextureLoader().load(path('/Big_pebbles_pxr128_normal.jpeg')),
         3,
         3
       ),
       pebblesBump: repeat(
-        new three.TextureLoader().load(path('/Big_pebbles_pxr128_bmp.jpeg')),
+        new TextureLoader().load(path('/Big_pebbles_pxr128_bmp.jpeg')),
         3,
         3
       ),
-      pondCubeMap: new three.CubeTextureLoader()
+      pondCubeMap: new CubeTextureLoader()
         .setPath(path('/envmaps/pond/'))
         .load([
           'posx.jpg',
@@ -347,8 +344,8 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
   );
 
   const [warehouseImage, setWarehouseImage] = useState<{
-    texture: three.DataTexture;
-    envMap: three.Texture;
+    texture: DataTexture;
+    envMap: Texture;
   }>();
   useEffect(() => {
     if (warehouseImage) {
@@ -357,7 +354,7 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
     new RGBELoader().load(
       path('/envmaps/empty_warehouse_01_2k.hdr'),
       (texture) => {
-        const pmremGenerator = new three.PMREMGenerator(renderer);
+        const pmremGenerator = new PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
         const envMap = pmremGenerator.fromEquirectangular(texture).texture;
         pmremGenerator.dispose();
@@ -376,22 +373,22 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
       scene.remove(sceneData.mesh);
     }
 
-    let mesh: three.Mesh;
-    let geometry: three.BufferGeometry;
+    let mesh: Mesh;
+    let geometry: BufferGeometry;
     if (previewObject === 'torusknot') {
-      geometry = new three.TorusKnotGeometry(0.6, 0.25, 200, 32);
+      geometry = new TorusKnotGeometry(0.6, 0.25, 200, 32);
     } else if (previewObject === 'cube') {
-      geometry = new three.BoxGeometry(1, 1, 1, 64, 64, 64);
+      geometry = new BoxGeometry(1, 1, 1, 64, 64, 64);
     } else if (previewObject === 'plane') {
-      geometry = new three.PlaneGeometry(1, 1, 64, 64);
+      geometry = new PlaneGeometry(1, 1, 64, 64);
     } else if (previewObject === 'sphere') {
-      geometry = new three.SphereGeometry(1, 128, 128);
+      geometry = new SphereGeometry(1, 128, 128);
     } else if (previewObject === 'icosahedron') {
-      geometry = new three.IcosahedronGeometry(1, 0);
+      geometry = new IcosahedronGeometry(1, 0);
     } else {
       throw new Error(`Wtf there is no preview object named ${previewObject}`);
     }
-    mesh = new three.Mesh(geometry);
+    mesh = new Mesh(geometry);
     if (sceneData.mesh) {
       mesh.material = sceneData.mesh.material;
     }
@@ -438,12 +435,11 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
   const [ctx] = useState<EngineContext>(
     // Use context from hoisted ref as initializer to avoid re-creating context
     // including cache and envmaptexture
-    initialCtx || {
+    {
       engine: 'three',
       // TODO: Rename runtime to "engine" and make a new nodes and data top level
       // key cache (if we keep the material cache) and type it in the graph
       runtime: {
-        three,
         renderer,
         sceneData,
         scene,
@@ -481,13 +477,10 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
     const screenshotWidth = 400;
     screenshotCanvas.height = screenshotHeight;
     screenshotCanvas.width = screenshotWidth;
-    const target = new three.WebGLRenderTarget(
-      screenshotWidth,
-      screenshotHeight
-    );
-    target.texture.minFilter = three.LinearMipMapLinearFilter;
+    const target = new WebGLRenderTarget(screenshotWidth, screenshotHeight);
+    target.texture.minFilter = LinearMipMapLinearFilter;
 
-    const camera = new three.PerspectiveCamera(
+    const camera = new PerspectiveCamera(
       45,
       screenshotWidth / screenshotHeight,
       0.1,
@@ -504,7 +497,7 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
     camera.position.copy(
       SceneAngleVectors[viewAngle](5 * CameraDistances[previewObject])
     );
-    camera.lookAt(new three.Vector3(0, 0, 0));
+    camera.lookAt(new Vector3(0, 0, 0));
 
     renderer.setRenderTarget(target);
     renderer.render(scene, camera);
@@ -612,7 +605,7 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
       ...uniforms,
     };
 
-    log('🏞 Re-creating three.js material!', {
+    log('🏞 Re-creating js material!', {
       material,
       properties,
       uniforms: material.uniforms,
@@ -639,41 +632,41 @@ const ThreeComponent: React.FC<ThreeSceneProps> = ({
       scene.remove(light);
     });
 
-    let helpers: three.Object3D[] = [];
-    let newLights: three.Object3D[] = [];
+    let helpers: Object3D[] = [];
+    let newLights: Object3D[] = [];
     if (lights === 'point') {
-      const pointLight = new three.PointLight(0xffffff, 1);
+      const pointLight = new PointLight(0xffffff, 1);
       pointLight.position.set(0, 0, 2);
 
       newLights = [pointLight];
-      helpers = [new three.PointLightHelper(pointLight, 0.1)];
+      helpers = [new PointLightHelper(pointLight, 0.1)];
     } else if (lights === '3point') {
-      const light1 = new three.PointLight(0xffffff, 1, 0);
+      const light1 = new PointLight(0xffffff, 1, 0);
       light1.position.set(2, 2, 5);
 
-      const light2 = new three.PointLight(0xffffff, 1, 0);
+      const light2 = new PointLight(0xffffff, 1, 0);
       light2.position.set(-2, 5, -5);
 
-      const light3 = new three.PointLight(0xffffff, 1, 0);
+      const light3 = new PointLight(0xffffff, 1, 0);
       light3.position.set(5, -5, -5);
 
       newLights = [light1, light2, light3];
       helpers = [
-        new three.PointLightHelper(light1, 0.1),
-        new three.PointLightHelper(light2, 0.1),
-        new three.PointLightHelper(light3, 0.1),
+        new PointLightHelper(light1, 0.1),
+        new PointLightHelper(light2, 0.1),
+        new PointLightHelper(light3, 0.1),
       ];
     } else if (lights === 'spot') {
-      const light1 = new three.SpotLight(0x00ff00, 1, 3, 0.4, 1);
+      const light1 = new SpotLight(0x00ff00, 1, 3, 0.4, 1);
       light1.position.set(0, 0, 2);
 
-      const light2 = new three.SpotLight(0xff0000, 1, 4, 0.4, 1);
+      const light2 = new SpotLight(0xff0000, 1, 4, 0.4, 1);
       light2.position.set(0, 0, 2);
 
       newLights = [light1, light2];
       helpers = [
-        new three.SpotLightHelper(light1, new three.Color(0x00ff00)),
-        new three.SpotLightHelper(light2, new three.Color(0xff0000)),
+        new SpotLightHelper(light1, new Color(0x00ff00)),
+        new SpotLightHelper(light2, new Color(0xff0000)),
       ];
     }
 

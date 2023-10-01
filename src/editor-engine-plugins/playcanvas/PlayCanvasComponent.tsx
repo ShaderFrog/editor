@@ -30,6 +30,7 @@ import {
   playengine,
 } from '@core/plugins/playcanvas/playengine';
 import { usePlayCanvas } from './usePlayCanvas';
+import { SceneProps } from '@editor/editor/components/Editor';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -187,29 +188,7 @@ const buildTextureLoader =
       image.src = path;
     });
 
-type AnyFn = (...args: any) => any;
-type PlayCanvasComponentProps = {
-  compile: AnyFn;
-  compileResult: UICompileGraphResult | undefined;
-  graph: Graph;
-  lights: PreviewLight;
-  animatedLights: boolean;
-  setAnimatedLights: AnyFn;
-  previewObject: string;
-  setCtx: (ctx: EngineContext) => void;
-  setGlResult: AnyFn;
-  setLights: AnyFn;
-  setPreviewObject: AnyFn;
-  showHelpers: boolean;
-  setShowHelpers: AnyFn;
-  bg: string | undefined;
-  setBg: AnyFn;
-  width: number;
-  height: number;
-  assetPrefix: string;
-  takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
-};
-const PlayCanvasComponent: React.FC<PlayCanvasComponentProps> = ({
+const PlayCanvasComponent: React.FC<SceneProps> = ({
   compile,
   compileResult,
   graph,

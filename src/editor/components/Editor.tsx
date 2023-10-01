@@ -1090,6 +1090,7 @@ const Editor = ({
       }, 10);
     },
     [
+      addEngineNode,
       debouncedSetNeedsCompile,
       engine,
       ctx,

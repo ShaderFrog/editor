@@ -300,7 +300,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
         !Array.isArray(mesh.material)
       ) {
         // @ts-ignore
-        mesh.material.cameraPosition.time.value = camera.position;
+        mesh.material.uniforms.cameraPosition.value = camera.position;
       }
     }
   );

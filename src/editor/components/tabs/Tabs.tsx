@@ -1,67 +1,59 @@
-import React, { ReactNode } from 'react';
+import React, {
+  HTMLAttributes,
+  ReactNode,
+  createContext,
+  useContext,
+} from 'react';
 import classnames from 'classnames/bind';
 import style from './tabs.module.css';
 const cx = classnames.bind(style);
 
-type TabbableChildProps = {
-  selectedClassName: any;
-  selected: any;
-  onSelect: any;
-  index: any;
+type TabContextType = {
+  selectedClassName?: any;
+  onTabSelect: (index: number) => void;
+  selected: number;
 };
+type WithChildren<P> = P & { children?: ReactNode };
+
+const TabContext = createContext<TabContextType | null>(null);
 
 // Overall wrapping component
 const Tabs = ({
   children,
+  onTabSelect,
   selected,
-  onSelect,
-  selectedClassName,
-}: {
-  children: React.ReactNode;
-  selectedClassName?: any;
-  onSelect: (index: number) => void;
-  selected: number;
-}) => {
+  selectedClassName = 'tab_selected',
+  ...props
+}: HTMLAttributes<HTMLDivElement> & WithChildren<TabContextType>) => {
   return (
-    <>
-      {React.Children.map<ReactNode, ReactNode>(
-        children,
-        (child) =>
-          React.isValidElement(child) &&
-          React.cloneElement(child as React.ReactElement<TabbableChildProps>, {
-            selectedClassName,
-            selected,
-            onSelect,
-          })
-      )}
-    </>
+    <div {...props}>
+      <TabContext.Provider
+        value={{
+          onTabSelect,
+          selected,
+          selectedClassName,
+        }}
+      >
+        {children}
+      </TabContext.Provider>
+    </div>
   );
 };
 
 // Group of the tabs themselves
 const TabGroup = ({
+  className,
   children,
-  selected,
-  selectedClassName = 'tab_selected',
-  onSelect,
   ...props
-}: {
-  children?: React.ReactNode;
-  selected?: number;
-  className?: string;
-  selectedClassName?: string;
-  onSelect?: Function;
-}) => {
+}: WithChildren<{ className?: any }>) => {
   return (
-    <div {...props} className={cx('tab_tabs', props.className)}>
+    <div {...props} className={cx('tab_tabs', className)}>
       {React.Children.map<ReactNode, ReactNode>(
         children,
         (child, index) =>
           React.isValidElement(child) &&
-          React.cloneElement(child as React.ReactElement<TabbableChildProps>, {
-            selectedClassName,
-            selected,
-            onSelect,
+          // Tell each <Tab> about its index
+          React.cloneElement(child as React.ReactElement<{ index: number }>, {
             index,
           })
       )}
@@ -71,21 +63,17 @@ const TabGroup = ({
 
 // An individual tab
 const Tab = ({
-  children,
-  selected,
-  className,
-  selectedClassName,
-  onSelect,
   index,
+  className,
+  children,
   ...props
-}: {
-  children?: React.ReactNode;
-  selected?: number;
+}: WithChildren<{
   className?: any;
-  selectedClassName?: any;
-  onSelect?: Function;
   index?: number;
-}) => {
+}>) => {
+  const { selectedClassName, onTabSelect, selected } = useContext(
+    TabContext
+  ) as TabContextType;
   return (
     <div
       {...props}
@@ -94,7 +82,7 @@ const Tab = ({
       })}
       onClick={(event) => {
         event.preventDefault();
-        onSelect && onSelect(index);
+        onTabSelect && onTabSelect(index || 0);
       }}
     >
       {children}
@@ -102,22 +90,20 @@ const Tab = ({
   );
 };
 
-// Wraps all panels, shows the selected panel
-const TabPanels = ({
-  selected,
-  children,
-}: {
-  selected?: number;
-  children: React.ReactNode;
-}) => (
-  <>
-    {React.Children.map<ReactNode, ReactNode>(children, (child, index) =>
-      selected === index ? child : null
-    )}
-  </>
-);
+// Wraps all panels, shows only the selected panel
+const TabPanels = ({ children }: { children: React.ReactNode }) => {
+  const { selected } = useContext(TabContext) as TabContextType;
+  return (
+    <>
+      {React.Children.map<ReactNode, ReactNode>(children, (child, index) =>
+        selected === index ? child : null
+      )}
+    </>
+  );
+};
 
-// The contents for each tab
+// The contents for each tab. Just a thin wrapper around a div. I have no idea
+// why forwardref is here lol
 interface TabPanelProps extends React.HTMLAttributes<HTMLDivElement> {}
 const TabPanel = React.forwardRef<HTMLDivElement | null, TabPanelProps>(
   ({ children, ...props }, ref) => {

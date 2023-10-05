@@ -49,7 +49,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
 // Terrible hack to make the flow graph full height minus the tab height - I
 // need better layoutting of the tabs + graph
-const flowStyles = { height: 'calc(100% - 56px)', background: '#111' };
+const flowStyles = { background: '#111' };
 
 const flowKey = 'example-flow';
 

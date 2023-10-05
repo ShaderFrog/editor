@@ -5,10 +5,10 @@
   width: 100%;
   height: 100%;
 }
-.smallScreen.editorContainer {
+/* .smallScreen.editorContainer {
   display: grid;
   grid-template-rows: auto 1fr;
-}
+} */
 
 .gutter {
   background: green;
@@ -228,11 +228,26 @@ textarea.error {
 
 .editorControls {
   position: relative;
+  background: linear-gradient(0deg, #1a2317 10%, rgb(41, 41, 41));
+  box-shadow: inset 0 1px 0 rgb(59 59 59);
 }
 
 .sceneControls {
   padding: 6px 12px;
   background: linear-gradient(45deg, #1a1a1a, rgb(41, 41, 41));
+}
+
+/* shy header, greedy footer */
+.shrinkGrowRows {
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+/* greedy header, shy footer */
+.growShrinkRows {
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: 1fr auto;
 }
 
 .controlGrid {
@@ -244,13 +259,6 @@ textarea.error {
 .nodeEditorPanel {
   background: #2a2a2a;
   overflow: scroll;
-}
-.belowTabs {
-  top: 29px !important;
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
 }
 
 .colcolauto {
@@ -264,10 +272,10 @@ textarea.error {
   gap: 4px;
 }
 
-.reactFlowWrapper {
-  flex-grow: 1;
-  /* approximate height of tabs :( */
-  height: calc(100% - 28px);
+.fitMaxFitRows {
+  display: grid;
+  min-height: 100%;
+  grid-template-rows: auto 1fr auto;
 }
 
 .sceneContainer {
@@ -341,9 +349,6 @@ textarea.error {
 }
 
 .graphFooter {
-  position: absolute;
-  bottom: 0;
-  left: 0;
   background: linear-gradient(#31382a, #2b3028);
   color: #fff;
   border-top: 1px solid #47553e;

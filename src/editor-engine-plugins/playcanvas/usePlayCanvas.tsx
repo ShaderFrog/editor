@@ -30,6 +30,12 @@ type ScenePersistence = {
 };
 
 type Callback = (time: number) => void;
+function cancelAllAnimationFrames() {
+  let id = window.requestAnimationFrame(() => {});
+  while (id--) {
+    window.cancelAnimationFrame(id);
+  }
+}
 
 export const usePlayCanvas = (callback: Callback) => {
   const { getRefData } = useHoisty();
@@ -148,7 +154,12 @@ export const usePlayCanvas = (callback: Callback) => {
 
   const animate = useCallback(
     (deltaTime: number) => {
-      app.render();
+      // Catch attribute errors until https://github.com/playcanvas/engine/pull/5710 is merged
+      try {
+        app.render();
+      } catch (e) {
+        console.error('Render error!', e);
+      }
       orbitCamera.update(deltaTime);
       savedCallback.current(deltaTime);
     },
@@ -158,13 +169,24 @@ export const usePlayCanvas = (callback: Callback) => {
   useEffect(() => {
     if (pcDom) {
       log('🎬 Starting PC app.on(update)');
-
       app.on('update', animate);
+      if (!app.tick) {
+        // @ts-ignore
+        app.tick = app._lastTick;
+        app.tick();
+      }
     }
 
     return () => {
-      log('🛑 Cleaning up PC animationframe');
-      app.off('update');
+      if (pcDom) {
+        log('🛑 Stopping PC app');
+        app.off('update');
+        cancelAllAnimationFrames();
+        // @ts-ignore
+        app._lastTick = app.tick;
+        // @ts-ignore
+        app.tick = null;
+      }
     };
   }, [app, animate, pcDom]);
 

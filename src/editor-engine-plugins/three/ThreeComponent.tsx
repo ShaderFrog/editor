@@ -294,6 +294,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
         // @ts-ignore
         mesh.material.uniforms.time.value = time * 0.001;
       }
+      if (
+        // @ts-ignore
+        mesh.material?.uniforms?.cameraPosition &&
+        !Array.isArray(mesh.material)
+      ) {
+        // @ts-ignore
+        mesh.material.cameraPosition.time.value = camera.position;
+      }
     }
   );
 

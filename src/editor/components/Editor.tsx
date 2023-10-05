@@ -45,6 +45,8 @@ import {
   NodeInput,
   computeAllContexts,
   computeContextForNodes,
+  isDataNode,
+  NodeType,
 } from '@core/graph';
 
 import { Engine, EngineContext, convertToEngine } from '@core/engine';
@@ -1288,7 +1290,7 @@ const Editor = ({
           <div className="m-right-15">
             <button
               disabled={isSaving}
-              className="buttonauto formbutton"
+              className="buttonauto formbutton size2"
               onClick={onClickSave}
             >
               Save
@@ -1366,6 +1368,27 @@ const Editor = ({
             <SplitPane split="horizontal">
               <div className={cx(styles.shrinkGrowRows, 'wFull')}>
                 <div className={styles.editorControls}>
+                  <select
+                    className="select auto size2 m-right-5"
+                    onChange={(event) => {
+                      setActiveNode(
+                        graph.nodes.find(
+                          (n) => n.id === event.target.value
+                        ) as SourceNode
+                      );
+                    }}
+                    value={activeNode.id}
+                  >
+                    {graph.nodes
+                      .filter(
+                        (n) => !isDataNode(n) && n.type !== NodeType.OUTPUT
+                      )
+                      .map((n) => (
+                        <option key={n.id} value={n.id}>
+                          {n.name} ({(n as SourceNode).stage})
+                        </option>
+                      ))}
+                  </select>
                   {activeNode.config?.properties?.length ||
                   activeNode.engine ? (
                     <div className={styles.infoMsg}>
@@ -1374,7 +1397,7 @@ const Editor = ({
                     </div>
                   ) : (
                     <button
-                      className="buttonauto formbutton"
+                      className="buttonauto formbutton size2"
                       onClick={() =>
                         compile(
                           engine,
@@ -1390,6 +1413,7 @@ const Editor = ({
                 </div>
                 <CodeEditor
                   engine={engine}
+                  identity={activeNode.id}
                   defaultValue={activeNode.source}
                   onSave={() => {
                     compile(engine, ctx as EngineContext, graph, flowElements);
@@ -1408,11 +1432,7 @@ const Editor = ({
               <div className={cx(styles.splitInner, styles.nodeEditorPanel)}>
                 <StrategyEditor
                   ctx={ctx}
-                  node={
-                    graph.nodes.find(
-                      ({ id }) => id === activeNode.id
-                    ) as SourceNode
-                  }
+                  node={activeNode}
                   onSave={() =>
                     compile(engine, ctx as EngineContext, graph, flowElements)
                   }

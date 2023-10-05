@@ -230,6 +230,7 @@ textarea.error {
   position: relative;
   background: linear-gradient(0deg, #1a2317 10%, rgb(41, 41, 41));
   box-shadow: inset 0 1px 0 rgb(59 59 59);
+  padding: 3px 6px 2px;
 }
 
 .sceneControls {

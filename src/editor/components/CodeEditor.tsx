@@ -3,11 +3,14 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { monacoGlsl } from '../monaco-glsl';
 
 import { Engine } from '@core/engine';
+import { usePrevious } from '../hooks/usePrevious';
+import { useEffect, useRef } from 'react';
 
 type AnyFn = (...args: any) => any;
 
 type MonacoProps = {
   engine: Engine;
+  identity?: string;
   defaultValue?: string;
   value?: string;
   readOnly?: boolean;
@@ -16,12 +19,14 @@ type MonacoProps = {
 };
 const CodeEditor = ({
   engine,
+  identity,
   value,
   defaultValue,
   readOnly,
   onChange,
   onSave,
 }: MonacoProps) => {
+  const lastIdentity = usePrevious(identity);
   const beforeMount = (monaco: Monaco) => {
     monaco.editor.defineTheme('frogTheme', {
       base: 'vs-dark', // can also be vs-dark or hc-black
@@ -61,10 +66,13 @@ const CodeEditor = ({
     });
   };
 
+  const monacoRef = useRef<monaco.editor.IStandaloneCodeEditor>();
+
   const onMount = (
     editor: monaco.editor.IStandaloneCodeEditor,
     monaco: Monaco
   ) => {
+    monacoRef.current = editor;
     if (onSave) {
       editor.addAction({
         // An unique identifier of the contributed action.
@@ -99,6 +107,12 @@ const CodeEditor = ({
       });
     }
   };
+
+  useEffect(() => {
+    if (identity !== lastIdentity && monacoRef.current) {
+      monacoRef.current.setValue(defaultValue || '');
+    }
+  }, [identity, lastIdentity, defaultValue]);
 
   return (
     <MonacoEditor

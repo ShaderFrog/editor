@@ -244,6 +244,8 @@ const BabylonComponent: React.FC<SceneProps> = ({
         path('/Big_pebbles_pxr128_normal.jpeg'),
         scene
       ),
+      testBump: new BABYLON.Texture(path('/testBumpMap.png'), scene),
+      testNormal: new BABYLON.Texture(path('/testNormalMap.png'), scene),
       pebblesBump: new BABYLON.Texture(
         path('/Big_pebbles_pxr128_bmp.jpeg'),
         scene

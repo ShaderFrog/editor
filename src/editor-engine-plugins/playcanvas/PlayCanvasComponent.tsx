@@ -333,6 +333,8 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
           path('/Big_pebbles_pxr128_normal.jpeg')
         ),
         pebblesBump: await textureLoader(path('/Big_pebbles_pxr128_bmp.jpeg')),
+        testNormal: await textureLoader(path('/testNormalMap.png')),
+        testBump: await textureLoader(path('/testBumpMap.png')),
         pondCubeMap: null,
         cityCourtYard: await loadAsset(
           app,

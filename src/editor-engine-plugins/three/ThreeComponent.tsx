@@ -336,6 +336,16 @@ const ThreeComponent: React.FC<SceneProps> = ({
         3,
         3
       ),
+      testNormal: repeat(
+        new TextureLoader().load(path('/testNormalMap.png')),
+        3,
+        3
+      ),
+      testBump: repeat(
+        new TextureLoader().load(path('/testBumpMap.png')),
+        3,
+        3
+      ),
       pondCubeMap: new CubeTextureLoader()
         .setPath(path('/envmaps/pond/'))
         .load([

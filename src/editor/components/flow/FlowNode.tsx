@@ -315,6 +315,8 @@ const textures: Record<'texture' | 'samplerCube', [string, string][]> = {
     ['pebbles', 'Pebbbles'],
     ['pebblesNormal', 'Pebbbles Normal Map'],
     ['pebblesBump', 'Pebbbles Bump Map'],
+    ['testNormal', 'Test Normal Map'],
+    ['testBump', 'Test Bump Map'],
     ['threeTone', 'Three Tone'],
     ['explosion', 'Yellow Gradient'],
   ],

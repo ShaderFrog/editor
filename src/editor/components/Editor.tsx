@@ -151,6 +151,9 @@ const log = (...args: any[]) =>
  * - "displacementMap" on a three.js material is calculated in the vertex
  *   shader, so fundamentally it can't have fragment shaders plugged into it as
  *   images.
+ * - Setting custom vertex attributes on the mesh, then reading them in the shader, like
+ *   "in vec3 tangent;" get suffixed to "in vec3 tangent_1234;" and lose their relationship
+ *   with the attribute on the geometry.
  *
  * Polish / Improvements
  * - UX

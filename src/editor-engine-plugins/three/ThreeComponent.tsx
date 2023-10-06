@@ -31,6 +31,8 @@ import {
   Vector2,
   Vector3,
   WebGLRenderTarget,
+  Float32BufferAttribute,
+  BufferAttribute,
 } from 'three';
 import {
   Graph,
@@ -397,6 +399,42 @@ const ThreeComponent: React.FC<SceneProps> = ({
       geometry = new TorusKnotGeometry(0.6, 0.25, 200, 32);
     } else if (previewObject === 'cube') {
       geometry = new BoxGeometry(1, 1, 1, 64, 64, 64);
+
+      // const positions = geometry.attributes.position.array;
+      // const nVertices = positions.length / 3;
+
+      // const a = [-1, 0, 0];
+      // const b = [1, 0, 0];
+      // const c = [0, 0, -1];
+      // const d = [0, 0, 1];
+      // const e = [1, 0, 0];
+      // const f = [1, 0, 0];
+
+      // // const test = new Array(nVertices).fill(e).flat();
+
+      // // prettier-ignore
+      // const tangents =  new Float32Array([
+      //   -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, // Back
+      //   1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, // Front
+      //   1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, // Top
+      //   1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, // Bottom
+      //   0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, // Right
+      //   0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, // Left
+      // ]);
+      // geometry.setAttribute(
+      //   'tangent_16965730118305',
+      //   new Float32BufferAttribute(tangents, 3)
+      // );
+      // geometry.setAttribute(
+      //   'tangent',
+      //   new BufferAttribute(new Float32Array(3 * nVertices), 3)
+      // );
+      // const ts = geometry.getAttribute('tangent').array;
+      // for (let i = 0; i < ts.length; i++) {
+      //   // @ts-ignore
+      //   ts[i] = a[i % a.length];
+      // }
+      // console.log('set tangents', ts);
     } else if (previewObject === 'plane') {
       geometry = new PlaneGeometry(1, 1, 64, 64);
     } else if (previewObject === 'sphere') {
@@ -406,6 +444,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     } else {
       throw new Error(`Wtf there is no preview object named ${previewObject}`);
     }
+    geometry.computeTangents();
     mesh = new Mesh(geometry);
     if (sceneData.mesh) {
       mesh.material = sceneData.mesh.material;

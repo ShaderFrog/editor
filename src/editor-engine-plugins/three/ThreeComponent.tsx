@@ -548,7 +548,16 @@ const ThreeComponent: React.FC<SceneProps> = ({
       properties: Record<string, any>;
     }>(
       ({ uniforms, properties }, [nodeId, inputs]) => {
-        const node = ensure(graph.nodes.find(({ id }) => id === nodeId));
+        const node = graph.nodes.find(({ id }) => id === nodeId);
+        if (!node) {
+          console.warn(
+            'Graph dataInputs referenced nodeId',
+            nodeId,
+            'which was not present.',
+            { compileResult }
+          );
+          return { uniforms, properties };
+        }
         const updatedUniforms: typeof uniforms = {};
         const updatedProperties: typeof properties = {};
 
@@ -613,7 +622,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       ...uniforms,
     };
 
-    log('🏞 Re-creating js material!', {
+    log('🏞 Re-creating Three.js material!', {
       material,
       properties,
       uniforms: material.uniforms,

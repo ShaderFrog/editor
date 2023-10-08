@@ -107,7 +107,7 @@ const defaultResolution = {
   icosahedronResolution: [0],
 };
 
-const lbz: Record<
+const resolutionConfigMapping: Record<
   string,
   { labels: string[]; key: keyof typeof defaultResolution }
 > = {
@@ -115,7 +115,7 @@ const lbz: Record<
     labels: ['Tube Segments', 'Radial Segments'],
     key: 'torusKnotResolution',
   },
-  box: {
+  cube: {
     labels: ['Width Segments', 'Height Segments', 'Depth Segments'],
     key: 'boxResolution',
   },
@@ -950,6 +950,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
   const [editorTabIndex, setEditorTabIndex] = useState<number>(0);
 
+  const resolutionConfig = resolutionConfigMapping[sceneConfig.previewObject];
+
   return (
     <>
       <Tabs onTabSelect={setEditorTabIndex} selected={editorTabIndex}>
@@ -1148,28 +1150,22 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     </label>
                   </div>
                 </div>
-
-                {/*
-                torusKnotResolution: [number, number];
-                boxResolution: [number, number, number];
-                planeResolution: [number, number];
-                sphereResolution: [number, number];
-                icosahedronResolution: number;
-                    */}
               </div>
             </div>
             <div className={styles.controlGrid}>
-              {/* TODO: Make all this work! */}
-              {sceneConfig.previewObject === 'sphere' ? (
+              {resolutionConfig ? (
                 <VectorEditor
                   value={
-                    sceneConfig.sphereResolution ||
-                    defaultResolution.sphereResolution
+                    sceneConfig[resolutionConfig.key] ||
+                    defaultResolution[resolutionConfig.key]
                   }
-                  placeholder={defaultResolution.sphereResolution}
-                  labels={['Width Segments', 'Height Segments']}
+                  placeholder={defaultResolution[resolutionConfig.key]}
+                  labels={resolutionConfig.labels}
                   onChange={(v) =>
-                    setSceneConfig({ ...sceneConfig, sphereResolution: v })
+                    setSceneConfig({
+                      ...sceneConfig,
+                      [resolutionConfig.key]: v,
+                    })
                   }
                 />
               ) : null}

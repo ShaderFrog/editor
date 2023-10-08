@@ -25,7 +25,7 @@ function Editor() {
       makeExampleGraph={makeExampleGraph}
       menuItems={menuItems}
       addEngineNode={addEngineNode}
-      SceneComponent={SceneComponent}
+      sceneComponent={SceneComponent}
     />
   );
 }

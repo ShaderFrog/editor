@@ -49,7 +49,7 @@ import {
   NodeType,
 } from '@core/graph';
 
-import { Engine, EngineContext, convertToEngine } from '@core/engine';
+import { Engine, EngineContext } from '@core/engine';
 
 import useThrottle from '../hooks/useThrottle';
 
@@ -61,7 +61,7 @@ import { FlowNodeSourceData, FlowNodeDataData } from './flow/FlowNode';
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import CodeEditor from './CodeEditor';
 
-import { Hoisty, useHoisty } from '../hoistedRefContext';
+import { Hoisty } from '../hoistedRefContext';
 import { UICompileGraphResult } from '../uICompileGraphResult';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { ensure } from '../../editor-util/ensure';
@@ -154,6 +154,10 @@ const log = (...args: any[]) =>
  * - Setting custom vertex attributes on the mesh, then reading them in the shader, like
  *   "in vec3 tangent;" get suffixed to "in vec3 tangent_1234;" and lose their relationship
  *   with the attribute on the geometry.
+ * - Autosave shader while editing ( + memoizing to avoid recompiling three every time)
+ * - Fix graph saving of positions, when loading a graph nodes move around
+ * - Add ability to delete inputs from nodes? When removing a uniform, its
+ *   inputs don't go away.
  *
  * Polish / Improvements
  * - UX
@@ -238,6 +242,13 @@ const log = (...args: any[]) =>
  *   - Move engine nodes into engine specific constructors
  */
 
+export type BaseSceneConfig = {
+  bg: string | null;
+  lights: string;
+  previewObject: string;
+};
+type AnySceneConfig = BaseSceneConfig & Record<string, any>;
+
 // This must be kept in sync with the site/ shader model. TODO: Should that be
 // moved into Core instead?
 export type EditorShader = {
@@ -255,11 +266,7 @@ export type EditorShader = {
       nodes: any[];
       edges: any[];
     };
-    scene: {
-      bg: string;
-      lights: string;
-      previewObject: string;
-    };
+    scene: AnySceneConfig;
   };
 };
 // Ditto. Maybe one day extract a @shaderfrog/types library or something
@@ -276,28 +283,31 @@ type ShaderCreateInput = Omit<
 >;
 
 type AnyFn = (...args: any) => any;
+
+/**
+ * This is the interface for the props that any engine scene component must
+ * accept. Usage:
+ *    <Editor sceneComponent={MyEngineEditor} />
+ * Where MyEngineEditor (the component) must accept these props, because this
+ * parent editor component controls their state/functionality
+ */
 export type SceneProps = {
   compile: AnyFn;
   compileResult: UICompileGraphResult | undefined;
   graph: Graph;
-  lights: PreviewLight;
-  animatedLights: boolean;
-  setAnimatedLights: AnyFn;
-  previewObject: string;
   setCtx: (ctx: EngineContext) => void;
+  sceneConfig: AnySceneConfig;
+  setSceneConfig: (config: AnySceneConfig) => void;
   setGlResult: AnyFn;
-  setLights: AnyFn;
-  setPreviewObject: AnyFn;
-  showHelpers: boolean;
-  setShowHelpers: AnyFn;
-  bg: string | undefined;
-  setBg: AnyFn;
   width: number;
   height: number;
   assetPrefix: string;
   takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
 };
 
+/**
+ * Props you must pass to <Editor /> from the wrapping page
+ */
 export type EditorProps = {
   assetPrefix: string;
   saveError?: string;
@@ -306,6 +316,10 @@ export type EditorProps = {
   onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
 };
 
+/**
+ * Props that individual engine components (like ThreeEditor.tsx) combine with
+ * parent EditorProps to this component.
+ */
 export type EngineProps = {
   engine: Engine;
   example: string;
@@ -319,7 +333,7 @@ export type EngineProps = {
     newEdgeData?: Omit<Edge, 'id' | 'from'>,
     defaultValue?: any
   ) => [Set<string>, Graph] | undefined;
-  SceneComponent: FunctionComponent<SceneProps>;
+  sceneComponent: FunctionComponent<SceneProps>;
 };
 
 const Editor = ({
@@ -333,7 +347,7 @@ const Editor = ({
   examples,
   makeExampleGraph,
   menuItems,
-  SceneComponent,
+  sceneComponent: SceneComponent,
   addEngineNode,
 }: EditorProps & EngineProps) => {
   const [shader, setShader] = useState<EditorShader>(() => {
@@ -357,7 +371,6 @@ const Editor = ({
       }
     );
   });
-  const { getRefData } = useHoisty();
 
   const [screenshotData, setScreenshotData] = useState<string>('');
   const takeScreenshotRef = useRef<() => Promise<string>>();
@@ -382,33 +395,30 @@ const Editor = ({
     }
   );
 
-  const [
-    initialGraph,
-    initialPreviewObject,
-    initialLights,
-    initialBg,
-    initialExample,
-  ] = useMemo(() => {
+  const [initialGraph, initialSceneConfig, initialExample] = useMemo(() => {
     const query = new URLSearchParams(window.location.search);
     const exampleGraph = query.get('example') || example;
     if (initialShader) {
-      return [
-        initialShader.config.graph as Graph,
-        initialShader.config.scene.previewObject,
-        initialShader.config.scene.lights,
-        initialShader.config.scene.bg,
-      ];
+      return [initialShader.config.graph as Graph, initialShader.config.scene];
     }
     // @ts-ignore
-    const [graph, a, b] = makeExampleGraph(exampleGraph);
-    return [expandUniformDataNodes(graph), a, 'point', b, exampleGraph];
+    const [graph, previewObject, bg] = makeExampleGraph(exampleGraph);
+    return [
+      expandUniformDataNodes(graph),
+      {
+        bg,
+        previewObject,
+        lights: 'point',
+      },
+      exampleGraph,
+    ];
   }, [makeExampleGraph, example, initialShader]);
 
   const [currentExample, setExample] = useState<string | null | undefined>(
     initialExample
   );
-  const [previewObject, setPreviewObject] = useState(initialPreviewObject);
-  const [bg, setBg] = useState<string>(initialBg);
+  const [sceneConfig, setSceneConfig] =
+    useState<AnySceneConfig>(initialSceneConfig);
   const [graph, setGraph] = useLocalStorage<Graph>('graph', initialGraph);
 
   const sceneWrapRef = useRef<HTMLDivElement>(null);
@@ -421,18 +431,13 @@ const Editor = ({
   const [contexting, setContexting] = useState<boolean>(false);
   const [compiling, setCompiling] = useState<boolean>(false);
   const [guiError, setGuiError] = useState<string>('');
-  const [lights, setLights] = useState<PreviewLight>(
-    initialLights as PreviewLight
-  );
-  const [showHelpers, setShowHelpers] = useState<boolean>(false);
-  const [animatedLights, setAnimatedLights] = useState<boolean>(true);
 
   useEffect(() => {
     const t = setTimeout(takeScreenshot, 500);
     return () => {
       window.clearTimeout(t);
     };
-  }, [takeScreenshot, previewObject, bg, graph, lights, animatedLights]);
+  }, [takeScreenshot, sceneConfig, graph]);
 
   const [activeNode, setActiveNode] = useState<SourceNode>(
     (graph.nodes.find((n) => n.type === 'source') ||
@@ -673,8 +678,11 @@ const Editor = ({
       );
       const newGraph = expandUniformDataNodes(graph);
       setGraph(newGraph);
-      setPreviewObject(previewObject);
-      setBg(bg);
+      setSceneConfig({
+        lights: 'point',
+        bg,
+        previewObject,
+      });
       setActiveNode(newGraph.nodes[0] as SourceNode);
 
       if (ctx) {
@@ -688,8 +696,6 @@ const Editor = ({
     currentExample,
     previousExample,
     setGraph,
-    setPreviewObject,
-    setBg,
     ctx,
     initializeGraph,
     examples,
@@ -1253,11 +1259,7 @@ const Editor = ({
       imageData: screenshotData,
       config: {
         graph: updateGraphFromFlowGraph(graph, flowElements),
-        scene: {
-          bg,
-          lights,
-          previewObject,
-        },
+        scene: sceneConfig,
       },
     };
     if (shader?.id && onUpdateShader) {
@@ -1559,18 +1561,10 @@ const Editor = ({
       ) : null}
       <div className={styles.sceneAndControls}>
         <SceneComponent
-          bg={bg}
-          setBg={setBg}
+          sceneConfig={sceneConfig}
+          setSceneConfig={setSceneConfig}
           setCtx={setCtx}
           graph={graph}
-          setShowHelpers={setShowHelpers}
-          showHelpers={showHelpers}
-          lights={lights}
-          setLights={setLights}
-          animatedLights={animatedLights}
-          setAnimatedLights={setAnimatedLights}
-          previewObject={previewObject}
-          setPreviewObject={setPreviewObject}
           compile={childCompile}
           compileResult={compileResult}
           setGlResult={setGlResult}

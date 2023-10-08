@@ -1,4 +1,6 @@
-import { createContext, useContext, useRef } from 'react';
+import { createContext, useContext, useEffect, useRef } from 'react';
+
+// WARNING: This file is duplicated in site and editor
 
 // TODO: Try replacing with zustand?
 export const HoistedRef = createContext<any>({});
@@ -26,6 +28,18 @@ export const Hoisty: React.FC = ({ children }) => {
     }
     return refData.current[key];
   };
+
+  useEffect(() => {
+    return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      Object.entries(refData.current || {}).forEach(([key, value]) => {
+        if (value?.destroy) {
+          console.log(`Hoisted Context calling destroy for ${key}`);
+          value.destroy();
+        }
+      });
+    };
+  }, []);
 
   return (
     <HoistedRef.Provider value={{ refData, getRefData }}>

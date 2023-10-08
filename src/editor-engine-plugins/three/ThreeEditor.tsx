@@ -22,7 +22,7 @@ const Editor = (props: EditorProps) => {
       makeExampleGraph={makeExampleGraph}
       menuItems={menuItems}
       addEngineNode={addEngineNode}
-      SceneComponent={ThreeComponent}
+      sceneComponent={ThreeComponent}
     />
   );
 };

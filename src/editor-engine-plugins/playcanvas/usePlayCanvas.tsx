@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useRef, useState, useContext } from 'react';
-import * as pc from 'playcanvas';
+import {
+  Application,
+  Color,
+  Entity,
+  FILLMODE_NONE,
+  Keyboard,
+  Material,
+  Mouse,
+  RESOLUTION_AUTO,
+  StandardMaterial,
+  TouchDevice,
+  Vec3,
+} from 'playcanvas';
 import {
   OrbitCamera,
   OrbitCameraInputMouse,
@@ -13,8 +25,8 @@ const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(pc.usePc)\x1b[0m', ...args);
 
 type SceneData = {
-  lights: pc.Entity[];
-  mesh?: pc.Entity;
+  lights: Entity[];
+  mesh?: Entity;
 };
 type ScenePersistence = {
   sceneData: SceneData;
@@ -24,9 +36,9 @@ type ScenePersistence = {
   orbitCameraInputKeyboard: OrbitCameraInputKeyboard;
   canvas: HTMLCanvasElement;
   pcDom: HTMLDivElement;
-  app: pc.Application;
-  camera: pc.Entity;
-  loadingMaterial: pc.Material;
+  app: Application;
+  camera: Entity;
+  loadingMaterial: Material;
 };
 
 type Callback = (time: number) => void;
@@ -53,22 +65,23 @@ export const usePlayCanvas = (callback: Callback) => {
   } = getRefData<Omit<ScenePersistence, 'pcDom'>>('playcanvas', () => {
     const canvas = document.createElement('canvas');
 
-    const app = new pc.Application(canvas, {
-      mouse: new pc.Mouse(canvas),
-      touch: new pc.TouchDevice(canvas),
-      keyboard: new pc.Keyboard(window),
+    log('Creating new Playcanvas Application!');
+    const app = new Application(canvas, {
+      mouse: new Mouse(canvas),
+      touch: new TouchDevice(canvas),
+      keyboard: new Keyboard(window),
     });
     // fill the available space at full resolution
-    app.setCanvasFillMode(pc.FILLMODE_NONE);
-    app.setCanvasResolution(pc.RESOLUTION_AUTO);
+    app.setCanvasFillMode(FILLMODE_NONE);
+    app.setCanvasResolution(RESOLUTION_AUTO);
 
     app.start();
 
-    const camera = new pc.Entity('camera');
+    const camera = new Entity('camera');
     camera.addComponent('camera', {
       fov: 75,
       frustumCulling: true,
-      clearColor: new pc.Color(0, 0, 0, 0),
+      clearColor: new Color(0, 0, 0, 0),
     });
     camera.setPosition(0, 0, 6);
 
@@ -100,12 +113,12 @@ export const usePlayCanvas = (callback: Callback) => {
       orbitCamera
     );
 
-    orbitCamera.focalPoint.snapto(new pc.Vec3(0, 0, 0));
-    orbitCamera.azimElevDistance.snapto(new pc.Vec3(0, -10, 2));
+    orbitCamera.focalPoint.snapto(new Vec3(0, 0, 0));
+    orbitCamera.azimElevDistance.snapto(new Vec3(0, -10, 2));
 
     app.root.addChild(camera);
 
-    const loadingMaterial = new pc.StandardMaterial();
+    const loadingMaterial = new StandardMaterial();
     Object.assign(loadingMaterial, physicalDefaultProperties);
     loadingMaterial.diffuse.set(0.8, 0.2, 0.5);
     loadingMaterial.update();
@@ -167,28 +180,18 @@ export const usePlayCanvas = (callback: Callback) => {
   );
 
   useEffect(() => {
-    if (pcDom) {
-      log('🎬 Starting PC app.on(update)');
-      app.on('update', animate);
-      if (!app.tick) {
-        // @ts-ignore
-        app.tick = app._lastTick;
-        app.tick();
-      }
-    }
+    log('🎬 Starting PC app.on(update)');
+    app.on('update', animate);
+    app.renderNextFrame = true;
+    app.autoRender = true;
 
     return () => {
-      if (pcDom) {
-        log('🛑 Stopping PC app');
-        app.off('update');
-        cancelAllAnimationFrames();
-        // @ts-ignore
-        app._lastTick = app.tick;
-        // @ts-ignore
-        app.tick = null;
-      }
+      log('🛑 Stopping PC app rendering');
+      app.renderNextFrame = false;
+      app.autoRender = false;
+      app.off('update');
     };
-  }, [app, animate, pcDom]);
+  }, [app, animate]);
 
   return {
     canvas,

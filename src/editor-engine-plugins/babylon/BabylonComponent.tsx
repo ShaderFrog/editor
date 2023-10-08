@@ -1,16 +1,29 @@
-import * as BABYLON from 'babylonjs';
 import {
-  MutableRefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+  Axis,
+  Color3,
+  CubeTexture,
+  Effect,
+  FreeCamera,
+  HDRCubeTexture,
+  Light,
+  Logger,
+  Material,
+  Matrix,
+  Mesh,
+  MeshBuilder,
+  PBRMaterial,
+  PointLight,
+  Scene,
+  SpotLight,
+  StandardMaterial,
+  Texture,
+  Tools,
+  Vector3,
+} from 'babylonjs';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   mangleVar,
-  Graph,
   evaluateNode,
   SamplerCubeNode,
   TextureNode,
@@ -25,7 +38,6 @@ import styles from '../../editor/styles/editor.module.css';
 
 import { useBabylon } from './useBabylon';
 import { usePrevious } from '../../editor/hooks/usePrevious';
-import { UICompileGraphResult } from '../../editor/uICompileGraphResult';
 import { useSize } from '../../editor/hooks/useSize';
 import { Nullable } from 'babylonjs';
 import { SceneProps } from '@editor/editor/components/Editor';
@@ -50,19 +62,13 @@ export const SceneAngles = {
 const calculateViewPosition =
   (xPosition: number, yPosition: number) => (radius: number) => {
     const spread = 0.8;
-    const position = new BABYLON.Vector3(0, 0, radius);
+    const position = new Vector3(0, 0, radius);
 
     // No idea if this is righ tlol
-    const matrixX = BABYLON.Matrix.RotationAxis(
-      BABYLON.Axis.X,
-      yPosition * spread
-    );
-    const matrixY = BABYLON.Matrix.RotationAxis(
-      BABYLON.Axis.Y,
-      yPosition * spread
-    );
-    const transformed = BABYLON.Vector3.TransformCoordinates(
-      BABYLON.Vector3.TransformCoordinates(position, matrixX),
+    const matrixX = Matrix.RotationAxis(Axis.X, yPosition * spread);
+    const matrixY = Matrix.RotationAxis(Axis.Y, yPosition * spread);
+    const transformed = Vector3.TransformCoordinates(
+      Vector3.TransformCoordinates(position, matrixX),
       matrixY
     );
     return transformed;
@@ -108,10 +114,10 @@ export const CameraDistances: Record<string, number> = {
 
 let mIdx = 0;
 let id = () => mIdx++;
-const _err = BABYLON.Logger.Error;
+const _err = Logger.Error;
 let capturing = false;
 let capture: any[] = [];
-BABYLON.Logger.Error = (...args) => {
+Logger.Error = (...args) => {
   const str = args[0] || '';
   if (capturing || str.includes('Unable to compile effect')) {
     capturing = true;
@@ -123,13 +129,13 @@ BABYLON.Logger.Error = (...args) => {
   _err(...args);
 };
 
-type OnBeforeDraw = (mesh: BABYLON.Mesh) => void;
+type OnBeforeDraw = (mesh: Mesh) => void;
 const useOnMeshDraw = (
-  mesh: BABYLON.Mesh | undefined,
-  callback: (mesh: BABYLON.Mesh) => void
+  mesh: Mesh | undefined,
+  callback: (mesh: Mesh) => void
 ) => {
   const lastMesh = usePrevious(mesh);
-  const savedCallback = useRef<(mesh: BABYLON.Mesh) => void>(callback);
+  const savedCallback = useRef<(mesh: Mesh) => void>(callback);
 
   useEffect(() => {
     savedCallback.current = callback;
@@ -148,14 +154,14 @@ const useOnMeshDraw = (
   }, [lastMesh, mesh]);
 };
 
-const lightHelper = (scene: BABYLON.Scene, parent: BABYLON.Light) => {
-  const helper = BABYLON.MeshBuilder.CreatePolyhedron(
+const lightHelper = (scene: Scene, parent: Light) => {
+  const helper = MeshBuilder.CreatePolyhedron(
     'oct',
     { type: 1, size: 0.075 },
     scene
   );
-  const mat1 = new BABYLON.StandardMaterial('lighthelpermat' + id(), scene);
-  mat1.emissiveColor = new BABYLON.Color3(1, 1, 1);
+  const mat1 = new StandardMaterial('lighthelpermat' + id(), scene);
+  mat1.emissiveColor = new Color3(1, 1, 1);
   mat1.wireframe = true;
   helper.material = mat1;
   helper.setParent(parent);
@@ -167,18 +173,10 @@ const BabylonComponent: React.FC<SceneProps> = ({
   compile,
   compileResult,
   graph,
-  lights,
-  setLights,
-  animatedLights,
-  setAnimatedLights,
-  previewObject,
+  sceneConfig,
+  setSceneConfig,
   setCtx,
   setGlResult,
-  setPreviewObject,
-  bg,
-  setBg,
-  showHelpers,
-  setShowHelpers,
   width,
   height,
   assetPrefix,
@@ -209,12 +207,12 @@ const BabylonComponent: React.FC<SceneProps> = ({
     }
 
     const { lights: lightMeshes } = sceneData;
-    if (animatedLights) {
-      if (lights === 'point') {
-        const light = lightMeshes[0] as BABYLON.PointLight;
+    if (sceneConfig.animatedLights) {
+      if (sceneConfig.lights === 'point') {
+        const light = lightMeshes[0] as PointLight;
         light.position.x = 1.2 * Math.sin(time * 0.001);
         light.position.y = 1.2 * Math.cos(time * 0.001);
-      } else if (lights === 'spot') {
+      } else if (sceneConfig.lights === 'spot') {
         // I haven't done this yet
       }
     }
@@ -225,38 +223,29 @@ const BabylonComponent: React.FC<SceneProps> = ({
   });
 
   const textures = useMemo<
-    Record<
-      string,
-      BABYLON.Texture | BABYLON.HDRCubeTexture | BABYLON.CubeTexture | null
-    >
+    Record<string, Texture | HDRCubeTexture | CubeTexture | null>
   >(
     () => ({
-      explosion: new BABYLON.Texture(path('/explosion.png'), scene),
-      'grayscale-noise': new BABYLON.Texture(
-        path('/grayscale-noise.png'),
-        scene
-      ),
-      threeTone: new BABYLON.Texture(path('/3tone.jpg'), scene),
-      brick: new BABYLON.Texture(path('/bricks.jpeg'), scene),
-      brickNormal: new BABYLON.Texture(path('/bricknormal.jpeg'), scene),
-      pebbles: new BABYLON.Texture(path('/Big_pebbles_pxr128.jpeg'), scene),
-      pebblesNormal: new BABYLON.Texture(
+      explosion: new Texture(path('/explosion.png'), scene),
+      'grayscale-noise': new Texture(path('/grayscale-noise.png'), scene),
+      threeTone: new Texture(path('/3tone.jpg'), scene),
+      brick: new Texture(path('/bricks.jpeg'), scene),
+      brickNormal: new Texture(path('/bricknormal.jpeg'), scene),
+      pebbles: new Texture(path('/Big_pebbles_pxr128.jpeg'), scene),
+      pebblesNormal: new Texture(
         path('/Big_pebbles_pxr128_normal.jpeg'),
         scene
       ),
-      testBump: new BABYLON.Texture(path('/testBumpMap.png'), scene),
-      testNormal: new BABYLON.Texture(path('/testNormalMap.png'), scene),
-      pebblesBump: new BABYLON.Texture(
-        path('/Big_pebbles_pxr128_bmp.jpeg'),
-        scene
-      ),
+      testBump: new Texture(path('/testBumpMap.png'), scene),
+      testNormal: new Texture(path('/testNormalMap.png'), scene),
+      pebblesBump: new Texture(path('/Big_pebbles_pxr128_bmp.jpeg'), scene),
       pondCubeMap: null,
-      warehouseEnvTexture: new BABYLON.HDRCubeTexture(
+      warehouseEnvTexture: new HDRCubeTexture(
         path('/envmaps/room.hdr'),
         scene,
         512
       ),
-      cityCourtYard: BABYLON.CubeTexture.CreateFromPrefilteredData(
+      cityCourtYard: CubeTexture.CreateFromPrefilteredData(
         path('/envmaps/citycourtyard.dds'),
         scene
       ),
@@ -270,9 +259,9 @@ const BabylonComponent: React.FC<SceneProps> = ({
       sceneData.mesh.dispose();
     }
 
-    let mesh: BABYLON.Mesh;
-    if (previewObject === 'torusknot') {
-      mesh = BABYLON.MeshBuilder.CreateTorusKnot(
+    let mesh: Mesh;
+    if (sceneConfig.previewObject === 'torusknot') {
+      mesh = MeshBuilder.CreateTorusKnot(
         'torusKnot',
         {
           radius: 0.5,
@@ -281,15 +270,15 @@ const BabylonComponent: React.FC<SceneProps> = ({
         },
         scene
       );
-    } else if (previewObject === 'plane') {
-      mesh = BABYLON.MeshBuilder.CreatePlane(
+    } else if (sceneConfig.previewObject === 'plane') {
+      mesh = MeshBuilder.CreatePlane(
         'plane1',
-        { size: 2, sideOrientation: BABYLON.Mesh.DOUBLESIDE },
+        { size: 2, sideOrientation: Mesh.DOUBLESIDE },
         scene
       );
       mesh.increaseVertices(4);
-    } else if (previewObject === 'cube') {
-      mesh = BABYLON.MeshBuilder.CreateBox(
+    } else if (sceneConfig.previewObject === 'cube') {
+      mesh = MeshBuilder.CreateBox(
         'cube1',
         {
           size: 1,
@@ -297,8 +286,8 @@ const BabylonComponent: React.FC<SceneProps> = ({
         scene
       );
       mesh.increaseVertices(2);
-    } else if (previewObject === 'sphere') {
-      mesh = BABYLON.MeshBuilder.CreateSphere(
+    } else if (sceneConfig.previewObject === 'sphere') {
+      mesh = MeshBuilder.CreateSphere(
         'sphere1',
         {
           segments: 64,
@@ -307,12 +296,8 @@ const BabylonComponent: React.FC<SceneProps> = ({
         scene
       );
       mesh.increaseVertices(2);
-    } else if (previewObject === 'icosahedron') {
-      mesh = BABYLON.MeshBuilder.CreatePolyhedron(
-        'oct',
-        { type: 3, size: 1 },
-        scene
-      );
+    } else if (sceneConfig.previewObject === 'icosahedron') {
+      mesh = MeshBuilder.CreatePolyhedron('oct', { type: 3, size: 1 }, scene);
     } else {
       throw new Error('fffffff');
     }
@@ -320,10 +305,10 @@ const BabylonComponent: React.FC<SceneProps> = ({
       mesh.material = sceneData.mesh.material;
     }
     sceneData.mesh = mesh;
-  }, [previewObject, scene, sceneData]);
+  }, [sceneConfig.previewObject, scene, sceneData]);
 
   const meshUpdater = useCallback(
-    (mesh: BABYLON.Mesh) => {
+    (mesh: Mesh) => {
       if (mesh && mesh.material) {
         const effect = mesh.material.getEffect();
         if (!effect) {
@@ -335,7 +320,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
         // in this component at RawShaderMaterial creation time. There might be
         // some logic duplication to worry about.
         if (compileResult?.dataInputs && sceneData.mesh?.material) {
-          const material = sceneData.mesh.material as BABYLON.Material &
+          const material = sceneData.mesh.material as Material &
             Record<string, any>;
           Object.entries(compileResult.dataInputs).forEach(
             ([nodeId, inputs]) => {
@@ -455,14 +440,14 @@ const BabylonComponent: React.FC<SceneProps> = ({
     setCtx(ctx);
   }, [ctx, setCtx]);
 
-  const previousPreviewObject = usePrevious(previewObject);
-  const previousBg = usePrevious(bg);
-  const skybox = useRef<Nullable<BABYLON.Mesh>>();
+  const previousPreviewObject = usePrevious(sceneConfig.previewObject);
+  const previousBg = usePrevious(sceneConfig.bg);
+  const skybox = useRef<Nullable<Mesh>>();
   useEffect(() => {
-    if (bg === previousBg) {
+    if (sceneConfig.bg === previousBg) {
       return;
     }
-    const newBg = bg ? textures[bg] : null;
+    const newBg = sceneConfig.bg ? textures[sceneConfig.bg] : null;
     scene.environmentTexture = newBg;
     if (skybox.current) {
       skybox.current.dispose();
@@ -471,11 +456,11 @@ const BabylonComponent: React.FC<SceneProps> = ({
       skybox.current = scene.createDefaultSkybox(newBg);
     }
   }, [
-    bg,
+    sceneConfig.bg,
     previousBg,
     previousPreviewObject,
     sceneData,
-    previewObject,
+    sceneConfig.previewObject,
     scene,
     textures,
   ]);
@@ -496,7 +481,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
 
     // TODO: This hard codes the assumption there's a Physical material in the
     // graph.
-    const shaderMaterial = new BABYLON.PBRMaterial(pbrName, scene);
+    const shaderMaterial = new PBRMaterial(pbrName, scene);
     // @ts-ignore
     const graphProperties: Record<string, any> = {};
 
@@ -518,8 +503,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
         // @ts-ignore
         if (edge) {
           if (input?.dataType === 'texture' && input.property) {
-            graphProperties[input.property] =
-              textures.brickNormal as BABYLON.Texture;
+            graphProperties[input.property] = textures.brickNormal as Texture;
           }
         }
       });
@@ -538,8 +522,8 @@ const BabylonComponent: React.FC<SceneProps> = ({
     shaderMaterial.linkRefractionWithTransparency = true;
     shaderMaterial.subSurface.isRefractionEnabled = true;
     // shaderMaterial.forceIrradianceInFragment = true;
-    // shaderMaterial.bumpTexture = images.brickNormal as BABYLON.Texture;
-    // shaderMaterial.albedoColor = new BABYLON.Color3(1.0, 1.0, 1.0);
+    // shaderMaterial.bumpTexture = images.brickNormal as Texture;
+    // shaderMaterial.albedoColor = new Color3(1.0, 1.0, 1.0);
     // shaderMaterial.metallic = 0.0;
     // Roughness of 0 makes the material black.
     // shaderMaterial.roughness = 1.0;
@@ -556,9 +540,9 @@ const BabylonComponent: React.FC<SceneProps> = ({
     // makes a network call to try to find the shader. Setting these values
     // makes Babylon not perform a network call. Ironically these values are
     // completely discarded because of processFinalCode.
-    BABYLON.Effect.ShadersStore[pbrName + 'VertexShader'] =
+    Effect.ShadersStore[pbrName + 'VertexShader'] =
       'Cant Be Empty Despite Being Unused';
-    BABYLON.Effect.ShadersStore[pbrName + 'FragmentShader'] =
+    Effect.ShadersStore[pbrName + 'FragmentShader'] =
       'Cant Be Empty Despite Being Unused';
 
     let didResove = false;
@@ -668,7 +652,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
       if (!didResove) {
         log('❌ DID NOT RE-CREATE SHADER ❌');
       }
-    }, 100);
+    }, 500);
 
     if (sceneData.mesh) {
       sceneData.mesh.material = shaderMaterial;
@@ -678,105 +662,96 @@ const BabylonComponent: React.FC<SceneProps> = ({
     // sceneRef.current.shadersUpdated = true;
   }, [scene, compileResult, textures.brickNormal, sceneData.mesh]);
 
-  const prevLights = usePrevious(lights);
-  const previousShowHelpers = usePrevious(showHelpers);
+  const prevLights = usePrevious(sceneConfig.lights);
+  const previousShowHelpers = usePrevious(sceneConfig.showHelpers);
   useEffect(() => {
     if (
-      (prevLights === lights && previousShowHelpers === showHelpers) ||
+      (prevLights === sceneConfig.lights &&
+        previousShowHelpers === sceneConfig.showHelpers) ||
       (prevLights === undefined && sceneData.lights.length)
     ) {
       return;
     }
+
     sceneData.lights.forEach((light) => light.dispose());
 
-    if (lights === 'point') {
-      const pointLight = new BABYLON.PointLight(
-        'p1',
-        new BABYLON.Vector3(1, 0, 0),
-        scene
-      );
-      pointLight.position = new BABYLON.Vector3(0, 0, 1);
-      pointLight.diffuse = new BABYLON.Color3(1, 1, 1);
-      pointLight.specular = new BABYLON.Color3(1, 1, 1);
+    if (sceneConfig.lights === 'point') {
+      const pointStartingPosition = new Vector3(0, 0, 2);
+      const pointLight = new PointLight('p1', new Vector3(1, 0, 0), scene);
+      pointLight.position = pointStartingPosition;
+      pointLight.diffuse = new Color3(1, 1, 1);
+      pointLight.specular = new Color3(1, 1, 1);
       sceneData.lights = [pointLight];
 
       // https://forum.babylonjs.com/t/creating-a-mesh-without-adding-to-the-scene/12546/17
       // :(
-      if (showHelpers) {
+      if (sceneConfig.showHelpers) {
         const sphere1 = lightHelper(scene, pointLight);
-        sphere1.position = new BABYLON.Vector3(0, 0, 2);
+        sphere1.position = pointStartingPosition;
         sceneData.lights = sceneData.lights.concat(sphere1);
       }
-    } else if (lights === '3point') {
-      const light1 = new BABYLON.PointLight(
-        'light1',
-        new BABYLON.Vector3(2, -2, 0),
-        scene
-      );
+    } else if (sceneConfig.lights === '3point') {
+      const light1 = new PointLight('light1', new Vector3(2, -2, 0), scene);
 
-      const light2 = new BABYLON.PointLight(
-        'light2',
-        new BABYLON.Vector3(-1, 2, 1),
-        scene
-      );
+      const light2 = new PointLight('light2', new Vector3(-1, 2, 1), scene);
 
-      const light3 = new BABYLON.PointLight(
-        'light3',
-        new BABYLON.Vector3(-1, -2, -1),
-        scene
-      );
+      const light3 = new PointLight('light3', new Vector3(-1, -2, -1), scene);
 
       sceneData.lights = [light1, light2, light3];
 
-      if (showHelpers) {
+      if (sceneConfig.showHelpers) {
         const sphere1 = lightHelper(scene, light1);
-        sphere1.position = new BABYLON.Vector3(2, -2, 0);
+        sphere1.position = new Vector3(2, -2, 0);
         const sphere2 = lightHelper(scene, light2);
-        sphere2.position = new BABYLON.Vector3(-1, 2, 1);
+        sphere2.position = new Vector3(-1, 2, 1);
         const sphere3 = lightHelper(scene, light3);
-        sphere3.position = new BABYLON.Vector3(-1, -2, -1);
+        sphere3.position = new Vector3(-1, -2, -1);
 
         sceneData.lights = sceneData.lights.concat(sphere1, sphere2, sphere3);
       }
-    } else if (lights === 'spot') {
-      const spot1 = new BABYLON.SpotLight(
+    } else if (sceneConfig.lights === 'spot') {
+      const spot1 = new SpotLight(
         'spotLight',
-        new BABYLON.Vector3(0, 0, 2),
-        new BABYLON.Vector3(0, 0, -1),
+        new Vector3(0, 0, 2),
+        new Vector3(0, 0, -1),
         Math.PI,
         0.1,
         scene
       );
-      spot1.position = new BABYLON.Vector3(0, 0, 2);
-      spot1.diffuse = new BABYLON.Color3(0, 1, 0);
-      spot1.specular = new BABYLON.Color3(0, 1, 0);
+      spot1.position = new Vector3(0, 0, 2);
+      spot1.diffuse = new Color3(0, 1, 0);
+      spot1.specular = new Color3(0, 1, 0);
 
-      const spot2 = new BABYLON.SpotLight(
+      const spot2 = new SpotLight(
         'spotLight2',
-        new BABYLON.Vector3(0, 0, 2),
-        new BABYLON.Vector3(0, 0, -1),
+        new Vector3(0, 0, 2),
+        new Vector3(0, 0, -1),
         Math.PI,
         0.1,
         scene
       );
-      spot2.position = new BABYLON.Vector3(0, 0, 2);
-      spot2.diffuse = new BABYLON.Color3(1, 0, 0);
-      spot2.specular = new BABYLON.Color3(1, 0, 0);
+      spot2.position = new Vector3(0, 0, 2);
+      spot2.diffuse = new Color3(1, 0, 0);
+      spot2.specular = new Color3(1, 0, 0);
 
       sceneData.lights = [spot1, spot2];
 
-      if (showHelpers) {
+      if (sceneConfig.showHelpers) {
         const sphere1 = lightHelper(scene, spot1);
-        sphere1.position = new BABYLON.Vector3(0, 0, 2);
+        sphere1.position = new Vector3(0, 0, 2);
 
         const sphere2 = lightHelper(scene, spot2);
-        sphere2.position = new BABYLON.Vector3(0, 0, 2);
+        sphere2.position = new Vector3(0, 0, 2);
 
         sceneData.lights = sceneData.lights.concat(sphere1, sphere2);
       }
     }
 
-    if (prevLights && prevLights !== undefined && prevLights !== lights) {
+    if (
+      prevLights &&
+      prevLights !== undefined &&
+      prevLights !== sceneConfig.lights
+    ) {
       if (sceneData.mesh) {
         sceneData.mesh.material = loadingMaterial;
       }
@@ -785,12 +760,12 @@ const BabylonComponent: React.FC<SceneProps> = ({
   }, [
     sceneData,
     prevLights,
-    lights,
+    sceneConfig.lights,
     scene,
     compile,
     ctx,
     previousShowHelpers,
-    showHelpers,
+    sceneConfig.showHelpers,
     loadingMaterial,
   ]);
 
@@ -801,20 +776,22 @@ const BabylonComponent: React.FC<SceneProps> = ({
   }, [engine, canvas, width, height, ctx.runtime]);
 
   takeScreenshotRef.current = useCallback(async () => {
-    const viewAngle = SceneDefaultAngles[previewObject];
+    const viewAngle = SceneDefaultAngles[sceneConfig.previewObject];
 
     const screenshotHeight = 400;
     const screenshotWidth = 400;
 
-    const camera = new BABYLON.FreeCamera(
+    const camera = new FreeCamera(
       'screenshotCamera',
-      SceneAngleVectors[viewAngle](5 * CameraDistances[previewObject]),
+      SceneAngleVectors[viewAngle](
+        5 * CameraDistances[sceneConfig.previewObject]
+      ),
       scene
     );
-    camera.setTarget(BABYLON.Vector3.Zero());
+    camera.setTarget(Vector3.Zero());
 
     return new Promise<string>((resolve) => {
-      BABYLON.Tools.CreateScreenshotUsingRenderTarget(
+      Tools.CreateScreenshotUsingRenderTarget(
         engine,
         camera,
         {
@@ -824,7 +801,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
         resolve
       );
     });
-  }, [previewObject, scene, engine]);
+  }, [sceneConfig.previewObject, scene, engine]);
 
   return (
     <>
@@ -840,9 +817,9 @@ const BabylonComponent: React.FC<SceneProps> = ({
               id="Lightingsfs"
               className="select"
               onChange={(event) => {
-                setLights(event.target.value);
+                setSceneConfig({ ...sceneConfig, lights: event.target.value });
               }}
-              value={lights}
+              value={sceneConfig.lights}
             >
               <option value="point">Single Point Light</option>
               <option value="3point">Multiple Point Lights</option>
@@ -857,8 +834,13 @@ const BabylonComponent: React.FC<SceneProps> = ({
                   className="checkbox"
                   id="shp"
                   type="checkbox"
-                  checked={showHelpers}
-                  onChange={(event) => setShowHelpers(event?.target.checked)}
+                  checked={sceneConfig.showHelpers}
+                  onChange={(event) =>
+                    setSceneConfig({
+                      ...sceneConfig,
+                      showHelpers: event?.target.checked,
+                    })
+                  }
                 />
               </div>
               <div>
@@ -873,8 +855,13 @@ const BabylonComponent: React.FC<SceneProps> = ({
                   className="checkbox"
                   id="sha"
                   type="checkbox"
-                  checked={animatedLights}
-                  onChange={(event) => setAnimatedLights(event?.target.checked)}
+                  checked={sceneConfig.animatedLights}
+                  onChange={(event) =>
+                    setSceneConfig({
+                      ...sceneConfig,
+                      animatedLights: event?.target.checked,
+                    })
+                  }
                 />
               </div>
               <div>
@@ -895,9 +882,12 @@ const BabylonComponent: React.FC<SceneProps> = ({
               id="Modelsfs"
               className="select"
               onChange={(event) => {
-                setPreviewObject(event.target.value);
+                setSceneConfig({
+                  ...sceneConfig,
+                  previewObject: event.target.value,
+                });
               }}
-              value={previewObject}
+              value={sceneConfig.previewObject}
             >
               <option value="sphere">Sphere</option>
               <option value="cube">Cube</option>
@@ -917,11 +907,12 @@ const BabylonComponent: React.FC<SceneProps> = ({
               id="Backgroundsfs"
               className="select"
               onChange={(event) => {
-                setBg(
-                  event.target.value === 'none' ? null : event.target.value
-                );
+                setSceneConfig({
+                  ...sceneConfig,
+                  bg: event.target.value === 'none' ? null : event.target.value,
+                });
               }}
-              value={bg ? bg : 'none'}
+              value={sceneConfig.bg ? sceneConfig.bg : 'none'}
             >
               <option value="none">None</option>
               <option value="warehouseEnvTexture">Warehouse</option>

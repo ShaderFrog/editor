@@ -45,7 +45,7 @@
   },
   "peerDependencies": {
     "@shaderfrog/core": ">=0.0.2",
-    "@shaderfrog/glsl-parser": "^2.0.0-beta.5",
+    "@shaderfrog/glsl-parser": "^2.0.1",
     "classnames": ">=2.3.1",
     "next": ">=13.4.2",
     "react": ">=18.2.0",

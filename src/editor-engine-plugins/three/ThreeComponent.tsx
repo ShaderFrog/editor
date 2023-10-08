@@ -33,7 +33,12 @@ import {
   WebGLRenderTarget,
   Float32BufferAttribute,
   BufferAttribute,
+  Group,
 } from 'three';
+// @ts-ignore
+import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
+// @ts-ignore
+import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
 import {
   Graph,
   mangleVar,
@@ -44,6 +49,13 @@ import {
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import { EngineContext } from '@core/engine';
 
+import {
+  Tabs,
+  Tab,
+  TabGroup,
+  TabPanel,
+  TabPanels,
+} from '../../editor/components/tabs/Tabs';
 import styles from '../../editor/styles/editor.module.css';
 
 import {
@@ -73,6 +85,52 @@ const copyUIntToImageData = (data: Uint8Array, imageData: ImageData) => {
     imageData.data[index + 2] = data[i + 2]; //blue
     imageData.data[index + 3] = data[i + 3]; //alpha
   }
+};
+
+export type SceneConfig = {
+  showTangents: boolean;
+  showNormals: boolean;
+  wireframe: boolean;
+  doubleSide: boolean;
+  torusKnotResolution: [number, number];
+  boxResolution: [number, number, number];
+  planeResolution: [number, number];
+  sphereResolution: [number, number];
+  icosahedronResolution: [number];
+};
+
+const defaultResolution = {
+  torusKnotResolution: [200, 32],
+  boxResolution: [2, 2, 2],
+  planeResolution: [64, 64],
+  sphereResolution: [128, 128],
+  icosahedronResolution: [0],
+};
+
+const lbz: Record<
+  string,
+  { labels: string[]; key: keyof typeof defaultResolution }
+> = {
+  torusknot: {
+    labels: ['Tube Segments', 'Radial Segments'],
+    key: 'torusKnotResolution',
+  },
+  box: {
+    labels: ['Width Segments', 'Height Segments', 'Depth Segments'],
+    key: 'boxResolution',
+  },
+  plane: {
+    labels: ['Width Segments', 'Height Segments'],
+    key: 'planeResolution',
+  },
+  sphere: {
+    labels: ['Width Segments', 'Height Segments'],
+    key: 'sphereResolution',
+  },
+  icosahedron: {
+    labels: ['Detail'],
+    key: 'icosahedronResolution',
+  },
 };
 
 export const SceneAngles = {
@@ -140,22 +198,51 @@ const repeat = (t: Texture, x: number, y: number) => {
   return t;
 };
 
+const VectorEditor = ({
+  value,
+  labels,
+  placeholder,
+  onChange,
+}: {
+  value: string[];
+  placeholder: number[];
+  labels: string[];
+  onChange: (vector: string[]) => void;
+}) => {
+  return (
+    <div className={`grid col${labels.length}`}>
+      {labels.map((label, index) => (
+        <div key={label}>
+          <label className="label noselect">
+            {label}
+            <input
+              className="textinput"
+              type="text"
+              placeholder={placeholder[index].toString()}
+              value={value[index]}
+              onChange={(event) => {
+                onChange(
+                  value.map((val, idx) =>
+                    idx === index ? event.target.value : val
+                  )
+                );
+              }}
+            />
+          </label>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const ThreeComponent: React.FC<SceneProps> = ({
   compile,
   compileResult,
   graph,
-  lights,
-  animatedLights,
-  setAnimatedLights,
-  previewObject,
+  sceneConfig,
+  setSceneConfig,
   setCtx,
   setGlResult,
-  setLights,
-  showHelpers,
-  setShowHelpers,
-  setPreviewObject,
-  bg,
-  setBg,
   assetPrefix,
   takeScreenshotRef,
 }) => {
@@ -199,16 +286,22 @@ const ThreeComponent: React.FC<SceneProps> = ({
         shadersUpdated.current = false;
       }
 
-      if (animatedLights) {
-        if (lights === 'point' && sceneData.lights.length >= 1) {
+      if (sceneConfig.animatedLights) {
+        if (sceneConfig.lights === 'point' && sceneData.lights.length >= 1) {
           const light = sceneData.lights[0];
           light.position.x = 1.2 * Math.sin(time * 0.001);
           light.position.y = 1.2 * Math.cos(time * 0.001);
-        } else if (lights === 'point' && sceneData.lights.length >= 1) {
+        } else if (
+          sceneConfig.lights === 'point' &&
+          sceneData.lights.length >= 1
+        ) {
           const light = sceneData.lights[0];
           light.position.x = 1.2 * Math.sin(time * 0.001);
           light.position.y = 1.2 * Math.cos(time * 0.001);
-        } else if (lights === 'spot' && sceneData.lights.length >= 2) {
+        } else if (
+          sceneConfig.lights === 'spot' &&
+          sceneData.lights.length >= 2
+        ) {
           const light = sceneData.lights[0];
           light.position.x = 1.2 * Math.sin(time * 0.001);
           light.position.y = 1.2 * Math.cos(time * 0.001);
@@ -219,6 +312,11 @@ const ThreeComponent: React.FC<SceneProps> = ({
           light1.position.y = 1.3 * Math.sin(time * 0.0015);
 
           light1.lookAt(new Vector3(0, 0, 0));
+        } else if (sceneConfig.lights === '3point') {
+          const group = sceneData.lights[0];
+          group.rotation.x = 1.2 * Math.sin(time * 0.0002);
+          group.rotation.y = 1.2 * Math.cos(time * 0.0002);
+          group.rotation.z = 1.2 * Math.sin((time + Math.PI) * 0.0002);
         }
       }
 
@@ -384,9 +482,20 @@ const ThreeComponent: React.FC<SceneProps> = ({
     );
   }, [renderer, setWarehouseImage, warehouseImage, textures, path]);
 
-  const previousPreviewObject = usePrevious(previewObject);
+  const previousSceneConfig = usePrevious(sceneConfig);
   useEffect(() => {
-    if (previousPreviewObject === previewObject) {
+    if (
+      previousSceneConfig?.previewObject === sceneConfig.previewObject &&
+      previousSceneConfig?.showNormals === sceneConfig.showNormals &&
+      previousSceneConfig?.showTangents === sceneConfig.showTangents &&
+      previousSceneConfig?.torusKnotResolution ===
+        sceneConfig.torusKnotResolution &&
+      previousSceneConfig?.boxResolution === sceneConfig.boxResolution &&
+      previousSceneConfig?.planeResolution === sceneConfig.planeResolution &&
+      previousSceneConfig?.sphereResolution === sceneConfig.sphereResolution &&
+      previousSceneConfig?.icosahedronResolution ===
+        sceneConfig.icosahedronResolution
+    ) {
       return;
     }
     if (sceneData.mesh) {
@@ -395,10 +504,20 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     let mesh: Mesh;
     let geometry: BufferGeometry;
-    if (previewObject === 'torusknot') {
-      geometry = new TorusKnotGeometry(0.6, 0.25, 200, 32);
-    } else if (previewObject === 'cube') {
-      geometry = new BoxGeometry(1, 1, 1, 64, 64, 64);
+    if (sceneConfig.previewObject === 'torusknot') {
+      geometry = new TorusKnotGeometry(
+        0.6,
+        0.25,
+        ...(sceneConfig.torusKnotResolution ||
+          defaultResolution.torusKnotResolution)
+      );
+    } else if (sceneConfig.previewObject === 'cube') {
+      geometry = new BoxGeometry(
+        1,
+        1,
+        1,
+        ...(sceneConfig.boxResolution || defaultResolution.boxResolution)
+      );
 
       // const positions = geometry.attributes.position.array;
       // const nVertices = positions.length / 3;
@@ -434,34 +553,71 @@ const ThreeComponent: React.FC<SceneProps> = ({
       //   // @ts-ignore
       //   ts[i] = a[i % a.length];
       // }
-      // console.log('set tangents', ts);
-    } else if (previewObject === 'plane') {
-      geometry = new PlaneGeometry(1, 1, 64, 64);
-    } else if (previewObject === 'sphere') {
-      geometry = new SphereGeometry(1, 128, 128);
-    } else if (previewObject === 'icosahedron') {
-      geometry = new IcosahedronGeometry(1, 0);
+    } else if (sceneConfig.previewObject === 'plane') {
+      geometry = new PlaneGeometry(
+        1,
+        1,
+        ...(sceneConfig.planeResolution || defaultResolution.planeResolution)
+      );
+    } else if (sceneConfig.previewObject === 'sphere') {
+      geometry = new SphereGeometry(
+        1,
+        ...(sceneConfig.sphereResolution || defaultResolution.sphereResolution)
+      );
+    } else if (sceneConfig.previewObject === 'icosahedron') {
+      geometry = new IcosahedronGeometry(
+        1,
+        ...(sceneConfig.icosahedronResolution ||
+          defaultResolution.icosahedronResolution)
+      );
     } else {
-      throw new Error(`Wtf there is no preview object named ${previewObject}`);
+      throw new Error(
+        `Wtf there is no preview object named ${sceneConfig.previewObject}`
+      );
     }
     geometry.computeTangents();
+    // log('Generated tangents', geometry.getAttribute('tangent'));
     mesh = new Mesh(geometry);
     if (sceneData.mesh) {
       mesh.material = sceneData.mesh.material;
     }
     sceneData.mesh = mesh;
     scene.add(mesh);
-  }, [previousPreviewObject, sceneData, previewObject, scene]);
 
-  const previousBg = usePrevious(bg);
+    if (sceneConfig.showTangents) {
+      const helper = new VertexTangentsHelper(mesh, 0.3, 0xff0000);
+      mesh.add(helper);
+    }
+    if (sceneConfig.showNormals) {
+      const helper = new VertexNormalsHelper(mesh, 0.25, 0x00ffff);
+      mesh.add(helper);
+    }
+  }, [
+    previousSceneConfig,
+    sceneData,
+    sceneConfig.showTangents,
+    sceneConfig.showNormals,
+    sceneConfig.previewObject,
+    sceneConfig.torusKnotResolution,
+    sceneConfig.boxResolution,
+    sceneConfig.planeResolution,
+    sceneConfig.sphereResolution,
+    sceneConfig.icosahedronResolution,
+    scene,
+  ]);
+
+  const previousBg = usePrevious(sceneConfig.bg);
   const previousWarehouseImage = usePrevious(warehouseImage);
   useEffect(() => {
-    if (bg === previousBg && warehouseImage === previousWarehouseImage) {
+    if (
+      sceneConfig.bg === previousBg &&
+      warehouseImage === previousWarehouseImage
+    ) {
       return;
     }
 
-    if (bg) {
-      if (bg === 'modelviewer') {
+    if (sceneConfig.bg) {
+      if (sceneConfig.bg === 'modelviewer') {
         const pmremGenerator = new PMREMGenerator(renderer);
         scene.environment = pmremGenerator.fromScene(
           new RoomEnvironment(),
@@ -469,20 +625,20 @@ const ThreeComponent: React.FC<SceneProps> = ({
         ).texture;
         scene.background = scene.environment;
       } else {
-        scene.background = textures[bg];
-        scene.environment = textures[bg];
+        scene.background = textures[sceneConfig.bg];
+        scene.environment = textures[sceneConfig.bg];
       }
     } else {
       scene.environment = null;
       scene.background = null;
     }
   }, [
-    bg,
+    sceneConfig,
     previousBg,
     renderer,
-    previousPreviewObject,
+    previousSceneConfig,
     sceneData,
-    previewObject,
+    sceneConfig.previewObject,
     scene,
     previousWarehouseImage,
     warehouseImage,
@@ -522,7 +678,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   }, [ctx, setCtx]);
 
   takeScreenshotRef.current = useCallback(async () => {
-    const viewAngle = SceneDefaultAngles[previewObject];
+    const viewAngle = SceneDefaultAngles[sceneConfig.previewObject];
     // this.props.shader.scene.angle ||
 
     const screenshotCanvas = document.createElement('canvas');
@@ -552,7 +708,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
     );
 
     camera.position.copy(
-      SceneAngleVectors[viewAngle](5 * CameraDistances[previewObject])
+      SceneAngleVectors[viewAngle](
+        5 * CameraDistances[sceneConfig.previewObject]
+      )
     );
     camera.lookAt(new Vector3(0, 0, 0));
 
@@ -573,13 +731,17 @@ const ThreeComponent: React.FC<SceneProps> = ({
     const data = screenshotCanvas.toDataURL('image/jpeg', 0.9);
     scene.remove(camera);
     return data;
-  }, [previewObject, renderer, scene]);
+  }, [sceneConfig.previewObject, renderer, scene]);
 
   useEffect(() => {
     if (!compileResult?.fragmentResult) {
       return;
     }
     const material = createMaterial(compileResult, ctx);
+    if (sceneConfig.wireframe) {
+      material.wireframe = true;
+    }
+
     // const { graph } = compileResult;
     const {
       sceneData: { mesh },
@@ -680,14 +842,15 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     mesh.material = material;
     shadersUpdated.current = true;
-  }, [compileResult, ctx, graph, textures]);
+  }, [compileResult, ctx, graph, textures, sceneConfig.wireframe]);
 
-  const prevLights = usePrevious(lights);
-  const previousShowHelpers = usePrevious(showHelpers);
+  const prevLights = usePrevious(sceneConfig.lights);
+  const previousShowHelpers = usePrevious(sceneConfig.showHelpers);
   useEffect(() => {
     if (
       // If the lights are unchanged
-      (prevLights === lights && previousShowHelpers === showHelpers) ||
+      (prevLights === sceneConfig.lights &&
+        previousShowHelpers === sceneConfig.showHelpers) ||
       // Or if there were no previous lights, but we already have them in the
       // persisted sceneData, we already have three data in memory
       (prevLights === undefined && sceneData.lights.length)
@@ -700,13 +863,15 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     let helpers: Object3D[] = [];
     let newLights: Object3D[] = [];
-    if (lights === 'point') {
+    if (sceneConfig.lights === 'point') {
       const pointLight = new PointLight(0xffffff, 1);
       pointLight.position.set(0, 0, 2);
 
       newLights = [pointLight];
       helpers = [new PointLightHelper(pointLight, 0.1)];
-    } else if (lights === '3point') {
+    } else if (sceneConfig.lights === '3point') {
+      const group = new Group();
+
       const light1 = new PointLight(0xffffff, 1, 0);
       light1.position.set(2, 2, 5);
 
@@ -716,13 +881,17 @@ const ThreeComponent: React.FC<SceneProps> = ({
       const light3 = new PointLight(0xffffff, 1, 0);
       light3.position.set(5, -5, -5);
 
-      newLights = [light1, light2, light3];
-      helpers = [
-        new PointLightHelper(light1, 0.1),
-        new PointLightHelper(light2, 0.1),
-        new PointLightHelper(light3, 0.1),
-      ];
-    } else if (lights === 'spot') {
+      group.add(light1);
+      group.add(light2);
+      group.add(light3);
+
+      newLights = [group];
+      if (sceneConfig.showHelpers) {
+        group.add(new PointLightHelper(light1, 0.1));
+        group.add(new PointLightHelper(light2, 0.1));
+        group.add(new PointLightHelper(light3, 0.1));
+      }
+    } else if (sceneConfig.lights === 'spot') {
       const light1 = new SpotLight(0x00ff00, 1, 3, 0.4, 1);
       light1.position.set(0, 0, 2);
 
@@ -736,7 +905,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       ];
     }
 
-    if (showHelpers) {
+    if (sceneConfig.showHelpers) {
       sceneData.lights = [...newLights, ...helpers];
     } else {
       sceneData.lights = newLights;
@@ -745,7 +914,11 @@ const ThreeComponent: React.FC<SceneProps> = ({
       scene.add(obj);
     });
 
-    if (prevLights && prevLights !== undefined && prevLights !== lights) {
+    if (
+      prevLights &&
+      prevLights !== undefined &&
+      prevLights !== sceneConfig.lights
+    ) {
       if (sceneData.mesh) {
         sceneData.mesh.material = loadingMaterial;
       }
@@ -754,13 +927,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
     }
   }, [
     sceneData,
-    lights,
+    sceneConfig.lights,
     scene,
     compile,
     ctx,
     prevLights,
     previousShowHelpers,
-    showHelpers,
+    sceneConfig.showHelpers,
   ]);
 
   useEffect(() => {
@@ -775,112 +948,235 @@ const ThreeComponent: React.FC<SceneProps> = ({
     }
   }, [sceneWrapperSize, ctx.runtime]);
 
+  const [editorTabIndex, setEditorTabIndex] = useState<number>(0);
+
   return (
     <>
-      <div className={styles.sceneControls}>
-        <div className={styles.controlGrid}>
-          <div>
-            <label htmlFor="Lightingsfs" className="label noselect">
-              <span>Lighting</span>
-            </label>
-          </div>
-          <div>
-            <select
-              id="Lightingsfs"
-              className="select"
-              onChange={(event) => {
-                setLights(event.target.value);
-              }}
-              value={lights}
-            >
-              <option value="point">Single Point Light</option>
-              <option value="3point">Multiple Point Lights</option>
-              <option value="spot">Spot Lights</option>
-            </select>
-          </div>
+      <Tabs onTabSelect={setEditorTabIndex} selected={editorTabIndex}>
+        <TabGroup className={styles.tabBar}>
+          <Tab>Scene</Tab>
+          <Tab>Settings</Tab>
+        </TabGroup>
+        <TabPanels>
+          <TabPanel className={styles.sceneControls}>
+            <div className={styles.controlGrid}>
+              <div>
+                <label htmlFor="Lightingsfs" className="label noselect">
+                  <span>Lighting</span>
+                </label>
+              </div>
+              <div>
+                <select
+                  id="Lightingsfs"
+                  className="select"
+                  onChange={(event) => {
+                    setSceneConfig({
+                      ...sceneConfig,
+                      lights: event.target.value,
+                    });
+                  }}
+                  value={sceneConfig.lights}
+                >
+                  <option value="point">Single Point Light</option>
+                  <option value="3point">Multiple Point Lights</option>
+                  <option value="spot">Spot Lights</option>
+                </select>
+              </div>
 
-          <div className="grid span2">
+              <div className="grid span2">
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="sha"
+                      type="checkbox"
+                      checked={sceneConfig.animatedLights}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          animatedLights: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label noselect" htmlFor="sha">
+                      <span>Animate</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="shp"
+                      type="checkbox"
+                      checked={sceneConfig.showHelpers}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          showHelpers: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label noselect" htmlFor="shp">
+                      <span>Lighting Helpers</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="Modelsfs" className="label noselect">
+                  <span>Model</span>
+                </label>
+              </div>
+              <div>
+                <select
+                  id="Modelsfs"
+                  className="select"
+                  onChange={(event) => {
+                    setSceneConfig({
+                      ...sceneConfig,
+                      previewObject: event.target.value,
+                    });
+                  }}
+                  value={sceneConfig.previewObject}
+                >
+                  <option value="sphere">Sphere</option>
+                  <option value="cube">Cube</option>
+                  <option value="plane">Plane</option>
+                  <option value="torusknot">Torus Knot</option>
+                  <option value="icosahedron">Icosahedron</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="Backgroundsfs" className="label noselect">
+                  <span>Background</span>
+                </label>
+              </div>
+              <div>
+                <select
+                  id="Backgroundsfs"
+                  className="select"
+                  onChange={(event) => {
+                    setSceneConfig({
+                      ...sceneConfig,
+                      bg:
+                        event.target.value === 'none'
+                          ? null
+                          : event.target.value,
+                    });
+                  }}
+                  value={sceneConfig.bg ? sceneConfig.bg : 'none'}
+                >
+                  <option value="none">None</option>
+                  <option value="warehouseEnvTexture">Warehouse</option>
+                  <option value="pondCubeMap">Pond Cube Map</option>
+                  <option value="modelviewer">Model Viewer</option>
+                </select>
+              </div>
+            </div>
+          </TabPanel>
+          <TabPanel className={styles.sceneControls}>
             <div className={styles.controlGrid}>
               <div>
                 <input
                   className="checkbox"
-                  id="shp"
+                  id="Wireframesfs"
                   type="checkbox"
-                  checked={showHelpers}
-                  onChange={(event) => setShowHelpers(event?.target.checked)}
+                  checked={sceneConfig.wireframe}
+                  onChange={(event) =>
+                    setSceneConfig({
+                      ...sceneConfig,
+                      wireframe: event?.target.checked,
+                    })
+                  }
                 />
               </div>
               <div>
-                <label className="label noselect" htmlFor="shp">
-                  <span>Lighting Helpers</span>
+                <label htmlFor="Wireframesfs" className="label noselect">
+                  <span>Wireframe</span>
                 </label>
+              </div>
+
+              <div className="grid span2">
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="nrm"
+                      type="checkbox"
+                      checked={sceneConfig.showNormals}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          showNormals: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label noselect" htmlFor="nrm">
+                      <span>Show Normals</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="tng"
+                      type="checkbox"
+                      checked={sceneConfig.showTangents}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          showTangents: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label noselect" htmlFor="tng">
+                      <span>Show Tangents</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/*
+                torusKnotResolution: [number, number];
+                boxResolution: [number, number, number];
+                planeResolution: [number, number];
+                sphereResolution: [number, number];
+                icosahedronResolution: number;
+                    */}
               </div>
             </div>
             <div className={styles.controlGrid}>
-              <div>
-                <input
-                  className="checkbox"
-                  id="sha"
-                  type="checkbox"
-                  checked={animatedLights}
-                  onChange={(event) => setAnimatedLights(event?.target.checked)}
+              {/* TODO: Make all this work! */}
+              {sceneConfig.previewObject === 'sphere' ? (
+                <VectorEditor
+                  value={
+                    sceneConfig.sphereResolution ||
+                    defaultResolution.sphereResolution
+                  }
+                  placeholder={defaultResolution.sphereResolution}
+                  labels={['Width Segments', 'Height Segments']}
+                  onChange={(v) =>
+                    setSceneConfig({ ...sceneConfig, sphereResolution: v })
+                  }
                 />
-              </div>
-              <div>
-                <label className="label noselect" htmlFor="sha">
-                  <span>Animate</span>
-                </label>
-              </div>
+              ) : null}
             </div>
-          </div>
-
-          <div>
-            <label htmlFor="Modelsfs" className="label noselect">
-              <span>Model</span>
-            </label>
-          </div>
-          <div>
-            <select
-              id="Modelsfs"
-              className="select"
-              onChange={(event) => {
-                setPreviewObject(event.target.value);
-              }}
-              value={previewObject}
-            >
-              <option value="sphere">Sphere</option>
-              <option value="cube">Cube</option>
-              <option value="plane">Plane</option>
-              <option value="torusknot">Torus Knot</option>
-              <option value="icosahedron">Icosahedron</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="Backgroundsfs" className="label noselect">
-              <span>Background</span>
-            </label>
-          </div>
-          <div>
-            <select
-              id="Backgroundsfs"
-              className="select"
-              onChange={(event) => {
-                setBg(
-                  event.target.value === 'none' ? null : event.target.value
-                );
-              }}
-              value={bg ? bg : 'none'}
-            >
-              <option value="none">None</option>
-              <option value="warehouseEnvTexture">Warehouse</option>
-              <option value="pondCubeMap">Pond Cube Map</option>
-              <option value="modelviewer">Model Viewer</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
       <div ref={sceneWrapper} className={styles.sceneContainer}>
         <div ref={threeDomCbRef}></div>
       </div>

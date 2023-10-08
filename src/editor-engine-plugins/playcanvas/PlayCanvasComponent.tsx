@@ -1,4 +1,22 @@
-import * as pc from 'playcanvas';
+import {
+  ADDRESS_CLAMP_TO_EDGE,
+  Application,
+  Asset,
+  Color,
+  createBox,
+  createPlane,
+  createSphere,
+  createTorus,
+  Entity,
+  FILTER_LINEAR,
+  MeshInstance,
+  PIXELFORMAT_DEPTHSTENCIL,
+  PIXELFORMAT_R8_G8_B8_A8,
+  RenderTarget,
+  StandardMaterial,
+  Texture,
+  Vec3,
+} from 'playcanvas';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -30,7 +48,7 @@ let mIdx = 0;
 let id = () => mIdx++;
 
 const log = (...args: any[]) =>
-  console.log.call(console, '\x1b[36m(pc.component)\x1b[0m', ...args);
+  console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
 
 const copyUIntToImageData = (data: Uint8Array, imageData: ImageData) => {
   for (let i = 0; i < data.length; i += 4) {
@@ -68,7 +86,7 @@ export const SceneAngles = {
 const calculateViewPosition =
   (xPosition: number, yPosition: number) => (radius: number) => {
     const spread = 0.8;
-    const position = new pc.Vec3(0, 0, radius);
+    const position = new Vec3(0, 0, radius);
     return position;
   };
 
@@ -111,7 +129,7 @@ export const CameraDistances: Record<string, number> = {
 };
 
 const makeLightHelper = () => {
-  const entity = new pc.Entity('render');
+  const entity = new Entity('render');
   entity.addComponent('model', {
     type: 'box',
   });
@@ -147,12 +165,12 @@ let hackShaderDefinition: (event: {
 }) => void;
 
 const loadAsset = (
-  app: pc.Application,
+  app: Application,
   name: string,
   url: string
-): Promise<pc.Asset> =>
+): Promise<Asset> =>
   new Promise((resolve) => {
-    const cubemapAsset = new pc.Asset(
+    const cubemapAsset = new Asset(
       name,
       'cubemap',
       {
@@ -167,12 +185,12 @@ const loadAsset = (
   });
 
 const buildTextureLoader =
-  (app: pc.Application) =>
-  async (path: string): Promise<pc.Texture> =>
+  (app: Application) =>
+  async (path: string): Promise<Texture> =>
     new Promise((resolve) => {
       const image = new Image();
       image.crossOrigin = 'anonymous';
-      const texture = new pc.Texture(app.graphicsDevice, { name: path });
+      const texture = new Texture(app.graphicsDevice, { name: path });
       image.onload = () => {
         texture.setSource(image);
         resolve(texture);
@@ -184,18 +202,10 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
   compile,
   compileResult,
   graph,
-  lights,
-  setLights,
-  animatedLights,
-  setAnimatedLights,
-  previewObject,
+  sceneConfig,
+  setSceneConfig,
   setCtx,
   setGlResult,
-  setPreviewObject,
-  bg,
-  setBg,
-  showHelpers,
-  setShowHelpers,
   width,
   height,
   assetPrefix,
@@ -224,7 +234,7 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
       const { mesh } = sceneData;
       const meshInstance = mesh?.render?.meshInstances?.[0];
       const { material: mMaterial } = meshInstance || {};
-      const material = mMaterial as pc.StandardMaterial;
+      const material = mMaterial as StandardMaterial;
       if (!mesh || !meshInstance || !material) {
         return;
       }
@@ -295,19 +305,19 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
 
       const { lights: lightMeshes } = sceneData;
       const time = Date.now();
-      if (animatedLights) {
-        if (lights === 'point') {
+      if (sceneConfig.animatedLights) {
+        if (sceneConfig.lights === 'point') {
           const light = lightMeshes[0];
           light.setPosition(
             1.0 * Math.sin(time * 0.001),
             1.0 * Math.cos(time * 0.001),
             1.0
           );
-          if (showHelpers) {
+          if (sceneConfig.showHelpers) {
             const p = light.getPosition();
             lightMeshes[1].setPosition(p.x, p.y, p.z);
           }
-        } else if (lights === '3point') {
+        } else if (sceneConfig.lights === '3point') {
           const group = lightMeshes[0];
           group.rotate(deltaTime * 20.0, deltaTime * 20.0, deltaTime * 20.0);
         }
@@ -315,13 +325,11 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
     });
 
   const [textures, setTextures] = useState<
-    Record<string, pc.Texture | pc.Asset | null> | undefined
+    Record<string, Texture | Asset | null> | undefined
   >();
   useEffect(() => {
     const load = async () => {
       const textureLoader = buildTextureLoader(app);
-      // Logging to check if this happens more than once
-      log('🔥 Loading Playcanvas textures');
       setTextures({
         explosion: await textureLoader(path('/explosion.png')),
         'grayscale-noise': await textureLoader(path('/grayscale-noise.png')),
@@ -376,60 +384,61 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
     };
   });
 
-  const prevLights = usePrevious(lights);
-  const previousShowHelpers = usePrevious(showHelpers);
+  const prevLights = usePrevious(sceneConfig.lights);
+  const previousShowHelpers = usePrevious(sceneConfig.showHelpers);
   useEffect(() => {
     if (
-      (prevLights === lights && previousShowHelpers === showHelpers) ||
+      (prevLights === sceneConfig.lights &&
+        previousShowHelpers === sceneConfig.showHelpers) ||
       (prevLights === undefined && sceneData.lights.length)
     ) {
       return;
     }
     sceneData.lights.forEach((light) => light.destroy());
 
-    if (lights === 'point') {
-      const pointLight = new pc.Entity('light');
+    if (sceneConfig.lights === 'point') {
+      const pointLight = new Entity('light');
       pointLight.addComponent('light', {
         type: 'omni',
-        color: new pc.Color(1, 1, 1),
+        color: new Color(1, 1, 1),
         range: 10,
       });
       pointLight.setPosition(0, 0, 3);
       sceneData.lights = [pointLight];
 
-      if (showHelpers) {
+      if (sceneConfig.showHelpers) {
         sceneData.lights.push(makeLightHelper());
       }
-    } else if (lights === '3point') {
-      const group = new pc.Entity('group');
+    } else if (sceneConfig.lights === '3point') {
+      const group = new Entity('group');
 
-      const light1 = new pc.Entity('light');
+      const light1 = new Entity('light');
       light1.addComponent('light', {
         type: 'omni',
-        color: new pc.Color(1, 1, 1),
+        color: new Color(1, 1, 1),
         range: 10,
       });
       light1.setPosition(2, -2, 0);
 
-      const light2 = new pc.Entity('light');
+      const light2 = new Entity('light');
       light2.addComponent('light', {
         type: 'omni',
-        color: new pc.Color(1, 1, 1),
+        color: new Color(1, 1, 1),
         range: 10,
       });
       light2.setPosition(-1, 2, 1);
 
-      const light3 = new pc.Entity('light');
+      const light3 = new Entity('light');
       light3.addComponent('light', {
         type: 'omni',
-        color: new pc.Color(1, 1, 1),
+        color: new Color(1, 1, 1),
         range: 10,
       });
       light3.setPosition(-1, -2, -2);
 
       let lights = [light1, light2, light3];
 
-      if (showHelpers) {
+      if (sceneConfig.showHelpers) {
         const h1 = makeLightHelper();
         h1.setPosition(light1.getPosition());
         const h2 = makeLightHelper();
@@ -443,8 +452,8 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
       });
 
       sceneData.lights = [group];
-    } else if (lights === 'spot') {
-      const spot1 = new pc.Entity();
+    } else if (sceneConfig.lights === 'spot') {
+      const spot1 = new Entity();
       spot1.addComponent('light', {
         type: 'spot',
         // new BABYLON.Vector3(0, 0, 2),
@@ -454,7 +463,7 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
       // spot1.diffuse = new BABYLON.Color3(0, 1, 0);
       // spot1.specular = new BABYLON.Color3(0, 1, 0);
 
-      const spot2 = new pc.Entity();
+      const spot2 = new Entity();
       spot2.addComponent('light', {
         type: 'spot',
         // new BABYLON.Vector3(0, 0, 2),
@@ -466,7 +475,7 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
 
       sceneData.lights = [spot1, spot2];
 
-      if (showHelpers) {
+      if (sceneConfig.showHelpers) {
       }
     }
 
@@ -474,7 +483,11 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
       app.root.addChild(obj);
     });
 
-    if (prevLights && prevLights !== undefined && prevLights !== lights) {
+    if (
+      prevLights &&
+      prevLights !== undefined &&
+      prevLights !== sceneConfig.lights
+    ) {
       if (sceneData.mesh && sceneData.mesh.render) {
         sceneData.mesh.render.meshInstances[0].material = loadingMaterial;
       }
@@ -484,57 +497,57 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
     app,
     sceneData,
     prevLights,
-    lights,
+    sceneConfig.lights,
     compile,
     ctx,
     previousShowHelpers,
-    showHelpers,
+    sceneConfig.showHelpers,
     loadingMaterial,
   ]);
 
   useEffect(() => {
-    let entity = new pc.Entity();
+    let entity = new Entity();
 
     const material =
       sceneData.mesh && sceneData.mesh.render
         ? sceneData.mesh.render.meshInstances[0].material
         : loadingMaterial;
 
-    if (previewObject === 'torus') {
-      const mesh = pc.createTorus(app.graphicsDevice, {
+    if (sceneConfig.previewObject === 'torus') {
+      const mesh = createTorus(app.graphicsDevice, {
         segments: 60,
         sides: 32,
       });
       entity.rotate(90, 0, 0);
-      const meshInstance = new pc.MeshInstance(mesh, material);
+      const meshInstance = new MeshInstance(mesh, material);
       entity.addComponent('render', {
         meshInstances: [meshInstance],
       });
-    } else if (previewObject === 'plane') {
-      const mesh = pc.createPlane(app.graphicsDevice, {
+    } else if (sceneConfig.previewObject === 'plane') {
+      const mesh = createPlane(app.graphicsDevice, {
         widthSegments: 60,
         lengthSegments: 60,
       });
-      const meshInstance = new pc.MeshInstance(mesh, material);
+      const meshInstance = new MeshInstance(mesh, material);
       entity.addComponent('render', {
         meshInstances: [meshInstance],
       });
       entity.rotate(90, 0, 0);
-    } else if (previewObject === 'cube') {
-      const mesh = pc.createBox(app.graphicsDevice, {
+    } else if (sceneConfig.previewObject === 'cube') {
+      const mesh = createBox(app.graphicsDevice, {
         widthSegments: 60,
         heightSegments: 60,
       });
-      const meshInstance = new pc.MeshInstance(mesh, material);
+      const meshInstance = new MeshInstance(mesh, material);
       entity.addComponent('render', {
         meshInstances: [meshInstance],
       });
-    } else if (previewObject === 'sphere') {
-      const mesh = pc.createSphere(app.graphicsDevice, {
+    } else if (sceneConfig.previewObject === 'sphere') {
+      const mesh = createSphere(app.graphicsDevice, {
         latitudeBands: 128,
         longitudeBands: 128,
       });
-      const meshInstance = new pc.MeshInstance(mesh, material);
+      const meshInstance = new MeshInstance(mesh, material);
       entity.addComponent('render', {
         meshInstances: [meshInstance],
       });
@@ -556,27 +569,32 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
     sceneData.mesh = entity;
     // @ts-ignore
     window.mesh = entity;
-  }, [app, previewObject, sceneData, loadingMaterial, camera]);
+  }, [app, sceneConfig.previewObject, sceneData, loadingMaterial, camera]);
 
   const hasSetctx = useRef(false);
-  const previousBg = usePrevious(bg);
+  const previousBg = usePrevious(sceneConfig.bg);
   const previousTextures = usePrevious(textures);
   useEffect(() => {
-    if (!textures || (textures === previousTextures && bg === previousBg)) {
+    if (
+      !textures ||
+      (textures === previousTextures && sceneConfig.bg === previousBg)
+    ) {
       return;
     }
-    const newBg = bg ? (textures[bg] as pc.Asset).resources : null;
-    app.scene.setSkybox(newBg as pc.Texture[]);
+    const newBg = sceneConfig.bg
+      ? (textures[sceneConfig.bg] as Asset).resources
+      : null;
+    app.scene.setSkybox(newBg as Texture[]);
 
     if (!hasSetctx.current) {
       hasSetctx.current = true;
       setCtx(ctx);
     }
   }, [
-    bg,
+    sceneConfig.bg,
     previousBg,
     sceneData,
-    previewObject,
+    sceneConfig.previewObject,
     textures,
     previousTextures,
     app,
@@ -618,7 +636,7 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
       programError: null,
     });
 
-    const shaderMaterial = new pc.StandardMaterial();
+    const shaderMaterial = new StandardMaterial();
 
     const newProperties = {
       ...physicalDefaultProperties,
@@ -657,7 +675,7 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
   }, [setGlResult, compileResult, sceneData, app, textures]);
 
   takeScreenshotRef.current = useCallback(async () => {
-    const viewAngle = SceneDefaultAngles[previewObject];
+    const viewAngle = SceneDefaultAngles[sceneConfig.previewObject];
 
     const screenshotHeight = 400;
     const screenshotWidth = 400;
@@ -665,36 +683,38 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
     const device = app.graphicsDevice;
 
     // Create a new texture based on the current width and height
-    const colorBuffer = new pc.Texture(device, {
+    const colorBuffer = new Texture(device, {
       width: screenshotWidth,
       height: screenshotHeight,
-      format: pc.PIXELFORMAT_R8_G8_B8_A8,
+      format: PIXELFORMAT_R8_G8_B8_A8,
     });
 
-    const depthBuffer = new pc.Texture(device, {
-      format: pc.PIXELFORMAT_DEPTHSTENCIL,
+    const depthBuffer = new Texture(device, {
+      format: PIXELFORMAT_DEPTHSTENCIL,
       width: screenshotWidth,
       height: screenshotHeight,
       mipmaps: false,
-      addressU: pc.ADDRESS_CLAMP_TO_EDGE,
-      addressV: pc.ADDRESS_CLAMP_TO_EDGE,
+      addressU: ADDRESS_CLAMP_TO_EDGE,
+      addressV: ADDRESS_CLAMP_TO_EDGE,
     });
 
-    colorBuffer.minFilter = pc.FILTER_LINEAR;
-    colorBuffer.magFilter = pc.FILTER_LINEAR;
-    const renderTarget = new pc.RenderTarget({
+    colorBuffer.minFilter = FILTER_LINEAR;
+    colorBuffer.magFilter = FILTER_LINEAR;
+    const renderTarget = new RenderTarget({
       colorBuffer: colorBuffer,
       depthBuffer: depthBuffer,
       samples: 4, // Enable anti-alias
     });
 
-    const camera = new pc.Entity('camera');
+    const camera = new Entity('camera');
     camera.addComponent('camera', {
       fov: 75,
       frustumCulling: true,
-      clearColor: new pc.Color(0, 0, 0, 0),
+      clearColor: new Color(0, 0, 0, 0),
     });
-    const pos = SceneAngleVectors[viewAngle](CameraDistances[previewObject]);
+    const pos = SceneAngleVectors[viewAngle](
+      CameraDistances[sceneConfig.previewObject]
+    );
     camera.setPosition(pos.x, pos.y, pos.z);
     app.root.addChild(camera);
 
@@ -767,7 +787,7 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
     app.root.removeChild(camera);
 
     return data;
-  }, [previewObject, app]);
+  }, [sceneConfig.previewObject, app]);
 
   return (
     <>
@@ -783,9 +803,9 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
               id="Lightingsfs"
               className="select"
               onChange={(event) => {
-                setLights(event.target.value);
+                setSceneConfig({ ...sceneConfig, lights: event.target.value });
               }}
-              value={lights}
+              value={sceneConfig.lights}
             >
               <option value="point">Single Point Light</option>
               <option value="3point">Multiple Point Lights</option>
@@ -800,8 +820,13 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
                   className="checkbox"
                   id="shp"
                   type="checkbox"
-                  checked={showHelpers}
-                  onChange={(event) => setShowHelpers(event?.target.checked)}
+                  checked={sceneConfig.showHelpers}
+                  onChange={(event) => {
+                    setSceneConfig({
+                      ...sceneConfig,
+                      showHelpers: event?.target.checked,
+                    });
+                  }}
                 />
               </div>
               <div>
@@ -816,8 +841,13 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
                   className="checkbox"
                   id="sha"
                   type="checkbox"
-                  checked={animatedLights}
-                  onChange={(event) => setAnimatedLights(event?.target.checked)}
+                  checked={sceneConfig.animatedLights}
+                  onChange={(event) => {
+                    setSceneConfig({
+                      ...sceneConfig,
+                      animatedLights: event?.target.checked,
+                    });
+                  }}
                 />
               </div>
               <div>
@@ -838,9 +868,12 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
               id="Modelsfs"
               className="select"
               onChange={(event) => {
-                setPreviewObject(event.target.value);
+                setSceneConfig({
+                  ...sceneConfig,
+                  previewObject: event.target.value,
+                });
               }}
-              value={previewObject}
+              value={sceneConfig.previewObject}
             >
               <option value="sphere">Sphere</option>
               <option value="cube">Cube</option>
@@ -859,15 +892,15 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
               id="Backgroundsfs"
               className="select"
               onChange={(event) => {
-                setBg(
-                  event.target.value === 'none' ? null : event.target.value
-                );
+                setSceneConfig({
+                  ...sceneConfig,
+                  bg: event.target.value === 'none' ? null : event.target.value,
+                });
               }}
-              value={bg ? bg : 'none'}
+              value={sceneConfig.bg ? sceneConfig.bg : 'none'}
             >
               <option value="none">None</option>
               <option value="cityCourtYard">City Court Yard</option>
-              <option value="warehouseEnvTexture">Horrible Lord?</option>
             </select>
           </div>
         </div>

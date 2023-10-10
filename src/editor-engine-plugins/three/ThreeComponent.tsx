@@ -99,9 +99,10 @@ export type SceneConfig = {
   icosahedronResolution: [number];
 };
 
+const maxResolution = 256;
 const defaultResolution = {
   torusKnotResolution: [200, 32],
-  boxResolution: [2, 2, 2],
+  boxResolution: [64, 64, 64],
   planeResolution: [64, 64],
   sphereResolution: [128, 128],
   icosahedronResolution: [0],
@@ -204,11 +205,20 @@ const VectorEditor = ({
   placeholder,
   onChange,
 }: {
-  value: string[];
+  value: number[];
   placeholder: number[];
   labels: string[];
-  onChange: (vector: string[]) => void;
+  onChange: (vector: number[]) => void;
 }) => {
+  const validateInteger =
+    (index: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      const val = event.target.value.replace(/[^0-9]/g, '');
+      if (val) {
+        const parsed = Math.max(1, Math.min(maxResolution, parseFloat(val)));
+        const updated = value.map((val, idx) => (idx === index ? parsed : val));
+        onChange(updated);
+      }
+    };
   return (
     <div className={`grid col${labels.length}`}>
       {labels.map((label, index) => (
@@ -219,14 +229,8 @@ const VectorEditor = ({
               className="textinput"
               type="text"
               placeholder={placeholder[index].toString()}
-              value={value[index]}
-              onChange={(event) => {
-                onChange(
-                  value.map((val, idx) =>
-                    idx === index ? event.target.value : val
-                  )
-                );
-              }}
+              defaultValue={value[index]}
+              onChange={validateInteger(index)}
             />
           </label>
         </div>

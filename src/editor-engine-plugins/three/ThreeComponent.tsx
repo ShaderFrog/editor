@@ -34,6 +34,7 @@ import {
   Float32BufferAttribute,
   BufferAttribute,
   Group,
+  WebGLRenderer,
 } from 'three';
 // @ts-ignore
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
@@ -191,6 +192,29 @@ export const CameraDistances: Record<string, number> = {
   plane: 0.485,
   cylinder: 0.38,
   cone: 0.35,
+};
+
+const useEnvMap = (
+  renderer: WebGLRenderer,
+  bg: string | null,
+  key: string,
+  assetPath: string
+) => {
+  const [hdrImage, setHdrImage] = useState<Texture>();
+  useEffect(() => {
+    if (hdrImage || bg !== key) {
+      return;
+    }
+    new RGBELoader().load(assetPath, (texture) => {
+      const pmremGenerator = new PMREMGenerator(renderer);
+      pmremGenerator.compileEquirectangularShader();
+      const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+      pmremGenerator.dispose();
+      setHdrImage(envMap);
+    });
+  }, [assetPath, key, renderer, setHdrImage, hdrImage, bg]);
+
+  return hdrImage;
 };
 
 const repeat = (t: Texture, x: number, y: number) => {
@@ -460,31 +484,25 @@ const ThreeComponent: React.FC<SceneProps> = ({
           'posz.jpg',
           'negz.jpg',
         ]),
-      warehouseEnvTexture: null,
     }),
     [path]
   );
 
-  const [warehouseImage, setWarehouseImage] = useState<{
-    texture: DataTexture;
-    envMap: Texture;
-  }>();
-  useEffect(() => {
-    if (warehouseImage) {
-      return;
-    }
-    new RGBELoader().load(
-      path('/envmaps/empty_warehouse_01_2k.hdr'),
-      (texture) => {
-        const pmremGenerator = new PMREMGenerator(renderer);
-        pmremGenerator.compileEquirectangularShader();
-        const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-        pmremGenerator.dispose();
-        textures.warehouseEnvTexture = envMap;
-        setWarehouseImage({ texture, envMap });
-      }
-    );
-  }, [renderer, setWarehouseImage, warehouseImage, textures, path]);
+  const warehouseImage = useEnvMap(
+    renderer,
+    sceneConfig.bg,
+    'warehouseImage',
+    path('/envmaps/empty_warehouse_01_1k.hdr')
+  );
+  textures.warehouseImage = warehouseImage;
+
+  const skyImage = useEnvMap(
+    renderer,
+    sceneConfig.bg,
+    'skyImage',
+    path('/envmaps/industrial_sunset_puresky_1k.hdr')
+  );
+  textures.skyImage = skyImage;
 
   const previousSceneConfig = usePrevious(sceneConfig);
   useEffect(() => {
@@ -612,10 +630,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
   const previousBg = usePrevious(sceneConfig.bg);
   const previousWarehouseImage = usePrevious(warehouseImage);
+  const previousSkyImage = usePrevious(skyImage);
   useEffect(() => {
     if (
       sceneConfig.bg === previousBg &&
-      warehouseImage === previousWarehouseImage
+      warehouseImage === previousWarehouseImage &&
+      skyImage === previousSkyImage
     ) {
       return;
     }
@@ -644,6 +664,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
     sceneData,
     sceneConfig.previewObject,
     scene,
+    previousSkyImage,
+    skyImage,
     previousWarehouseImage,
     warehouseImage,
     textures,
@@ -1081,7 +1103,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   value={sceneConfig.bg ? sceneConfig.bg : 'none'}
                 >
                   <option value="none">None</option>
-                  <option value="warehouseEnvTexture">Warehouse</option>
+                  <option value="skyImage">Sky</option>
+                  <option value="warehouseImage">Warehouse</option>
                   <option value="pondCubeMap">Pond Cube Map</option>
                   <option value="modelviewer">Model Viewer</option>
                 </select>

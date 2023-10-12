@@ -35,7 +35,7 @@ export const Hoisty: React.FC = ({ children }) => {
       Object.entries(refData.current || {}).forEach(([key, value]) => {
         if (value?.destroy) {
           console.log(`Hoisted Context calling destroy for ${key}`);
-          value.destroy();
+          value.destroy(value);
         }
       });
     };

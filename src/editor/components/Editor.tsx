@@ -256,7 +256,7 @@ export type EditorShader = {
   engine: string;
   createdAt?: Date;
   updatedAt?: Date;
-  tags: string[];
+  tags: { name: string; slug: string }[];
   userId?: string;
   image?: string | null;
   name: string;
@@ -276,12 +276,13 @@ type ShaderUpdateInput = Omit<
   'createdAt' | 'updatedAt' | 'userId'
 > & {
   id: string;
+  tags: string[];
 };
 
 type ShaderCreateInput = Omit<
   EditorShader,
   'id' | 'createdAt' | 'updatedAt' | 'userId'
->;
+> & { imageData: string; tags: string[] };
 
 type AnyFn = (...args: any) => any;
 

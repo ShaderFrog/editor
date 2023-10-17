@@ -229,6 +229,18 @@ const BabylonComponent: React.FC<SceneProps> = ({
       explosion: new Texture(path('/explosion.png'), scene),
       'grayscale-noise': new Texture(path('/grayscale-noise.png'), scene),
       threeTone: new Texture(path('/3tone.jpg'), scene),
+      patternedBrickDiff: new Texture(
+        path('/patterned_brick_floor_02_diff.jpg'),
+        scene
+      ),
+      patternedBrickDisplacement: new Texture(
+        path('/patterned_brick_floor_02_disp.jpg'),
+        scene
+      ),
+      patternedBrickNormal: new Texture(
+        path('/patterned_brick_floor_02_normal.jpg'),
+        scene
+      ),
       brick: new Texture(path('/bricks.jpeg'), scene),
       brickNormal: new Texture(path('/bricknormal.jpeg'), scene),
       pebbles: new Texture(path('/Big_pebbles_pxr128.jpeg'), scene),

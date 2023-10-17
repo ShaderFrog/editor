@@ -10,6 +10,9 @@ import {
   WebGLRenderer,
   PerspectiveCamera,
   LinearMipmapLinearFilter,
+  sRGBEncoding,
+  LinearToneMapping,
+  ACESFilmicToneMapping,
 } from 'three';
 
 import { useHoisty } from '../../editor/hoistedRefContext';
@@ -50,6 +53,11 @@ export const useThree = (callback: Callback) => {
       scene.add(camera);
       scene.add(cubeCamera);
 
+      const renderer = new WebGLRenderer();
+      renderer.outputEncoding = sRGBEncoding;
+      renderer.toneMapping = ACESFilmicToneMapping;
+      renderer.toneMapping = LinearToneMapping;
+
       return {
         sceneData: {
           lights: [],
@@ -59,7 +67,7 @@ export const useThree = (callback: Callback) => {
         camera,
         cubeCamera,
         cubeRenderTarget,
-        renderer: new WebGLRenderer(),
+        renderer,
         destroy: (data: ScenePersistence) => {
           log('👋🏻 Bye Bye Three.js!');
           data.renderer.forceContextLoss();

@@ -310,8 +310,11 @@ const NumberEditor = ({
 const textures: Record<'texture' | 'samplerCube', [string, string][]> = {
   texture: [
     ['grayscale-noise', 'Grayscale Noise'],
-    ['brick', 'Bricks'],
-    ['brickNormal', 'Brick Normal Map'],
+    ['patternedBrickDiff', 'Brown Bricks'],
+    ['patternedBrickNormal', 'Brown Bricks Normal'],
+    ['patternedBrickDisplacement', 'Brown Bricks Displacement'],
+    ['brick', 'Red Bricks'],
+    ['brickNormal', 'Red Brick Normal Map'],
     ['pebbles', 'Pebbbles'],
     ['pebblesNormal', 'Pebbbles Normal Map'],
     ['pebblesBump', 'Pebbbles Bump Map'],

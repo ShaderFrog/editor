@@ -11,7 +11,6 @@ import {
   BufferGeometry,
   Color,
   CubeTextureLoader,
-  DataTexture,
   IcosahedronGeometry,
   LinearMipMapLinearFilter,
   Mesh,
@@ -31,17 +30,20 @@ import {
   Vector2,
   Vector3,
   WebGLRenderTarget,
-  Float32BufferAttribute,
-  BufferAttribute,
   Group,
   WebGLRenderer,
+  sRGBEncoding,
+  NoToneMapping,
+  LinearToneMapping,
+  ReinhardToneMapping,
+  CineonToneMapping,
+  ACESFilmicToneMapping,
 } from 'three';
 // @ts-ignore
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
 // @ts-ignore
 import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
 import {
-  Graph,
   mangleVar,
   SamplerCubeNode,
   TextureNode,
@@ -59,6 +61,8 @@ import {
 } from '../../editor/components/tabs/Tabs';
 import styles from '../../editor/styles/editor.module.css';
 
+const cx = classnames.bind(styles);
+
 import {
   threngine,
   ThreeRuntime,
@@ -72,6 +76,7 @@ import { useSize } from '../../editor/hooks/useSize';
 import { PMREMGenerator } from 'three';
 import { RoomEnvironment } from './RoomEnvironment';
 import { SceneProps } from '@editor/editor/components/Editor';
+import classnames from 'classnames';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
@@ -220,6 +225,11 @@ const useEnvMap = (
 const repeat = (t: Texture, x: number, y: number) => {
   t.repeat = new Vector2(x, y);
   t.wrapS = t.wrapT = RepeatWrapping;
+  return t;
+};
+
+const srgb = (t: Texture) => {
+  t.encoding = sRGBEncoding;
   return t;
 };
 
@@ -443,16 +453,27 @@ const ThreeComponent: React.FC<SceneProps> = ({
         image.magFilter = NearestFilter;
         return image;
       })(),
-      brick: repeat(new TextureLoader().load(path('/bricks.jpeg')), 3, 3),
+      brick: srgb(repeat(new TextureLoader().load(path('/bricks.jpeg')), 3, 3)),
       brickNormal: repeat(
         new TextureLoader().load(path('/bricknormal.jpeg')),
         3,
         3
       ),
-      pebbles: repeat(
-        new TextureLoader().load(path('/Big_pebbles_pxr128.jpeg')),
+      patternedBrickDiff: new TextureLoader().load(
+        path('/patterned_brick_floor_02_diff.jpg')
+      ),
+      patternedBrickDisplacement: repeat(
+        new TextureLoader().load(path('/patterned_brick_floor_02_disp.jpg')),
         3,
         3
+      ),
+      patternedBrickNormal: repeat(
+        new TextureLoader().load(path('/patterned_brick_floor_02_normal.jpg')),
+        3,
+        3
+      ),
+      pebbles: srgb(
+        repeat(new TextureLoader().load(path('/Big_pebbles_pxr128.jpeg')), 3, 3)
       ),
       pebblesNormal: repeat(
         new TextureLoader().load(path('/Big_pebbles_pxr128_normal.jpeg')),
@@ -670,6 +691,21 @@ const ThreeComponent: React.FC<SceneProps> = ({
     warehouseImage,
     textures,
   ]);
+
+  useEffect(() => {
+    const toneMapping = sceneConfig.toneMapping;
+    if (toneMapping === 'NoToneMapping') {
+      renderer.toneMapping = NoToneMapping;
+    } else if (toneMapping === 'LinearToneMapping') {
+      renderer.toneMapping = LinearToneMapping;
+    } else if (toneMapping === 'ReinhardToneMapping') {
+      renderer.toneMapping = ReinhardToneMapping;
+    } else if (toneMapping === 'CineonToneMapping') {
+      renderer.toneMapping = CineonToneMapping;
+    } else if (toneMapping === 'ACESFilmicToneMapping') {
+      renderer.toneMapping = ACESFilmicToneMapping;
+    }
+  }, [renderer, sceneConfig.toneMapping]);
 
   const [ctx] = useState<EngineContext>(
     // Use context from hoisted ref as initializer to avoid re-creating context
@@ -1179,7 +1215,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                 </div>
               </div>
             </div>
-            <div className={styles.controlGrid}>
+            <div className={cx(styles.controlGrid, 'm-top-5')}>
               {resolutionConfig ? (
                 <VectorEditor
                   value={
@@ -1196,6 +1232,36 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   }
                 />
               ) : null}
+            </div>
+            <div className={cx(styles.controlGrid, 'm-top-10')}>
+              <div>
+                <label htmlFor="tonemappingfs" className="label noselect">
+                  <span>Tone Mapping</span>
+                </label>
+              </div>
+              <div>
+                <select
+                  id="tonemappingfs"
+                  className="select"
+                  onChange={(event) => {
+                    setSceneConfig({
+                      ...sceneConfig,
+                      toneMapping: event.target.value,
+                    });
+                  }}
+                  value={sceneConfig.toneMapping}
+                >
+                  <option value="NoToneMapping">NoToneMapping</option>
+                  <option value="LinearToneMapping">LinearToneMapping</option>
+                  <option value="ReinhardToneMapping">
+                    ReinhardToneMapping
+                  </option>
+                  <option value="CineonToneMapping">CineonToneMapping</option>
+                  <option value="ACESFilmicToneMapping">
+                    ACESFilmicToneMapping
+                  </option>
+                </select>
+              </div>
             </div>
           </TabPanel>
         </TabPanels>

@@ -334,6 +334,15 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
         explosion: await textureLoader(path('/explosion.png')),
         'grayscale-noise': await textureLoader(path('/grayscale-noise.png')),
         threeTone: await textureLoader(path('/3tone.jpg')),
+        patternedBrickDiff: await textureLoader(
+          path('/patterned_brick_floor_02_diff.jpg')
+        ),
+        patternedBrickDisplacement: await textureLoader(
+          path('/patterned_brick_floor_02_disp.jpg')
+        ),
+        patternedBrickNormal: await textureLoader(
+          path('/patterned_brick_floor_02_normal.jpg')
+        ),
         brick: await textureLoader(path('/bricks.jpeg')),
         brickNormal: await textureLoader(path('/bricknormal.jpeg')),
         pebbles: await textureLoader(path('/Big_pebbles_pxr128.jpeg')),

@@ -128,8 +128,6 @@ const log = (...args: any[]) =>
  * ✅ TODO ✅
  *
  * Experimentation ideas
- * - ✅ Try SDF image shader https://www.youtube.com/watch?v=1b5hIMqz_wM
- * - ✅ Have uniforms added per shader in the graph
  * - Break up editors into different types to avoid loading all 3 libraries in
  *   a single component
  * - Try this noise donut torus shader https://www.youtube.com/watch?v=ixEPBzrhgTg
@@ -140,9 +138,10 @@ const log = (...args: any[]) =>
  * - Add post processing effect support
  * - Add playcanvas support
  * - Add screen space shader support
+ * - ✅ Try SDF image shader https://www.youtube.com/watch?v=1b5hIMqz_wM
+ * - ✅ Have uniforms added per shader in the graph
  *
  * Fundamental Issues
- * - ✅ The three.js material has properties like "envMap" and "reflectivity" which
  *   do different things based on shader settings. They are independent of the
  *   uniforms and/or set the uniforms. Right now there's no way to plug into a
  *   property like "map" or "envMap". Should there be a separate "properties"
@@ -158,22 +157,23 @@ const log = (...args: any[]) =>
  * - Fix graph saving of positions, when loading a graph nodes move around
  * - Add ability to delete inputs from nodes? When removing a uniform, its
  *   inputs don't go away.
+ * - ✅ The three.js material has properties like "envMap" and "reflectivity" which
  *
  * Polish / Improvements
  * - UX
- *   - ✅ Store graph zoom / pan position between tab switches
- *   - ✅ fix default placement of nodes so they don't overlap and stack better,
- *     and/or save node positions for examples?
  *   - Add more syntax highlighting to the GLSL editor, look at vscode plugin?
  *     https://github.com/stef-levesque/vscode-shader/tree/master/syntaxes
- *   - ✅ Allow dragging uniform edge out backwards to create a data node for it
- *   - ✅ Auto rename the data inputs to uniforms to be that uniform name
  *   - Uniform strategy should be added as default to all shaders
  *   - Add three.js ability to switch lighting megashader
- *   - ✅ Sort node inputs into engine, uniforms, properties
+ *     and/or save node positions for examples?
  *   - Show input type by the input
+ *   - ✅ Allow dragging uniform edge out backwards to create a data node for it
+ *   - ✅ Auto rename the data inputs to uniforms to be that uniform name
+ *   - ✅ Sort node inputs into engine, uniforms, properties
  *   - ✅ "Compiling" doesn't show up when (at least) changing number input nodes,
  *     and the compiling indicator could be more obvious
+ *   - ✅ Store graph zoom / pan position between tab switches
+ *   - ✅ fix default placement of nodes so they don't overlap and stack better,
  * - Core
  *   - Recompiling re-parses / re-compiles the entire graph, nothing is
  *     memoized. Can we use immer or something else to preserve and update the
@@ -198,10 +198,10 @@ const log = (...args: any[]) =>
  * - Add types to the connections (like vec3/float), and show the types on the
  *   inputs/ouputs, and prevent wrong types from being connected
  * - Re-add the three > babylon conversion
+ * - Shader node editor specific undo history
  * - ✅ Add image data nodes to the graph
  * - ✅ Add persistable shaders to a db!
- * - Shader node editor specific undo history
- * - Add ability to show wireframe
+ * - ✅ Add ability to show wireframe
  *
  * Bugs
  * - UI

@@ -256,6 +256,7 @@ export type EditorShader = {
   engine: string;
   createdAt?: Date;
   updatedAt?: Date;
+  tags: string[];
   userId?: string;
   image?: string | null;
   name: string;
@@ -357,6 +358,7 @@ const Editor = ({
         name: randomShaderName(),
         visibility: 0,
         imageData: '',
+        tags: [],
         config: {
           graph: {
             nodes: [],
@@ -1254,6 +1256,7 @@ const Editor = ({
     const payload = {
       engine: engine.name,
       name: shader?.name || `Andy's new shader ${Math.random()}`,
+      tags: [],
       description: shader?.description || 'description',
       visibility: shader?.visibility || 1,
       imageData: screenshotData,

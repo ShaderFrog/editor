@@ -283,12 +283,9 @@ const BabylonComponent: React.FC<SceneProps> = ({
         scene
       );
     } else if (sceneConfig.previewObject === 'plane') {
-      mesh = MeshBuilder.CreatePlane(
-        'plane1',
-        { size: 2, sideOrientation: Mesh.DOUBLESIDE },
-        scene
-      );
-      mesh.increaseVertices(4);
+      mesh = MeshBuilder.CreatePlane('plane1', { size: 2 }, scene);
+      mesh.increaseVertices(20);
+      mesh.rotation.y = Math.PI;
     } else if (sceneConfig.previewObject === 'cube') {
       mesh = MeshBuilder.CreateBox(
         'cube1',
@@ -297,7 +294,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
         },
         scene
       );
-      mesh.increaseVertices(2);
+      mesh.increaseVertices(12);
     } else if (sceneConfig.previewObject === 'sphere') {
       mesh = MeshBuilder.CreateSphere(
         'sphere1',

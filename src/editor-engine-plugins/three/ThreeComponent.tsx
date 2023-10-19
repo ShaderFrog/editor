@@ -83,16 +83,6 @@ const log = (...args: any[]) =>
 
 const loadingMaterial = new MeshBasicMaterial({ color: 'pink' });
 
-const copyUIntToImageData = (data: Uint8Array, imageData: ImageData) => {
-  for (let i = 0; i < data.length; i += 4) {
-    let index = data.length - i; // flip how data is read
-    imageData.data[index] = data[i]; //red
-    imageData.data[index + 1] = data[i + 1]; //green
-    imageData.data[index + 2] = data[i + 2]; //blue
-    imageData.data[index + 3] = data[i + 3]; //alpha
-  }
-};
-
 export type SceneConfig = {
   showTangents: boolean;
   showNormals: boolean;
@@ -230,6 +220,11 @@ const repeat = (t: Texture, x: number, y: number) => {
 
 const srgb = (t: Texture) => {
   t.encoding = sRGBEncoding;
+  return t;
+};
+
+const unflipY = (t: Texture) => {
+  t.flipY = false;
   return t;
 };
 
@@ -467,10 +462,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
         3,
         3
       ),
-      patternedBrickNormal: repeat(
-        new TextureLoader().load(path('/patterned_brick_floor_02_normal.jpg')),
-        3,
-        3
+      patternedBrickNormal: unflipY(
+        repeat(
+          new TextureLoader().load(
+            path('/patterned_brick_floor_02_normal.jpg')
+          ),
+          3,
+          3
+        )
       ),
       pebbles: srgb(
         repeat(new TextureLoader().load(path('/Big_pebbles_pxr128.jpeg')), 3, 3)
@@ -752,9 +751,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
     const screenshotWidth = 400;
     screenshotCanvas.height = screenshotHeight;
     screenshotCanvas.width = screenshotWidth;
-    const target = new WebGLRenderTarget(screenshotWidth, screenshotHeight);
-    target.texture.minFilter = LinearMipMapLinearFilter;
 
+    // Set up a camera for the screenshot
     const camera = new PerspectiveCamera(
       45,
       screenshotWidth / screenshotHeight,
@@ -762,13 +760,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
       1000
     );
     scene.add(camera);
-
-    const pixelBuffer = new Uint8Array(screenshotHeight * screenshotHeight * 4);
-    const imageData = context2d.createImageData(
-      screenshotWidth,
-      screenshotHeight
-    );
-
     camera.position.copy(
       SceneAngleVectors[viewAngle](
         5 * CameraDistances[sceneConfig.previewObject]
@@ -776,24 +767,29 @@ const ThreeComponent: React.FC<SceneProps> = ({
     );
     camera.lookAt(new Vector3(0, 0, 0));
 
-    renderer.setRenderTarget(target);
-    renderer.render(scene, camera);
-    renderer.setRenderTarget(null);
-    renderer.readRenderTargetPixels(
-      target,
-      0,
-      0,
-      screenshotWidth,
-      screenshotHeight,
-      pixelBuffer
-    );
-    copyUIntToImageData(pixelBuffer, imageData);
-    context2d.putImageData(imageData, 0, 0);
+    // Set the camera position on the running shader
+    const { mesh } = sceneData;
+    if (
+      // @ts-ignore
+      mesh?.material?.uniforms?.cameraPosition &&
+      !Array.isArray(mesh?.material)
+    ) {
+      // @ts-ignore
+      mesh.material.uniforms.cameraPosition.value = camera.position;
+    }
 
-    const data = screenshotCanvas.toDataURL('image/jpeg', 0.9);
+    // Render to specific size
+    const originalSize = new Vector2();
+    renderer.getSize(originalSize);
+    renderer.setSize(screenshotWidth, screenshotHeight);
+    renderer.render(scene, camera);
+    const data = renderer.domElement.toDataURL('image/jpeg', 0.9);
+    // Reset
+    renderer.setSize(originalSize.x, originalSize.y);
     scene.remove(camera);
+
     return data;
-  }, [sceneConfig.previewObject, renderer, scene]);
+  }, [sceneData, sceneConfig.previewObject, renderer, scene]);
 
   useEffect(() => {
     if (!compileResult?.fragmentResult) {

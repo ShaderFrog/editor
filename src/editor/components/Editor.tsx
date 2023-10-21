@@ -240,6 +240,13 @@ const log = (...args: any[]) =>
  *   - Nodes not plugged into the graph don't get their contex computed (like
  *     new inputs)
  *   - Move engine nodes into engine specific constructors
+ *   - On Safari, Babylon generates different GLSL than Chrome, specifically it
+ *     adds `uniform Material { reflectionMatrix }` while on Chrome it just adds
+ *     `uniform mat4 reflectionMatrix`. Shaderfrog treats these as unique names
+ *     in the shader, so it crashed the shader on Safari because it had both,
+ *     redeclaring the variable. Is this a bug? Also this case would have been
+ *     alievated by the global variable detection system: parsing engine
+ *     variables out of engine shaders.
  */
 
 export type BaseSceneConfig = {

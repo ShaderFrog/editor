@@ -38,6 +38,7 @@ import {
   ReinhardToneMapping,
   CineonToneMapping,
   ACESFilmicToneMapping,
+  CubeTexture,
 } from 'three';
 // @ts-ignore
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
@@ -187,6 +188,29 @@ export const CameraDistances: Record<string, number> = {
   plane: 0.485,
   cylinder: 0.38,
   cone: 0.35,
+};
+
+const useCubeMap = (path: string) => {
+  const [cubeMap, setCubeMap] = useState<CubeTexture>();
+  useEffect(() => {
+    new CubeTextureLoader()
+      .setPath(path)
+      .load(
+        [
+          'posx.jpg',
+          'negx.jpg',
+          'posy.jpg',
+          'negy.jpg',
+          'posz.jpg',
+          'negz.jpg',
+        ],
+        (cubeTexture) => {
+          setCubeMap(cubeTexture);
+        }
+      );
+  }, [path]);
+
+  return cubeMap;
 };
 
 const useEnvMap = (
@@ -494,19 +518,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
         3,
         3
       ),
-      pondCubeMap: new CubeTextureLoader()
-        .setPath(path('/envmaps/pond/'))
-        .load([
-          'posx.jpg',
-          'negx.jpg',
-          'posy.jpg',
-          'negy.jpg',
-          'posz.jpg',
-          'negz.jpg',
-        ]),
     }),
     [path]
   );
+
+  const pondCubeMap = useCubeMap(path('/envmaps/pond/'));
+  textures.pondCubeMap = pondCubeMap;
 
   const warehouseImage = useEnvMap(
     renderer,
@@ -650,11 +667,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
   const previousBg = usePrevious(sceneConfig.bg);
   const previousWarehouseImage = usePrevious(warehouseImage);
+  const previousPondCubeMap = usePrevious(pondCubeMap);
   const previousSkyImage = usePrevious(skyImage);
   useEffect(() => {
     if (
       sceneConfig.bg === previousBg &&
       warehouseImage === previousWarehouseImage &&
+      pondCubeMap === previousPondCubeMap &&
       skyImage === previousSkyImage
     ) {
       return;
@@ -688,6 +707,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
     skyImage,
     previousWarehouseImage,
     warehouseImage,
+    pondCubeMap,
+    previousPondCubeMap,
     textures,
   ]);
 
@@ -727,16 +748,29 @@ const ThreeComponent: React.FC<SceneProps> = ({
   );
 
   useEffect(() => {
-    // I originally had this to let the three child scene load images, which I
-    // thought was a blocking requirement fo creating envMap textures. Now I
-    // see this can be done synchrounously. Not sure if this is needed, but
-    // it sends context to parent, so keeping for now
-    if (!ctx?.runtime?.loaded) {
+    if (
+      // I originally had this to let the three child scene load images, which I
+      // thought was a blocking requirement for creating envMap textures. Now I
+      // see this can be done synchrounously. Not sure if this is needed, but
+      // it sends context to parent, so keeping for now
+      !ctx?.runtime?.loaded &&
+      // Obviously this needs to be refactored, but this is my stopgap solution
+      // for waiting for the env map to load before the context is set. This is
+      // for shaders with envmaps. On first page load, the shader compiles
+      // before the envmap is loaded, and then the envmap loads, but the cached
+      // shader in threngine doesn't support an envMap, so it's locked out.
+      ((sceneConfig.bg !== 'warehouseImage' &&
+        sceneConfig.bg !== 'pondCubeMap' &&
+        sceneConfig.bg !== 'skyImage') ||
+        (sceneConfig.bg === 'warehouseImage' && warehouseImage) ||
+        (sceneConfig.bg === 'pondCubeMap' && pondCubeMap) ||
+        (sceneConfig.bg === 'skyImage' && skyImage))
+    ) {
       ctx.runtime.loaded = true;
       // Inform parent our context is created
       setCtx(ctx);
     }
-  }, [ctx, setCtx]);
+  }, [ctx, setCtx, sceneConfig.bg, warehouseImage, pondCubeMap, skyImage]);
 
   takeScreenshotRef.current = useCallback(async () => {
     const viewAngle = SceneDefaultAngles[sceneConfig.previewObject];

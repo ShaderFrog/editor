@@ -119,6 +119,13 @@ const log = (...args: any[]) =>
  *      and reference that variable in the filler code
  *    - Merge vertex and fragment shaders together into the same nodes, to avoid
  *      duplicating uniforms between the two nodes
+ * - Add comments to shaders (and likes)
+ * - Add standalone shader viewer page
+ * - Add ability to export shaders
+ * - Add an "easy mode" to the graph so it's easier for newcomers to use
+ * - Add screen space shader support, like shadertoy
+ * - Improve the compiler speed (or explore using )
+ * - Add anonymous shader saving
  * - Launch: Feedback, URL sharing, examples
  * - Caching contexts would be helpful
  * - Switching between threejs source code tab and runtime tab re-creates things
@@ -142,11 +149,6 @@ const log = (...args: any[]) =>
  * - ✅ Have uniforms added per shader in the graph
  *
  * Fundamental Issues
- *   do different things based on shader settings. They are independent of the
- *   uniforms and/or set the uniforms. Right now there's no way to plug into a
- *   property like "map" or "envMap". Should there be a separate "properties"
- *   section on each node?
- *   (https://github.com/mrdoob/three.js/blob/e22cb060cc91283d250e704f886528e1be593f45/src/materials/MeshPhysicalMaterial.js#L37)
  * - "displacementMap" on a three.js material is calculated in the vertex
  *   shader, so fundamentally it can't have fragment shaders plugged into it as
  *   images.
@@ -157,6 +159,11 @@ const log = (...args: any[]) =>
  * - Fix graph saving of positions, when loading a graph nodes move around
  * - Add ability to delete inputs from nodes? When removing a uniform, its
  *   inputs don't go away.
+ * - ✅ Do different things based on shader settings. They are independent of the
+ *   uniforms and/or set the uniforms. Right now there's no way to plug into a
+ *   property like "map" or "envMap". Should there be a separate "properties"
+ *   section on each node?
+ *   (https://github.com/mrdoob/three.js/blob/e22cb060cc91283d250e704f886528e1be593f45/src/materials/MeshPhysicalMaterial.js#L37)
  * - ✅ The three.js material has properties like "envMap" and "reflectivity" which
  *
  * Polish / Improvements
@@ -231,6 +238,10 @@ const log = (...args: any[]) =>
  *   - ✅ Dragging out a color/vec3 auto-creates a number node, causing webgl
  *     render crash
  * - Core
+ *   - Some custom nodes set engine shader varyings like vNormal. If an engine
+ *     shader sets that property later, it overrides the custom node. A feature
+ *     could be to look for any varying assignments in the custom node, and remove
+ *     any assignments to those in the
  *   - In a source node, if two functions declare a variable, the current
  *     "Variable" strategy will only pick the second one as an input.
  *   - (same as above?) The variable strategy needs to handle multiple variable

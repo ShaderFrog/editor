@@ -164,10 +164,12 @@ const FlowEditor = ({
     []
   );
 
+  // These are processed in useGraph() for the next time you need to figure this out
   const allMenuItems: MenuItems = [
     [
       'Source Code',
       [
+        ['Fragment and Vertex', 'fragmentandvertex'],
         ['Fragment', 'fragment'],
         ['Vertex', 'vertex'],
       ],

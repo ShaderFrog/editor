@@ -124,7 +124,7 @@ const log = (...args: any[]) =>
  * - Add ability to export shaders
  * - Add an "easy mode" to the graph so it's easier for newcomers to use
  * - Add screen space shader support, like shadertoy
- * - Improve the compiler speed (or explore using )
+ * - Improve the compiler speed (or explore using)
  * - Add anonymous shader saving
  * - Launch: Feedback, URL sharing, examples
  * - Caching contexts would be helpful
@@ -1460,6 +1460,7 @@ const Editor = ({
                 <StrategyEditor
                   ctx={ctx}
                   node={activeNode}
+                  graph={graph}
                   onSave={() =>
                     compile(engine, ctx as EngineContext, graph, flowElements)
                   }
@@ -1506,6 +1507,21 @@ const Editor = ({
                           });
                         }}
                       ></input>
+
+                      <h2 className={cx(styles.uiHeader, 'm-top-25')}>
+                        Description
+                      </h2>
+                      <textarea
+                        className="textinput"
+                        value={shader?.description || ''}
+                        onChange={(e) => {
+                          setShader({
+                            ...shader,
+                            description: e.target.value,
+                          });
+                        }}
+                      ></textarea>
+
                       <h2 className={cx(styles.uiHeader, 'm-top-25')}>
                         Screenshot
                       </h2>

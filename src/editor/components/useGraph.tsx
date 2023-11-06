@@ -233,6 +233,43 @@ const createGraphNode = (
     newGns = [multiplyNode(id, position)];
   } else if (nodeDataType === 'add') {
     newGns = [addNode(id, position)];
+  } else if (nodeDataType === 'fragmentandvertex') {
+    const fragment = sourceNode(
+      makeId(),
+      'Source Code ' + id,
+      position,
+      {
+        version: 2,
+        preprocess: true,
+        strategies: [uniformStrategy(), texture2DStrategy()],
+        uniforms: [],
+      },
+      `void main() {
+gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+}`,
+      'fragment',
+      engine.name
+    );
+    newGns = [
+      fragment,
+      sourceNode(
+        makeId(),
+        'Source Code ' + id,
+        position,
+        {
+          version: 2,
+          preprocess: true,
+          strategies: [uniformStrategy()],
+          uniforms: [],
+        },
+        `void main() {
+  gl_Position = vec4(1.0);
+}`,
+        'vertex',
+        engine.name,
+        fragment.id
+      ),
+    ];
   } else if (nodeDataType === 'fragment' || nodeDataType === 'vertex') {
     newGns = [
       sourceNode(

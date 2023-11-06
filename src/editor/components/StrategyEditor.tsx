@@ -7,15 +7,30 @@ import { EngineContext } from '@core/engine';
 
 import { Strategy, StrategyType } from '@core/strategy';
 
-import { SourceNode, SourceType } from '@core/graph';
+import { SourceNode, SourceType, Graph } from '@core/graph';
+
+const sourceTypeText: Record<SourceType, any> = {
+  Expression: (
+    <>A GLSL expression. It will be inlined into other nodes exactly as is.</>
+  ),
+  'Function Body Fragment': (
+    <>
+      A snippet of code that&apos;s valid inside of a function body, but not at
+      the top level scope.
+    </>
+  ),
+  'Shader Program': <>A full shader program (default).</>,
+};
 
 const StrategyEditor = ({
   node,
+  graph,
   onSave,
   onGraphChange,
   ctx,
 }: {
   node: SourceNode;
+  graph: Graph;
   onSave: () => void;
   onGraphChange: () => void;
   ctx?: EngineContext;
@@ -25,9 +40,57 @@ const StrategyEditor = ({
   }
   const { inputs } = node;
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSourceTypeChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     node.sourceType = event.target.value as typeof node.sourceType;
-    onSave();
+  };
+
+  const otherNodes = (stage: 'fragment' | 'vertex') => {
+    return (
+      <select
+        name="strategy"
+        className="select"
+        value={
+          stage === 'vertex'
+            ? node.nextStageNodeId
+            : graph.nodes.find(
+                (n) => (n as SourceNode).nextStageNodeId === node.id
+              )?.id
+        }
+        onChange={(e) => {
+          const otherId = e.target.value;
+          if (stage === 'vertex') {
+            node.nextStageNodeId = otherId;
+          } else {
+            graph.nodes.forEach((n) => {
+              const other = n as SourceNode;
+              if (other.id === otherId) {
+                other.nextStageNodeId = node.id;
+              } else if (other.nextStageNodeId === node.id) {
+                delete other.nextStageNodeId;
+              }
+            });
+          }
+          onSave();
+        }}
+      >
+        <option>None</option>
+        {graph.nodes
+          .filter(
+            (n) =>
+              n.id !== node.id &&
+              'stage' in n &&
+              n.stage !== stage &&
+              !node.engine
+          )
+          .map((n) => (
+            <option key={n.id} value={n.id}>
+              {n.name} ({(n as SourceNode).stage})
+            </option>
+          ))}
+      </select>
+    );
   };
 
   return (
@@ -45,12 +108,18 @@ const StrategyEditor = ({
             }}
           ></input>
         </div>
-        <div className="m-top-25 secondary">
-          Node configuration. Define how Shaderfrog finds the inputs and outputs
-          from the GLSL of this node.
+      </div>
+
+      <div className={styles.uiGroup}>
+        <h2 className={styles.uiHeader}>Node Strategies</h2>
+        <div className="secondary">
+          A &quot;strategy&quot; is a searching function applied to your
+          node&apos;s source code. The strategy finds parts of your GLSL program
+          matching the strategy criteria, and makes them available in the graph
+          as inputs to this node.
         </div>
-        <h2 className={cx(styles.uiHeader, 'm-top-15')}>Node Strategies</h2>
-        <div className={styles.autocolmax}>
+        <h2 className={cx(styles.uiHeader, 'm-top-15')}>Current Strategies</h2>
+        <div className={cx(styles.autocolmax, 'm-top-15')}>
           {node.config.strategies.map((strategy, index) => (
             <React.Fragment key={strategy.type}>
               <div>{strategy.type}</div>
@@ -122,24 +191,61 @@ const StrategyEditor = ({
           </div>
         </form>
       </div>
+
+      {node.stage ? (
+        <div className={styles.uiGroup}>
+          <h2 className={styles.uiHeader}>Linked Node</h2>
+          <div className="secondary">
+            Enable varyings to connect between vertex and fragment nodes. For
+            vertex nodes, set which fragment node this vertex node, if any, is
+            &quot;linked&quot; to. Without setting this, varyings are always
+            renamed to be unique, so they won&apos;t have the same name as other
+            nodes.
+          </div>
+          <div className={cx(styles.colcolauto, 'm-top-15')}>
+            <div>{otherNodes(node.stage)}</div>
+          </div>
+        </div>
+      ) : null}
+
       <div className={styles.uiGroup}>
         <h2 className={styles.uiHeader}>Source Code Type</h2>
+        <div className="secondary m-bottom-25">
+          What type of code is in this node.
+        </div>
         {Object.values(SourceType).map((value) => (
-          <label key={value}>
-            <input
-              type="radio"
-              value={value}
-              checked={node.sourceType === value}
-              onChange={handleChange}
-            />
-            {value}
-          </label>
+          <div key={value} className="m-top-5">
+            <label>
+              <input
+                type="radio"
+                value={value}
+                checked={node.sourceType === value || !node.sourceType}
+                onChange={handleSourceTypeChange}
+              />
+              <b>{value}</b>
+              <span className="secondary m-left-5">
+                {sourceTypeText[value]}
+              </span>
+            </label>
+          </div>
         ))}
       </div>
 
       <div className={styles.uiGroup}>
-        <h2 className={styles.uiHeader}>Node Inputs</h2>
-        {inputs.length ? inputs.map((i) => i.id).join(', ') : 'No inputs found'}
+        <h2 className={styles.uiHeader}>Node Inputs ({inputs.length})</h2>
+        <div className="secondary m-bottom-15">
+          The names of the inputs found by the node strategies. For debugging
+          only.
+        </div>
+        {inputs.length ? (
+          <ul>
+            {inputs.map((i) => (
+              <li key={i.id}>{i.id}</li>
+            ))}
+          </ul>
+        ) : (
+          'No inputs found'
+        )}
       </div>
     </>
   );

@@ -265,7 +265,7 @@ export type BaseSceneConfig = {
   lights: string;
   previewObject: string;
 };
-type AnySceneConfig = BaseSceneConfig & Record<string, any>;
+export type AnySceneConfig = BaseSceneConfig & Record<string, any>;
 
 // This must be kept in sync with the site/ shader model. TODO: Should that be
 // moved into Core instead?
@@ -346,7 +346,7 @@ export type EngineProps = {
   engine: Engine;
   example: string;
   examples: Record<string, string>;
-  makeExampleGraph: (example: string) => [Graph, string, string];
+  makeExampleGraph: (example: string) => [Graph, AnySceneConfig];
   menuItems: MenuItems;
   addEngineNode: (
     nodeDataType: string,
@@ -433,16 +433,8 @@ const Editor = ({
       return [initialShader.config.graph as Graph, initialShader.config.scene];
     }
     // @ts-ignore
-    const [graph, previewObject, bg] = makeExampleGraph(exampleGraph);
-    return [
-      expandUniformDataNodes(graph),
-      {
-        bg,
-        previewObject,
-        lights: 'point',
-      },
-      exampleGraph,
-    ];
+    const [graph, sceneConfig] = makeExampleGraph(exampleGraph);
+    return [expandUniformDataNodes(graph), sceneConfig, exampleGraph];
   }, [makeExampleGraph, example, initialShader]);
 
   const [currentExample, setExample] = useState<string | null | undefined>(
@@ -703,17 +695,13 @@ const Editor = ({
   useEffect(() => {
     if (currentExample !== previousExample && previousExample !== undefined) {
       log('🧶 Loading new example!', currentExample);
-      const [graph, previewObject, bg] = makeExampleGraph(
+      const [graph, sceneConfig] = makeExampleGraph(
         // @ts-ignore
         currentExample || examples.DEFAULT
       );
       const newGraph = expandUniformDataNodes(graph);
       setGraph(newGraph);
-      setSceneConfig({
-        lights: 'point',
-        bg,
-        previewObject,
-      });
+      setSceneConfig(sceneConfig);
       setActiveNode(newGraph.nodes[0] as SourceNode);
 
       if (ctx) {

@@ -29,6 +29,7 @@ import { convertNode } from '@core/engine';
 import { babylengine } from '@core/plugins/babylon/bablyengine';
 import { MenuItems } from '@editor/editor/components/flow/FlowEditor';
 import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
+import { AnySceneConfig } from '@editor/editor/components/Editor';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',
@@ -50,7 +51,7 @@ const outFrom = (node: CoreNode) => node.outputs[0].name;
 const konvert = (node: SourceNode) =>
   convertNode(node, babylengine.importers.three);
 
-export const makeExampleGraph = (example: string): [Graph, string, string] => {
+export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
   console.log('🌈 Making new graph!!');
   let newGraph: Graph;
   let previewObject: string;
@@ -513,7 +514,12 @@ export const makeExampleGraph = (example: string): [Graph, string, string] => {
     previewObject = 'torusknot';
   }
 
-  return [newGraph, previewObject, bg];
+  const defaultSceneConfig: AnySceneConfig = {
+    bg: '',
+    lights: '3point',
+    previewObject,
+  };
+  return [newGraph, defaultSceneConfig];
 };
 
 export const menuItems: MenuItems = [

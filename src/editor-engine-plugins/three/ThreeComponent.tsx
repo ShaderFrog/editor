@@ -6,39 +6,41 @@ import React, {
   useState,
 } from 'react';
 import {
-  MeshBasicMaterial,
+  ACESFilmicToneMapping,
   BoxGeometry,
   BufferGeometry,
+  CineonToneMapping,
   Color,
+  CubeTexture,
   CubeTextureLoader,
+  DoubleSide,
+  FrontSide,
+  Group,
   IcosahedronGeometry,
   LinearMipMapLinearFilter,
+  LinearToneMapping,
   Mesh,
+  MeshBasicMaterial,
   NearestFilter,
+  NoToneMapping,
   Object3D,
   PerspectiveCamera,
   PlaneGeometry,
   PointLight,
   PointLightHelper,
+  ReinhardToneMapping,
   RepeatWrapping,
   SphereGeometry,
   SpotLight,
   SpotLightHelper,
+  sRGBEncoding,
   Texture,
   TextureLoader,
   TorusKnotGeometry,
   Vector2,
   Vector3,
-  WebGLRenderTarget,
-  Group,
   WebGLRenderer,
-  sRGBEncoding,
-  NoToneMapping,
-  LinearToneMapping,
-  ReinhardToneMapping,
-  CineonToneMapping,
-  ACESFilmicToneMapping,
-  CubeTexture,
+  WebGLRenderTarget,
 } from 'three';
 // @ts-ignore
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
@@ -49,6 +51,7 @@ import {
   SamplerCubeNode,
   TextureNode,
   evaluateNode,
+  Graph,
 } from '@core/graph';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import { EngineContext } from '@core/engine';
@@ -103,6 +106,10 @@ const defaultResolution = {
   planeResolution: [64, 64],
   sphereResolution: [128, 128],
   icosahedronResolution: [0],
+};
+
+const areGraphsSimilarEnough = (a: Graph, b: Graph) => {
+  return a.nodes.length === b.nodes.length && a.edges.length === b.edges.length;
 };
 
 const resolutionConfigMapping: Record<
@@ -825,14 +832,19 @@ const ThreeComponent: React.FC<SceneProps> = ({
     return data;
   }, [sceneData, sceneConfig.previewObject, renderer, scene]);
 
+  // The below effect relies on graph, however when the graph changes, it can be
+  // from moving nodes or sliding uniform sliders, which should not cause a
+  // material re-creation. Putting the graph in a ref lets the effect access it
+  // without making it a dependency of the effect.
+  const graphRef = useRef<Graph>(graph);
+  graphRef.current = graph;
+
   useEffect(() => {
     if (!compileResult?.fragmentResult) {
       return;
     }
     const material = createMaterial(compileResult, ctx);
-    if (sceneConfig.wireframe) {
-      material.wireframe = true;
-    }
+    const graph = graphRef.current;
 
     // const { graph } = compileResult;
     const {
@@ -925,6 +937,15 @@ const ThreeComponent: React.FC<SceneProps> = ({
       ...uniforms,
     };
 
+    // Copy the sceneConfig properties onto the material. For now this means
+    // that toggling doubleSide etc creates a new material. Also I don't know if
+    // these properties require the core material in threngine to get
+    // re-created. I did it here because there's not currently a way to pass the
+    // scene config into the core graph for compiling.
+    material.wireframe = sceneConfig.wireframe;
+    material.side = sceneConfig.doubleSide ? DoubleSide : FrontSide;
+    material.transparent = sceneConfig.transparent;
+
     log('🏞 Re-creating Three.js material!', {
       material,
       properties,
@@ -934,7 +955,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     mesh.material = material;
     shadersUpdated.current = true;
-  }, [compileResult, ctx, graph, textures, sceneConfig.wireframe]);
+  }, [sceneConfig, compileResult, ctx, textures]);
 
   const prevLights = usePrevious(sceneConfig.lights);
   const previousShowHelpers = usePrevious(sceneConfig.showHelpers);
@@ -1177,71 +1198,118 @@ const ThreeComponent: React.FC<SceneProps> = ({
               </div>
             </div>
           </TabPanel>
+
           <TabPanel className={styles.sceneControls}>
-            <div className={styles.controlGrid}>
-              <div>
-                <input
-                  className="checkbox"
-                  id="Wireframesfs"
-                  type="checkbox"
-                  checked={sceneConfig.wireframe}
-                  onChange={(event) =>
-                    setSceneConfig({
-                      ...sceneConfig,
-                      wireframe: event?.target.checked,
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <label htmlFor="Wireframesfs" className="label noselect">
-                  <span>Wireframe</span>
-                </label>
-              </div>
-
-              <div className="grid span2">
-                <div className={styles.controlGrid}>
-                  <div>
-                    <input
-                      className="checkbox"
-                      id="nrm"
-                      type="checkbox"
-                      checked={sceneConfig.showNormals}
-                      onChange={(event) =>
-                        setSceneConfig({
-                          ...sceneConfig,
-                          showNormals: event?.target.checked,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="label noselect" htmlFor="nrm">
-                      <span>Show Normals</span>
-                    </label>
-                  </div>
+            <div className="grid col2">
+              <div className={styles.controlGrid}>
+                <div>
+                  <input
+                    className="checkbox"
+                    id="Wireframesfs"
+                    type="checkbox"
+                    checked={sceneConfig.wireframe}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        wireframe: event?.target.checked,
+                      })
+                    }
+                  />
                 </div>
+                <div>
+                  <label htmlFor="Wireframesfs" className="label noselect">
+                    <span>Wireframe</span>
+                  </label>
+                </div>
+              </div>
 
-                <div className={styles.controlGrid}>
-                  <div>
-                    <input
-                      className="checkbox"
-                      id="tng"
-                      type="checkbox"
-                      checked={sceneConfig.showTangents}
-                      onChange={(event) =>
-                        setSceneConfig({
-                          ...sceneConfig,
-                          showTangents: event?.target.checked,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="label noselect" htmlFor="tng">
-                      <span>Show Tangents</span>
-                    </label>
-                  </div>
+              <div className={styles.controlGrid}>
+                <div>
+                  <input
+                    className="checkbox"
+                    id="nrm"
+                    type="checkbox"
+                    checked={sceneConfig.showNormals}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        showNormals: event?.target.checked,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label noselect" htmlFor="nrm">
+                    <span>Show Normals</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className={styles.controlGrid}>
+                <div>
+                  <input
+                    className="checkbox"
+                    id="tng"
+                    type="checkbox"
+                    checked={sceneConfig.showTangents}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        showTangents: event?.target.checked,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label noselect" htmlFor="tng">
+                    <span>Show Tangents</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid col2 m-top-5">
+              <div className={styles.controlGrid}>
+                <div>
+                  <input
+                    className="checkbox"
+                    id="dbs"
+                    type="checkbox"
+                    checked={sceneConfig.doubleSide}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        doubleSide: event?.target.checked,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label noselect" htmlFor="dbs">
+                    <span>Double Side</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className={styles.controlGrid}>
+                <div>
+                  <input
+                    className="checkbox"
+                    id="trnsp"
+                    type="checkbox"
+                    checked={sceneConfig.transparent}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        transparent: event?.target.checked,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label noselect" htmlFor="trnsp">
+                    <span>Transparent</span>
+                  </label>
                 </div>
               </div>
             </div>

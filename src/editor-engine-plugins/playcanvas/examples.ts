@@ -11,6 +11,7 @@ import { makeId } from '../../editor-util/id';
 import { engine as playengine } from '@core/plugins/playcanvas';
 import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
 import { MenuItems } from '@editor/editor/components/flow/FlowEditor';
+import { AnySceneConfig } from '@editor/editor/components/Editor';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',
@@ -29,7 +30,7 @@ const edgeFrom = (
 
 const outFrom = (node: CoreNode) => node.outputs[0].name;
 
-export const makeExampleGraph = (example: string): [Graph, string, string] => {
+export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
   console.log('🌈 Making new graph!!');
   let newGraph: Graph;
   let previewObject: string;
@@ -71,7 +72,12 @@ export const makeExampleGraph = (example: string): [Graph, string, string] => {
   };
   previewObject = 'sphere';
 
-  return [newGraph, previewObject, bg];
+  const defaultSceneConfig: AnySceneConfig = {
+    bg: '',
+    lights: '3point',
+    previewObject,
+  };
+  return [newGraph, defaultSceneConfig];
 };
 
 export const menuItems: MenuItems = [

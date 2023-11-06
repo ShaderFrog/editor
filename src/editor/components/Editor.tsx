@@ -331,6 +331,8 @@ export type SceneProps = {
 export type EditorProps = {
   assetPrefix: string;
   saveError?: string;
+  isFork?: boolean;
+  isAuthenticated?: boolean;
   shader?: EditorShader;
   onCreateShader?: (shader: ShaderCreateInput) => Promise<void>;
   onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
@@ -360,6 +362,8 @@ const Editor = ({
   assetPrefix,
   saveError,
   shader: initialShader,
+  isFork,
+  isAuthenticated,
   onCreateShader,
   onUpdateShader,
   engine,
@@ -392,6 +396,12 @@ const Editor = ({
       }
     );
   });
+
+  // Refresh the shader from the server if the ID changes - which happens on a
+  // fork and a create
+  if (initialShader && shader?.id && initialShader?.id !== shader?.id) {
+    setShader(initialShader);
+  }
 
   const [screenshotData, setScreenshotData] = useState<string>('');
   const takeScreenshotRef = useRef<() => Promise<string>>();
@@ -1284,7 +1294,8 @@ const Editor = ({
         scene: sceneConfig,
       },
     };
-    if (shader?.id && onUpdateShader) {
+
+    if (shader?.id && onUpdateShader && !isFork) {
       await onUpdateShader({
         id: shader.id,
         ...payload,
@@ -1307,7 +1318,7 @@ const Editor = ({
   const isLocal = window.location.href.indexOf('localhost') > 111;
   const editorElements = (
     <>
-      {isSmallScreen ? null : (
+      {isSmallScreen ? null : isAuthenticated ? (
         <div className={cx(styles.tabControls, { [styles.col3]: isLocal })}>
           {saveError ? (
             <div className={cx(styles.errorPill, 'm-right-10')}>
@@ -1320,10 +1331,12 @@ const Editor = ({
               className="buttonauto formbutton size2"
               onClick={onClickSave}
             >
-              Save
+              {isFork ? 'Fork' : 'Save'}
             </button>
           </div>
         </div>
+      ) : (
+        <div className={styles.tabControls}>Log in to save</div>
       )}
       <Tabs
         onTabSelect={setEditorTabIndex}

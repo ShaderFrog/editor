@@ -463,19 +463,19 @@ const Editor = ({
   const [compiling, setCompiling] = useState<boolean>(false);
   const [guiError, setGuiError] = useState<string>('');
 
-  useEffect(() => {
-    const t = setTimeout(takeScreenshot, 500);
-    return () => {
-      window.clearTimeout(t);
-    };
-  }, [takeScreenshot, sceneConfig, graph]);
-
   const [activeNode, setActiveNode] = useState<SourceNode>(
     (graph.nodes.find((n) => n.type === 'source') ||
       graph.nodes[0]) as SourceNode
   );
 
   const [compileResult, setCompileResult] = useState<UICompileGraphResult>();
+
+  useEffect(() => {
+    const t = setTimeout(takeScreenshot, 500);
+    return () => {
+      window.clearTimeout(t);
+    };
+  }, [compileResult, takeScreenshot, sceneConfig]);
 
   // React-flow apparently needs(?) the useState callback to ensure the latest
   // flow elements are in state. We can no longer easily access the "latest"

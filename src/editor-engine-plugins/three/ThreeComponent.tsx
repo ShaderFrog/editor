@@ -92,6 +92,7 @@ export type SceneConfig = {
   showNormals: boolean;
   wireframe: boolean;
   doubleSide: boolean;
+  transparent: boolean;
   torusKnotResolution: [number, number];
   boxResolution: [number, number, number];
   planeResolution: [number, number];

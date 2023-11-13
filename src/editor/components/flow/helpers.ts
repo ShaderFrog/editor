@@ -151,7 +151,7 @@ export const graphNodeToFlowNode = (
         active: false,
         biStage: node.biStage || false,
         inputs: toFlowInputs(node),
-        outputs: node.outputs.map((o) => flowOutput(o.name)),
+        outputs: node.outputs.map((o) => flowOutput(o.name, o.id)),
         onInputBakedToggle,
       }
     : {
@@ -159,7 +159,7 @@ export const graphNodeToFlowNode = (
         type: node.type,
         value: node.value,
         inputs: toFlowInputs(node),
-        outputs: node.outputs.map((o) => flowOutput(o.name)),
+        outputs: node.outputs.map((o) => flowOutput(o.name, o.id)),
         config: { ...node },
       };
   return {

@@ -9,7 +9,7 @@ import {
   EdgeType,
   makeEdge,
   outputNode,
-  CoreNode,
+  BaseNode,
   SourceNode,
   Edge,
   GraphNode,
@@ -40,13 +40,13 @@ export enum Example {
 }
 
 const edgeFrom = (
-  fromNode: CoreNode,
+  fromNode: BaseNode,
   toId: string,
   input: string,
   type?: EdgeType
 ) => makeEdge(makeId(), fromNode.id, toId, outFrom(fromNode), input, type);
 
-const outFrom = (node: CoreNode) => node.outputs[0].name;
+const outFrom = (node: BaseNode) => node.outputs[0].id;
 
 const konvert = (node: SourceNode) =>
   convertNode(node, babylengine.importers.three);

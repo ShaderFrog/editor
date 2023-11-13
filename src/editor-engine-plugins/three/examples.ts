@@ -11,7 +11,7 @@ import {
   EdgeType,
   makeEdge,
   outputNode,
-  CoreNode,
+  BaseNode,
   GraphNode,
   Edge,
   samplerCubeNode,
@@ -65,13 +65,13 @@ export enum Example {
 }
 
 const edgeFrom = (
-  fromNode: CoreNode,
+  fromNode: BaseNode,
   toId: string,
   input: string,
   type?: EdgeType
 ) => makeEdge(makeId(), fromNode.id, toId, outFrom(fromNode), input, type);
 
-const outFrom = (node: CoreNode) => node.outputs[0].name;
+const outFrom = (node: BaseNode) => node.outputs[0].id;
 
 export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
   console.log('🌈 Making new graph!!');

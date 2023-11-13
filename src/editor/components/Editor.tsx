@@ -1,5 +1,6 @@
 import styles from '../styles/editor.module.css';
 import debounce from 'lodash.debounce';
+import groupBy from 'lodash.groupby';
 
 import FlowEditor, {
   MenuItems,
@@ -32,6 +33,7 @@ import {
   useReactFlow,
   XYPosition,
   OnConnectStartParams,
+  useStoreApi,
 } from 'reactflow';
 
 import {
@@ -47,6 +49,9 @@ import {
   computeContextForNodes,
   isDataNode,
   NodeType,
+  collectConnectedNodes,
+  filterGraphFromNode,
+  makeEdge,
 } from '@core/graph';
 
 import { Engine, EngineContext } from '@core/engine';
@@ -102,6 +107,21 @@ const SMALL_SCREEN_WIDTH = 500;
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
 
+const post = async (path: string, body: any) => {
+  const result = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!result.status.toString().startsWith('2')) {
+    console.error('Fetch error', result);
+    throw new Error(result.toString());
+  }
+  return await result.json();
+};
+
 /**
  * Where was I?
  * - Made babylon a lot better, got three<>babylon example working. Then
@@ -135,9 +155,10 @@ const log = (...args: any[]) =>
  * ✅ TODO ✅
  *
  * Experimentation ideas
- * - Break up editors into different types to avoid loading all 3 libraries in
- *   a single component
- * - Try this noise donut torus shader https://www.youtube.com/watch?v=ixEPBzrhgTg
+ * - Break up editors into different types to avoid loading all 3 libraries in a
+ *   single component
+ * - Try this noise donut torus shader
+ *   https://www.youtube.com/watch?v=ixEPBzrhgTg
  * - Put other images in the graph like the toon step shader
  * - Adding a rim glow to a toon lit mesh is cool - but it would be even cooler
  *   to be able to multiply the rim lighting by the threejs lighting output
@@ -152,10 +173,11 @@ const log = (...args: any[]) =>
  * - "displacementMap" on a three.js material is calculated in the vertex
  *   shader, so fundamentally it can't have fragment shaders plugged into it as
  *   images.
- * - Setting custom vertex attributes on the mesh, then reading them in the shader, like
- *   "in vec3 tangent;" get suffixed to "in vec3 tangent_1234;" and lose their relationship
- *   with the attribute on the geometry.
- * - Autosave shader while editing ( + memoizing to avoid recompiling three every time)
+ * - Setting custom vertex attributes on the mesh, then reading them in the
+ *   shader, like "in vec3 tangent;" get suffixed to "in vec3 tangent_1234;" and
+ *   lose their relationship with the attribute on the geometry.
+ * - Autosave shader while editing ( + memoizing to avoid recompiling three
+ *   every time)
  * - Fix graph saving of positions, when loading a graph nodes move around
  * - Add ability to delete inputs from nodes? When removing a uniform, its
  *   inputs don't go away.
@@ -164,21 +186,22 @@ const log = (...args: any[]) =>
  *   property like "map" or "envMap". Should there be a separate "properties"
  *   section on each node?
  *   (https://github.com/mrdoob/three.js/blob/e22cb060cc91283d250e704f886528e1be593f45/src/materials/MeshPhysicalMaterial.js#L37)
- * - ✅ The three.js material has properties like "envMap" and "reflectivity" which
+ * - ✅ The three.js material has properties like "envMap" and "reflectivity"
+ *   which
  *
  * Polish / Improvements
  * - UX
  *   - Add more syntax highlighting to the GLSL editor, look at vscode plugin?
  *     https://github.com/stef-levesque/vscode-shader/tree/master/syntaxes
  *   - Uniform strategy should be added as default to all shaders
- *   - Add three.js ability to switch lighting megashader
- *     and/or save node positions for examples?
+ *   - Add three.js ability to switch lighting megashader and/or save node
+ *     positions for examples?
  *   - Show input type by the input
  *   - ✅ Allow dragging uniform edge out backwards to create a data node for it
  *   - ✅ Auto rename the data inputs to uniforms to be that uniform name
  *   - ✅ Sort node inputs into engine, uniforms, properties
- *   - ✅ "Compiling" doesn't show up when (at least) changing number input nodes,
- *     and the compiling indicator could be more obvious
+ *   - ✅ "Compiling" doesn't show up when (at least) changing number input
+ *     nodes, and the compiling indicator could be more obvious
  *   - ✅ Store graph zoom / pan position between tab switches
  *   - ✅ fix default placement of nodes so they don't overlap and stack better,
  * - Core
@@ -206,6 +229,9 @@ const log = (...args: any[]) =>
  *   inputs/ouputs, and prevent wrong types from being connected
  * - Re-add the three > babylon conversion
  * - Shader node editor specific undo history
+ * - For parsing and mangling - after parsing - can I just produce a function
+ *   that fills in a template? So that when it's time to compose, it's just
+ *   string manipulation?
  * - ✅ Add image data nodes to the graph
  * - ✅ Add persistable shaders to a db!
  * - ✅ Add ability to show wireframe
@@ -224,7 +250,8 @@ const log = (...args: any[]) =>
  *   - Data nodes hard coded as '1' fail because that's not a valid float, like
  *     hard coding "transmission" uniform.
  * - Nodes / Graph
- *   - clamp(texture2D(), vec4(), vec4()) and replacing texture2D() eats whole clamp!
+ *   - clamp(texture2D(), vec4(), vec4()) and replacing texture2D() eats whole
+ *     clamp!
  *   - Plugging in Shader > Add > Baked Texture Input causes the input to be
  *     unbaked. This is because the auto-bake algorithm only looks one node
  *     level deep, and the "add" node isn't type = "source"
@@ -240,8 +267,8 @@ const log = (...args: any[]) =>
  * - Core
  *   - Some custom nodes set engine shader varyings like vNormal. If an engine
  *     shader sets that property later, it overrides the custom node. A feature
- *     could be to look for any varying assignments in the custom node, and remove
- *     any assignments to those in the
+ *     could be to look for any varying assignments in the custom node, and
+ *     remove any assignments to those in the
  *   - In a source node, if two functions declare a variable, the current
  *     "Variable" strategy will only pick the second one as an input.
  *   - (same as above?) The variable strategy needs to handle multiple variable
@@ -282,8 +309,8 @@ export type EditorShader = {
   visibility: number;
   config: {
     graph: {
-      nodes: any[];
-      edges: any[];
+      nodes: GraphNode[];
+      edges: Edge[];
     };
     scene: AnySceneConfig;
   };
@@ -358,6 +385,105 @@ export type EngineProps = {
   sceneComponent: FunctionComponent<SceneProps>;
 };
 
+const GroupSearch = ({
+  engine,
+  assetPrefix,
+  activeNode,
+  onSelect,
+}: {
+  engine: string;
+  assetPrefix: string;
+  activeNode: SourceNode;
+  onSelect: (shader: EditorShader) => void;
+}) => {
+  const [search, setSearch] = useState<string>('');
+  const [effects, setEffects] = useState<{
+    total: number;
+    shaders: EditorShader[];
+  }>({ total: 0, shaders: [] });
+
+  const doSearch = useMemo(() => {
+    return debounce(async (text: string) => {
+      try {
+        const { count, shaders } = await post(
+          `${assetPrefix}/api/shader/search`,
+          { text, engine }
+        );
+
+        // Remove shaders with engine nodes. There's probably a more important
+        // criteria here that I don't know yet.
+        const filtered = (shaders as EditorShader[]).filter((s) => {
+          return !s.config.graph.nodes.find((n) => (n as SourceNode).engine);
+        });
+
+        setEffects({ total: count, shaders: filtered });
+      } catch (e) {
+        console.error('Error searching', e);
+      }
+    }, 500);
+  }, [engine, assetPrefix]);
+
+  useEffect(() => {
+    doSearch('');
+  }, [doSearch]);
+
+  const onChange = (event: React.FormEvent<HTMLInputElement>) => {
+    const search = event.currentTarget.value || '';
+    setSearch(search);
+    doSearch(search);
+  };
+
+  return (
+    <>
+      <div>
+        <label className="label" htmlFor="efsrc">
+          Effect Search
+        </label>
+        <input
+          name="search"
+          id="efsrc"
+          className="textinput"
+          placeholder="Effect name"
+          onChange={onChange}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              doSearch(search);
+            }
+          }}
+        ></input>
+      </div>
+      <div className="m-top-10">
+        <div>
+          <div>
+            <label className="label">Results</label>
+          </div>
+          {effects.shaders.length ? (
+            <div className="grid col2">
+              {effects.shaders.map((shader) => (
+                <div
+                  key={shader.id}
+                  className="shaderCardButton"
+                  onClick={() => onSelect(shader)}
+                >
+                  <div className="cardImg">
+                    <img
+                      src={shader.image as string}
+                      alt={`${shader.name} screenshot`}
+                    />
+                  </div>
+                  <div className="body">{shader.name}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            'No results'
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
+
 const Editor = ({
   assetPrefix,
   saveError,
@@ -374,6 +500,9 @@ const Editor = ({
   sceneComponent: SceneComponent,
   addEngineNode,
 }: EditorProps & EngineProps) => {
+  const reactFlowStore = useStoreApi();
+  const { addSelectedNodes } = reactFlowStore.getState();
+
   const [shader, setShader] = useState<EditorShader>(() => {
     return (
       initialShader || {
@@ -703,6 +832,7 @@ const Editor = ({
       setGraph(newGraph);
       setSceneConfig(sceneConfig);
       setActiveNode(newGraph.nodes[0] as SourceNode);
+      addSelectedNodes([newGraph.nodes[0].id]);
 
       if (ctx) {
         const initFlowElements = graphToFlowGraph(newGraph, onInputBakedToggle);
@@ -712,6 +842,7 @@ const Editor = ({
       }
     }
   }, [
+    addSelectedNodes,
     currentExample,
     previousExample,
     setGraph,
@@ -935,11 +1066,14 @@ const Editor = ({
   const onNodeDoubleClick = useCallback(
     (event, node: FlowNode) => {
       if (!('value' in node.data)) {
-        setActiveNode(graph.nodes.find((n) => n.id === node.id) as SourceNode);
+        const active = graph.nodes.find((n) => n.id === node.id) as SourceNode;
+        setActiveNode(active);
+        addSelectedNodes([active.id]);
+
         setEditorTabIndex(1);
       }
     },
-    [graph]
+    [addSelectedNodes, graph]
   );
 
   const setTargets = useCallback(
@@ -1184,6 +1318,149 @@ const Editor = ({
     [graph, project, addNodeAtPosition, resetTargets]
   );
 
+  /**
+   * When selecting a group to replace the current node with
+   */
+  const onSelectGroup = (shader: EditorShader) => {
+    // For now can only replace the currently selected node
+    if (!activeNode) {
+      return;
+    }
+
+    // TODO: Gotta figure out how to do this in the context of groups
+
+    // Find the current active node and its next stage node if present
+    const curentOutputNode = activeNode;
+    const activeNodeIds = new Set([curentOutputNode.id]);
+    const currentToEdge = graph.edges.find(
+      (edge) => edge.from === activeNode.id
+    );
+    const currentToNode = graph.nodes.find(
+      (node) => node.id === currentToEdge?.to
+    );
+    const otherActiveNode = graph.nodes.find(
+      (n) =>
+        n.id === activeNode.nextStageNodeId ||
+        (n as SourceNode).nextStageNodeId === activeNode.id
+    );
+
+    // TODO: Guessing for how nodes are parented to a group, and remove those
+    // instead of all the inputs to a node
+    // activeNode.parentId ?
+    //     graph.nodes.find((n) => n.id === activeNode.parentId)
+
+    // Filter the graph from the active node to essentialy remove its data
+    // inputs. With groups this should change to the group.
+    const currentElementsToRemove = filterGraphFromNode(graph, activeNode, {
+      node: (node, inputEdges, acc) => {
+        return Object.values(acc.edges)
+          .map((edge) => edge.from)
+          .includes(node.id);
+      },
+      edge: (input, toNode, inputEdge, fromNode) => {
+        const res = !!(
+          fromNode &&
+          toNode.id === activeNode.id &&
+          isDataNode(fromNode)
+        );
+        return res;
+      },
+    });
+    const edgesToRemoveById = groupBy(currentElementsToRemove.edges, 'id');
+    const nodesToRemoveById = groupBy(currentElementsToRemove.nodes, 'id');
+
+    // Figure out some shit from the incoming graph
+    const { graph: incomingGraph } = shader.config;
+    const outputFrag = incomingGraph.nodes.find(
+      (node) => node.type === 'output' && node.stage === 'fragment'
+    );
+    const outputVert = incomingGraph.nodes.find(
+      (node) => node.type === 'output' && node.stage === 'vertex'
+    );
+    const incomingOutEdge = incomingGraph.edges.find(
+      (edge) => edge.to === outputFrag?.id
+    );
+    const incomingOutNode = incomingGraph.nodes.find(
+      (n) => n.id === incomingOutEdge?.from
+    );
+    const incomingOutput = incomingOutNode?.outputs?.[0];
+
+    const groupId = makeId();
+    const filteredIncomingGraph: Graph = {
+      nodes: incomingGraph.nodes
+        // remove the output nodes from the incoming graph
+        .filter((n) => n.id !== outputFrag?.id && n.id !== outputVert?.id)
+        // and give all nodes the parent group id
+        .map((n) => ({
+          ...n,
+          parentId: groupId,
+        })),
+      // remove any edges to the output nodes
+      edges: incomingGraph.edges.filter(
+        (e) => e.to !== outputFrag?.id && e.to !== outputVert?.id
+      ),
+    };
+
+    // Connect our incoming graph's output contract node with our current
+    // graph's active toNode input
+    const newOutEdge =
+      incomingOutNode && incomingOutput && currentToEdge && currentToNode
+        ? makeEdge(
+            // id, from, to, output, input, type
+            makeId(),
+            incomingOutNode.id,
+            currentToNode.id,
+            incomingOutput.id,
+            currentToEdge.input,
+            isDataNode(incomingOutNode)
+              ? incomingOutNode.type
+              : incomingOutNode.stage
+          )
+        : null;
+
+    const newGraph: Graph = {
+      nodes: [
+        ...graph.nodes.filter(
+          (node) =>
+            // Remove the currently selected node, which we're replacing
+            !activeNodeIds.has(node.id) &&
+            // And its friends
+            !(node.id in nodesToRemoveById) &&
+            // And its next stage node if present
+            node.id !== otherActiveNode?.id
+        ),
+        ...filteredIncomingGraph.nodes,
+      ],
+      // And remove all their edges
+      edges: [
+        ...graph.edges.filter(
+          (edge) =>
+            edge.id !== currentToEdge?.id && !(edge.id in edgesToRemoveById)
+        ),
+        // And add in the incoming edges
+        ...filteredIncomingGraph.edges,
+        // Add the contract connector
+        ...(newOutEdge ? [newOutEdge] : []),
+      ],
+    };
+
+    const newFlowGraph = graphToFlowGraph(newGraph, onInputBakedToggle);
+
+    setFlowElements(newFlowGraph);
+    setGraph(newGraph);
+
+    if (incomingOutNode) {
+      setActiveNode(incomingOutNode as SourceNode);
+
+      // Flakey: Select the node visually in the graph. Don't know why flakey
+      // so added timeout
+      setTimeout(() => {
+        addSelectedNodes([incomingOutNode.id]);
+      }, 100);
+    }
+    debouncedSetNeedsCompile(true);
+  };
+
   const mouseRef = useRef<MouseData>({
     real: { x: 0, y: 0 },
     projected: { x: 0, y: 0 },
@@ -1272,9 +1549,9 @@ const Editor = ({
     // setShader() copies all those values
     const payload = {
       engine: engine.name,
-      name: shader?.name || `Andy's new shader ${Math.random()}`,
+      name: shader?.name,
       tags: [],
-      description: shader?.description || 'description',
+      description: shader?.description,
       visibility: shader?.visibility || 1,
       imageData: screenshotData,
       config: {
@@ -1354,56 +1631,73 @@ const Editor = ({
             className={styles.growShrinkRows}
             ref={reactFlowWrapper}
           >
-            <FlowEditor
-              menuItems={menuItems}
-              mouse={mouseRef}
-              onMenuAdd={onMenuAdd}
-              onNodeValueChange={onNodeValueChange}
-              nodes={flowElements.nodes}
-              edges={flowElements.edges}
-              onConnect={onConnect}
-              onEdgeUpdate={onEdgeUpdate}
-              onEdgesChange={onEdgesChange}
-              onNodesChange={onNodesChange}
-              onNodesDelete={onNodesDelete}
-              onNodeDoubleClick={onNodeDoubleClick}
-              onEdgesDelete={onEdgesDelete}
-              onConnectStart={onConnectStart}
-              onEdgeUpdateStart={onEdgeUpdateStart}
-              onEdgeUpdateEnd={onEdgeUpdateEnd}
-              onConnectEnd={onConnectEnd}
-            />
-            <div className={styles.graphFooter}>
-              <span className={styles.footerSecondary}>Engine: </span>
-              {engine.name === 'playcanvas'
-                ? 'PlayCanvas'
-                : engine.name === 'three'
-                ? 'Three.js'
-                : engine.name === 'babylon'
-                ? 'Babylon.js'
-                : 'Wtf'}
-              {compileResult?.compileMs ? (
-                <>
-                  <span className={styles.divider}>|</span>
-                  <span className={styles.footerSecondary}>Compile time: </span>
-                  {compileResult?.compileMs}ms
-                </>
-              ) : null}
-            </div>
+            <SplitPane split="vertical" defaultSizes={[0.2, 0.8]}>
+              <div
+                className={cx(styles.splitInner, styles.vSplit, styles.vScroll)}
+              >
+                <GroupSearch
+                  assetPrefix={assetPrefix}
+                  engine={engine.name}
+                  activeNode={activeNode}
+                  onSelect={onSelectGroup}
+                />
+              </div>
+              <div className={styles.splitInner}>
+                <FlowEditor
+                  menuItems={menuItems}
+                  mouse={mouseRef}
+                  onMenuAdd={onMenuAdd}
+                  onNodeValueChange={onNodeValueChange}
+                  nodes={flowElements.nodes}
+                  edges={flowElements.edges}
+                  onConnect={onConnect}
+                  onEdgeUpdate={onEdgeUpdate}
+                  onEdgesChange={onEdgesChange}
+                  onNodesChange={onNodesChange}
+                  onNodesDelete={onNodesDelete}
+                  onNodeDoubleClick={onNodeDoubleClick}
+                  onEdgesDelete={onEdgesDelete}
+                  onConnectStart={onConnectStart}
+                  onEdgeUpdateStart={onEdgeUpdateStart}
+                  onEdgeUpdateEnd={onEdgeUpdateEnd}
+                  onConnectEnd={onConnectEnd}
+                />
+                <div className={styles.graphFooter}>
+                  <span className={styles.footerSecondary}>Engine: </span>
+                  {engine.name === 'playcanvas'
+                    ? 'PlayCanvas'
+                    : engine.name === 'three'
+                    ? 'Three.js'
+                    : engine.name === 'babylon'
+                    ? 'Babylon.js'
+                    : 'Wtf'}
+                  {compileResult?.compileMs ? (
+                    <>
+                      <span className={styles.divider}>|</span>
+                      <span className={styles.footerSecondary}>
+                        Compile time:{' '}
+                      </span>
+                      {compileResult?.compileMs}ms
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            </SplitPane>
           </TabPanel>
           {/* Main code editor tab */}
           <TabPanel className="relative">
             <SplitPane split="horizontal">
+              {/* Monaco split */}
               <div className={cx(styles.shrinkGrowRows, 'wFull')}>
                 <div className={styles.editorControls}>
                   <select
                     className="select auto size2 m-right-5"
                     onChange={(event) => {
-                      setActiveNode(
-                        graph.nodes.find(
-                          (n) => n.id === event.target.value
-                        ) as SourceNode
-                      );
+                      const node = graph.nodes.find(
+                        (n) => n.id === event.target.value
+                      ) as SourceNode;
+                      setActiveNode(node);
+                      addSelectedNodes([node.id]);
                     }}
                     value={activeNode.id}
                   >
@@ -1457,6 +1751,7 @@ const Editor = ({
                   }}
                 />
               </div>
+              {/* Strategy editor split */}
               <div className={cx(styles.splitInner, styles.nodeEditorPanel)}>
                 <StrategyEditor
                   ctx={ctx}

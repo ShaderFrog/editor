@@ -37,7 +37,7 @@ export type InputNodeHandle = {
   type: string;
   dataType?: GraphDataType;
   validTarget: boolean;
-  accepts?: Set<InputCategory>;
+  accepts?: InputCategory[];
   baked?: boolean;
   bakeable: boolean;
 };

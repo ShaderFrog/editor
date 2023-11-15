@@ -954,8 +954,9 @@ const Editor = ({
 
         // Icky business logic here...
         const edgeType = sourceGraphNode.type;
-        const type: EdgeType | undefined = ((sourceGraphNode as CodeNode)
-          .stage || edgeType) as EdgeType;
+        const type: EdgeType | undefined =
+          (sourceGraphNode as SourceNode).stage ||
+          sourceGraphNode.outputs?.[0]?.dataType;
         const isCode = sourceGraphNode.type === 'source';
 
         const addedEdge: Edge = {
@@ -1412,9 +1413,9 @@ const Editor = ({
             currentToNode.id,
             incomingOutput.id,
             currentToEdge.input,
-            isDataNode(incomingOutNode)
-              ? incomingOutNode.type
-              : incomingOutNode.stage
+            // See TODO in edge. These should be seprate fields on the edge
+            (incomingOutNode as SourceNode).stage ||
+              incomingOutNode.outputs?.[0]?.dataType
           )
         : null;
 

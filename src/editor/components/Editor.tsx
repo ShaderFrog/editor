@@ -5,6 +5,7 @@ import groupBy from 'lodash.groupby';
 import FlowEditor, {
   MenuItems,
   MouseData,
+  SHADERFROG_FLOW_EDGE_TYPE,
   useEditorStore,
 } from './flow/FlowEditor';
 
@@ -1012,7 +1013,7 @@ const Editor = ({
           target: targetId,
           data: { type },
           className: cx(type, edgeType),
-          type: 'special',
+          type: SHADERFROG_FLOW_EDGE_TYPE,
         };
 
         return updateFlowInput(

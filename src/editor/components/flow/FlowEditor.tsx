@@ -84,8 +84,10 @@ const nodeTypes: Record<NodeType | GraphDataType | EngineNodeType, any> = {
   array: DataNodeComponent,
 };
 
-const edgeTypes = {
-  special: FlowEdgeComponent,
+export const SHADERFROG_FLOW_EDGE_TYPE = 'special';
+
+const edgeTypes: Record<typeof SHADERFROG_FLOW_EDGE_TYPE, any> = {
+  [SHADERFROG_FLOW_EDGE_TYPE]: FlowEdgeComponent,
 };
 
 export type MouseData = { real: XYPosition; projected: XYPosition };

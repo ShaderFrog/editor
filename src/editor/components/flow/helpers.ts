@@ -10,6 +10,7 @@ import {
   NodeInput,
   alphabet,
   Edge as GraphEdge,
+  EdgeLink,
 } from '@core/graph';
 import { Node as FlowNode, Edge as FlowEdge, XYPosition } from 'reactflow';
 import { FlowEdgeData } from './FlowEdge';
@@ -19,6 +20,7 @@ import {
   flowOutput,
   InputNodeHandle,
 } from './FlowNode';
+import { SHADERFROG_FLOW_EDGE_TYPE } from './FlowEditor';
 
 export type FlowElement = FlowNode<FlowNodeData> | FlowEdge<FlowEdgeData>;
 export type FlowEdgeOrLink = FlowEdge<FlowEdgeData>;
@@ -192,8 +194,11 @@ export const graphEdgeToFlowEdge = (
   target: edge.to,
   data: { type: edge.type },
   className: edge.type,
+  deletable: edge.type !== EdgeLink.NEXT_STAGE,
+  focusable: edge.type !== EdgeLink.NEXT_STAGE,
+  updatable: edge.type !== EdgeLink.NEXT_STAGE,
   // Not the edge type, the flow edge component type that renders this edge
-  type: 'special',
+  type: SHADERFROG_FLOW_EDGE_TYPE,
 });
 
 export const updateGraphInput = (

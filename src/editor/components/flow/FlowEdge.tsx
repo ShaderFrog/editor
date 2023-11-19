@@ -2,10 +2,11 @@ import React from 'react';
 import {
   EdgeProps,
   getBezierPath,
+  getStraightPath,
   // getEdgeCenter,
   // getMarkerEnd,
 } from 'reactflow';
-import { EdgeType } from '@core/graph';
+import { EdgeLink, EdgeType } from '@core/graph';
 
 export type LinkEdgeData = {
   type: 'link';
@@ -23,10 +24,12 @@ export default function FlowEdge({
   targetY,
   sourcePosition,
   targetPosition,
+  data,
   style = {},
   markerEnd,
 }: EdgeProps<any>) {
-  const [edgePath] = getBezierPath({
+  const isLink = data?.type === EdgeLink.NEXT_STAGE;
+  const [edgePath] = (isLink ? getStraightPath : getBezierPath)({
     sourceX,
     sourceY,
     sourcePosition,
@@ -44,13 +47,15 @@ export default function FlowEdge({
   // Note that className is an edge prop, not explicitly set here
   return (
     <>
-      <path
-        style={style}
-        className="react-flow__edge-path-selector"
-        d={edgePath}
-        markerEnd={markerEnd}
-        fillRule="evenodd"
-      />
+      {isLink ? null : (
+        <path
+          style={style}
+          className="react-flow__edge-path-selector"
+          d={edgePath}
+          markerEnd={markerEnd}
+          fillRule="evenodd"
+        />
+      )}
       <path
         style={style}
         className="react-flow__edge-path"

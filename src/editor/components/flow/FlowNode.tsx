@@ -1,11 +1,6 @@
-import React, { memo, MouseEventHandler, useEffect, useMemo } from 'react';
+import React, { memo, MouseEventHandler, useMemo } from 'react';
 import classnames from 'classnames/bind';
-import {
-  Handle,
-  Position,
-  Node as FlowNode,
-  Edge as FlowEdge,
-} from 'reactflow';
+import { Handle, Position } from 'reactflow';
 
 import styles from './flownode.module.css';
 const cx = classnames.bind(styles);
@@ -17,6 +12,7 @@ import {
   Vector3,
   Vector4,
   InputCategory,
+  LinkHandle,
 } from '@core/graph';
 
 import { ChangeHandler, useFlowEventHack } from '../../flowEventHack';
@@ -565,20 +561,17 @@ const SourceNodeComponent = memo(
           </div>
         </div>
 
-        {/* These are not currently shown - replace with floating edges? */}
         <Handle
-          isConnectable
-          id="from"
-          className="next-stage-handle"
+          id={LinkHandle.NEXT_STAGE}
+          position={Position.Bottom}
+          className="linkHandle"
           type="source"
-          position={Position.Right}
         />
         <Handle
-          isConnectable
-          id="to"
-          className="next-stage-handle"
+          id={LinkHandle.PREVIOUS_STAGE}
+          position={Position.Top}
+          className="linkHandle"
           type="target"
-          position={Position.Right}
         />
       </FlowWrap>
     );

@@ -24,7 +24,7 @@
     "lodash.throttle": "^4.1.1",
     "playcanvas": "^1.65.3",
     "react-hotkeys-hook": "^3.4.6",
-    "reactflow": "^11.7.2",
+    "reactflow": "^11.10.1",
     "three": ">=0.149.0"
   },
   "devDependencies": {

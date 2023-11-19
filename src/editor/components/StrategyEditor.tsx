@@ -7,7 +7,7 @@ import { EngineContext } from '@core/engine';
 
 import { Strategy, StrategyType } from '@core/strategy';
 
-import { SourceNode, SourceType, Graph } from '@core/graph';
+import { SourceNode, SourceType, Graph, findLinkedNode } from '@core/graph';
 
 const sourceTypeText: Record<SourceType, any> = {
   Expression: (
@@ -46,31 +46,19 @@ const StrategyEditor = ({
     node.sourceType = event.target.value as typeof node.sourceType;
   };
 
+  const sibling = findLinkedNode(graph, node.id);
+
   const otherNodes = (stage: 'fragment' | 'vertex') => {
     return (
       <select
         name="strategy"
         className="select"
-        value={
-          stage === 'vertex'
-            ? node.nextStageNodeId
-            : graph.nodes.find(
-                (n) => (n as SourceNode).nextStageNodeId === node.id
-              )?.id
-        }
+        value={sibling?.id}
         onChange={(e) => {
           const otherId = e.target.value;
+          // TODO: Need to manipulate edges here to create link
           if (stage === 'vertex') {
-            node.nextStageNodeId = otherId;
           } else {
-            graph.nodes.forEach((n) => {
-              const other = n as SourceNode;
-              if (other.id === otherId) {
-                other.nextStageNodeId = node.id;
-              } else if (other.nextStageNodeId === node.id) {
-                delete other.nextStageNodeId;
-              }
-            });
           }
           onSave();
         }}

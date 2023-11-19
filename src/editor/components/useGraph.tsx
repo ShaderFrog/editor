@@ -13,6 +13,8 @@ import {
   Vector4,
   vectorNode,
   compileSource,
+  Edge,
+  linkFromVertToFrag,
 } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
@@ -169,8 +171,13 @@ const createGraphNode = (
 ): [Set<string>, Graph] => {
   const makeName = (type: string) => name || type;
   const id = makeId();
-  const groupId = makeId();
-  let newGns: GraphNode[];
+
+  let newGns: GraphNode[] = [];
+  let newEdges: Edge[] = [];
+  const link = (frag: GraphNode, vert: GraphNode): [Edge[], GraphNode[]] => [
+    [linkFromVertToFrag(makeId(), vert.id, frag.id)],
+    [frag, vert],
+  ];
 
   if (nodeDataType === 'number') {
     newGns = [
@@ -250,26 +257,23 @@ gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
       'fragment',
       engine.name
     );
-    newGns = [
-      fragment,
-      sourceNode(
-        makeId(),
-        'Source Code ' + id,
-        position,
-        {
-          version: 2,
-          preprocess: true,
-          strategies: [uniformStrategy()],
-          uniforms: [],
-        },
-        `void main() {
-  gl_Position = vec4(1.0);
+    const vertex = sourceNode(
+      makeId(),
+      'Source Code ' + id,
+      position,
+      {
+        version: 2,
+        preprocess: true,
+        strategies: [uniformStrategy()],
+        uniforms: [],
+      },
+      `void main() {
+gl_Position = vec4(1.0);
 }`,
-        'vertex',
-        engine.name,
-        fragment.id
-      ),
-    ];
+      'vertex',
+      engine.name
+    );
+    [newEdges, newGns] = link(fragment, vertex);
   } else if (nodeDataType === 'fragment' || nodeDataType === 'vertex') {
     newGns = [
       sourceNode(
@@ -308,24 +312,24 @@ gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
     );
   }
 
-  let newGEs: GraphEdge[] = newEdgeData
-    ? [
-        makeEdge(
-          makeId(),
-          id,
-          newEdgeData.to,
-          newEdgeData.output,
-          newEdgeData.input,
-          newEdgeData.type
-        ),
-      ]
-    : [];
+  if (newEdgeData) {
+    newEdges = newEdges.concat([
+      makeEdge(
+        makeId(),
+        id,
+        newEdgeData.to,
+        newEdgeData.output,
+        newEdgeData.input,
+        newEdgeData.type
+      ),
+    ]);
+  }
 
   // Expand uniforms on new nodes automatically
   const originalNodes = new Set<string>(newGns.map((n) => n.id));
   return [
     originalNodes,
-    expandUniformDataNodes({ nodes: newGns, edges: newGEs }),
+    expandUniformDataNodes({ nodes: newGns, edges: newEdges }),
   ];
 };
 

@@ -52,6 +52,8 @@ import {
   TextureNode,
   evaluateNode,
   Graph,
+  findLinkedNode,
+  SourceNode,
 } from '@core/graph';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import { EngineContext } from '@core/engine';
@@ -439,7 +441,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
               } else {
                 // TODO: This doesn't work for engine variables because
                 // those aren't suffixed
-                const name = mangleVar(input.displayName, threngine, node);
+                const name = mangleVar(
+                  input.displayName,
+                  threngine,
+                  node,
+                  findLinkedNode(graph, node.id) as SourceNode
+                );
 
                 // @ts-ignore
                 if (name in (mesh.material.uniforms || {})) {
@@ -906,7 +913,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
             }
             // TODO: This doesn't work for engine variables because
             // those aren't suffixed
-            const name = mangleVar(input.displayName, threngine, node);
+            const name = mangleVar(
+              input.displayName,
+              threngine,
+              node,
+              findLinkedNode(graph, node.id) as SourceNode
+            );
 
             if (input.property) {
               updatedProperties[name] = newValue;

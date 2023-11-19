@@ -24,6 +24,8 @@ import {
   SamplerCubeNode,
   TextureNode,
   evaluateNode,
+  findLinkedNode,
+  SourceNode,
 } from '@core/graph';
 import {
   EngineContext,
@@ -292,7 +294,12 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
               } else {
                 // TODO: This doesn't work for engine variables because
                 // those aren't suffixed
-                const name = mangleVar(input.displayName, playengine, node);
+                const name = mangleVar(
+                  input.displayName,
+                  playengine,
+                  node,
+                  findLinkedNode(graph, node.id) as SourceNode
+                );
                 material.setParameter(name, newValue);
                 meshInstance.setParameter(name, newValue);
               }

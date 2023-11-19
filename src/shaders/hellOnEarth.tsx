@@ -194,11 +194,7 @@ void main() {
     'three'
   );
 
-const hellOnEarthVert = (
-  id: string,
-  nextStageNodeId: string,
-  position: NodePosition
-) =>
+const hellOnEarthVert = (id: string, position: NodePosition) =>
   sourceNode(
     id,
     'Hell',
@@ -341,8 +337,7 @@ void main() {
 }
 `,
     'vertex',
-    'three',
-    nextStageNodeId
+    'three'
   );
 
 export { hellOnEarthFrag, hellOnEarthVert };

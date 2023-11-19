@@ -30,11 +30,7 @@ void main() {
     'three'
   );
 
-const cubemapReflectionV = (
-  id: string,
-  nextStageNodeId: string,
-  position: NodePosition
-) =>
+const cubemapReflectionV = (id: string, position: NodePosition) =>
   sourceNode(
     id,
     'cubemapReflection',
@@ -74,8 +70,7 @@ void main() {
 }
 `,
     'vertex',
-    'three',
-    nextStageNodeId
+    'three'
   );
 
 export { cubemapReflectionF, cubemapReflectionV };

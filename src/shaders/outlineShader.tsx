@@ -44,11 +44,7 @@ void main()
     'fragment'
   );
 
-const outlineShaderV = (
-  id: string,
-  nextStageNodeId: string,
-  position: NodePosition
-) =>
+const outlineShaderV = (id: string, position: NodePosition) =>
   sourceNode(
     id,
     'Outline',
@@ -80,8 +76,7 @@ void main()
 }
 `,
     'vertex',
-    'three',
-    nextStageNodeId
+    'three'
   );
 
 export { outlineShaderF, outlineShaderV };

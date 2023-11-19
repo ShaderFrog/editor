@@ -86,11 +86,7 @@ void main() {
     'three'
   );
 
-const serpentV = (
-  id: string,
-  nextStageNodeId: string,
-  position: NodePosition
-) =>
+const serpentV = (id: string, position: NodePosition) =>
   sourceNode(
     id,
     'Serpent',
@@ -145,8 +141,7 @@ void main() {
 }
 `,
     'vertex',
-    'three',
-    nextStageNodeId
+    'three'
   );
 
 export { serpentF, serpentV };

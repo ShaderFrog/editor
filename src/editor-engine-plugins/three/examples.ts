@@ -15,6 +15,7 @@ import {
   GraphNode,
   Edge,
   samplerCubeNode,
+  linkFromVertToFrag,
 } from '@core/graph';
 import fluidCirclesNode from '../../shaders/fluidCirclesNode';
 
@@ -88,11 +89,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     );
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 20 }, 'vertex');
 
-    const physicalGroupId = makeId();
     const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 178, y: -103 },
       [],
       'fragment'
@@ -100,11 +99,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 434, y: 130 },
       [],
-      'vertex',
-      physicalF.id
+      'vertex'
     );
     const staticF = staticShaderNode(
       makeId(),
@@ -116,7 +113,7 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
       { x: -478, y: 12 },
       heatmapV1
     );
-    const heatmapV = heatShaderVertexNode(makeId(), heatmap.id, {
+    const heatmapV = heatShaderVertexNode(makeId(), {
       x: -478,
       y: -194,
     });
@@ -172,6 +169,8 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
         physicalV,
       ],
       edges: [
+        linkFromVertToFrag(makeId(), physicalV.id, physicalF.id),
+        linkFromVertToFrag(makeId(), heatmapV.id, heatmap.id),
         edgeFrom(physicalF, outputF.id, 'filler_frogFragOut', 'fragment'),
         edgeFrom(physicalV, outputV.id, 'filler_gl_Position', 'vertex'),
         edgeFrom(staticF, physicalF.id, 'property_map', 'fragment'),
@@ -214,11 +213,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     );
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 16 }, 'vertex');
 
-    const toonGroupId = makeId();
     const toonF = threngine.constructors.toon!(
       makeId(),
       'Toon',
-      toonGroupId,
       { x: 178, y: -103 },
       [],
       'fragment'
@@ -226,11 +223,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     const toonV = threngine.constructors.toon!(
       makeId(),
       'Toon',
-      toonGroupId,
       { x: 434, y: 130 },
       [],
-      'vertex',
-      toonF.id
+      'vertex'
     );
     const pps: [string, DataNode][] = [
       [
@@ -255,6 +250,7 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     newGraph = {
       nodes: [outputF, outputV, toonF, toonV, ...pps.map(([, p]) => p)],
       edges: [
+        linkFromVertToFrag(makeId(), toonV.id, toonF.id),
         edgeFrom(toonF, outputF.id, 'filler_frogFragOut', 'fragment'),
         edgeFrom(toonV, outputV.id, 'filler_gl_Position', 'vertex'),
         ...pps.map(([name, prop]) =>
@@ -295,11 +291,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     );
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 16 }, 'vertex');
 
-    const physicalGroupId = makeId();
     const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 178, y: -103 },
       [],
       'fragment'
@@ -307,15 +301,13 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 434, y: 130 },
       [],
-      'vertex',
-      physicalF.id
+      'vertex'
     );
 
     const checkerboardf = checkerboardF(makeId(), { x: -162, y: -105 });
-    const checkerboardv = checkerboardV(makeId(), checkerboardf.id, {
+    const checkerboardv = checkerboardV(makeId(), {
       x: -162,
       y: 43,
     });
@@ -329,6 +321,8 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
         checkerboardv,
       ],
       edges: [
+        linkFromVertToFrag(makeId(), physicalV.id, physicalF.id),
+        linkFromVertToFrag(makeId(), checkerboardv.id, checkerboardf.id),
         edgeFrom(physicalF, outputF.id, 'filler_frogFragOut', 'fragment'),
         edgeFrom(physicalV, outputV.id, 'filler_gl_Position', 'vertex'),
         edgeFrom(
@@ -392,11 +386,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
       // : []),
     ];
 
-    const physicalGroupId = makeId();
     const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 178, y: -103 },
       [],
       'fragment'
@@ -404,11 +396,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 434, y: 130 },
       [],
-      'vertex',
-      physicalF.id
+      'vertex'
     );
 
     newGraph = {
@@ -422,6 +412,7 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
         ...properties,
       ],
       edges: [
+        linkFromVertToFrag(makeId(), physicalV.id, physicalF.id),
         edgeFrom(physicalF, outputF.id, 'filler_frogFragOut', 'fragment'),
         edgeFrom(physicalV, outputV.id, 'filler_gl_Position', 'vertex'),
         edgeFrom(purpleNoise, nMap.id, 'filler_normal_map', 'fragment'),
@@ -480,11 +471,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
       }),
     ];
 
-    const physicalGroupId = makeId();
     const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 178, y: -103 },
       [],
       'fragment'
@@ -492,11 +481,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 434, y: 130 },
       [],
-      'vertex',
-      physicalF.id
+      'vertex'
     );
 
     newGraph = {
@@ -510,6 +497,7 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
         ...properties,
       ],
       edges: [
+        linkFromVertToFrag(makeId(), physicalV.id, physicalF.id),
         edgeFrom(physicalF, outputF.id, 'filler_frogFragOut', 'fragment'),
         edgeFrom(physicalV, outputV.id, 'filler_gl_Position', 'vertex'),
         edgeFrom(clouds, physicalF.id, 'property_map', 'fragment'),
@@ -543,7 +531,6 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 178, y: -103 },
       [],
       'fragment'
@@ -551,14 +538,12 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 434, y: 130 },
       [],
-      'vertex',
-      physicalF.id
+      'vertex'
     );
     const fireF = fireFrag(makeId(), { x: -88, y: -120 });
-    const fireV = fireVert(makeId(), fireF.id, { x: -88, y: 610 }, [
+    const fireV = fireVert(makeId(), { x: -88, y: 610 }, [
       numberUniformData('fireSpeed', '0.768'),
       numberUniformData('pulseHeight', '0.0'),
       numberUniformData('displacementHeight', '0.481'),
@@ -612,6 +597,8 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
         physicalV,
       ],
       edges: [
+        linkFromVertToFrag(makeId(), physicalV.id, physicalF.id),
+        linkFromVertToFrag(makeId(), fireV.id, fireF.id),
         edgeFrom(physicalF, outputF.id, 'filler_frogFragOut', 'fragment'),
         edgeFrom(physicalV, outputV.id, 'filler_gl_Position', 'vertex'),
         edgeFrom(
@@ -659,11 +646,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     );
     const outputV = outputNode(makeId(), 'Output', { x: 434, y: 20 }, 'vertex');
 
-    const physicalGroupId = makeId();
     const physicalF = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 178, y: -103 },
       [],
       'fragment'
@@ -671,11 +656,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     const physicalV = threngine.constructors.physical!(
       makeId(),
       'Physical',
-      physicalGroupId,
       { x: 434, y: 130 },
       [],
-      'vertex',
-      physicalF.id
+      'vertex'
     );
 
     const purpleNoise = purpleNoiseNode(makeId(), { x: -100, y: 0 });
@@ -687,6 +670,7 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     newGraph = {
       nodes: [purpleNoise, outputF, outputV, physicalF, physicalV],
       edges: [
+        linkFromVertToFrag(makeId(), physicalV.id, physicalF.id),
         edgeFrom(physicalF, outputF.id, 'filler_frogFragOut', 'fragment'),
         edgeFrom(physicalV, outputV.id, 'filler_gl_Position', 'vertex'),
         edgeFrom(
@@ -755,106 +739,68 @@ export const addEngineNode = (
   const id = makeId();
   const groupId = makeId();
   let newGns: GraphNode[] = [];
+  let newEdges: Edge[] = [];
+  const { phong, physical } = threngine.constructors;
+
+  const link = (frag: GraphNode, vert: GraphNode): [Edge[], GraphNode[]] => [
+    [linkFromVertToFrag(makeId(), vert.id, frag.id)],
+    [frag, vert],
+  ];
 
   if (nodeDataType === 'phong') {
-    newGns = [
-      threngine.constructors.phong!(
-        id,
-        'Phong',
-        groupId,
-        position,
-        [],
-        'fragment'
-      ),
-      threngine.constructors.phong!(
-        makeId(),
-        'Phong',
-        groupId,
-        position,
-        [],
-        'vertex',
-        id
-      ),
-    ];
+    [newEdges, newGns] = link(
+      phong!(id, 'Phong', position, [], 'fragment'),
+      phong!(makeId(), 'Phong', position, [], 'vertex')
+    );
   } else if (nodeDataType === 'physical') {
-    newGns = [
-      threngine.constructors!.physical!(
-        id,
-        'Physical',
-        groupId,
-        position,
-        [],
-        'fragment'
-      ),
-      threngine.constructors!.physical!(
-        makeId(),
-        'Physical',
-        groupId,
-        position,
-        [],
-        'vertex',
-        id
-      ),
-    ];
+    [newEdges, newGns] = link(
+      physical!(id, 'Physical', position, [], 'fragment'),
+      physical!(makeId(), 'Physical', position, [], 'vertex')
+    );
   } else if (nodeDataType === 'toon') {
-    newGns = [
-      threngine.constructors.toon!(
-        id,
-        'Toon',
-        groupId,
-        position,
-        [],
-        'fragment'
-      ),
-      threngine.constructors.toon!(
-        makeId(),
-        'Toon',
-        groupId,
-        position,
-        [],
-        'vertex',
-        id
-      ),
-    ];
+    [newEdges, newGns] = link(
+      threngine.constructors.toon!(id, 'Toon', position, [], 'fragment'),
+      threngine.constructors.toon!(makeId(), 'Toon', position, [], 'vertex')
+    );
   } else if (nodeDataType === 'simpleVertex') {
     newGns = [sinCosVertWarp(makeId(), position)];
   } else if (nodeDataType === 'julia') {
-    newGns = [juliaF(id, position), juliaV(makeId(), id, position)];
+    newGns = [juliaF(id, position), juliaV(makeId(), position)];
   } else if (nodeDataType === 'fireNode') {
-    newGns = [fireFrag(id, position), fireVert(makeId(), id, position)];
+    newGns = [fireFrag(id, position), fireVert(makeId(), position)];
   } else if (nodeDataType === 'badTv') {
     newGns = [badTvFrag(id, position)];
   } else if (nodeDataType === 'whiteNoiseNode') {
     newGns = [whiteNoiseNode(id, position)];
   } else if (nodeDataType === 'checkerboardF') {
-    newGns = [
+    [newEdges, newGns] = link(
       checkerboardF(id, position),
-      checkerboardV(makeId(), id, position),
-    ];
+      checkerboardV(makeId(), position)
+    );
   } else if (nodeDataType === 'serpent') {
-    newGns = [serpentF(id, position), serpentV(makeId(), id, position)];
+    newGns = [serpentF(id, position), serpentV(makeId(), position)];
   } else if (nodeDataType === 'cubemapReflection') {
-    newGns = [
+    [newEdges, newGns] = link(
       cubemapReflectionF(id, position),
-      cubemapReflectionV(makeId(), id, position),
-    ];
+      cubemapReflectionV(makeId(), position)
+    );
   } else if (nodeDataType === 'fluidCirclesNode') {
     newGns = [fluidCirclesNode(id, position)];
   } else if (nodeDataType === 'heatmapShaderNode') {
-    newGns = [
+    [newEdges, newGns] = link(
       heatShaderFragmentNode(id, position),
-      heatShaderVertexNode(makeId(), id, position),
-    ];
+      heatShaderVertexNode(makeId(), position)
+    );
   } else if (nodeDataType === 'hellOnEarth') {
-    newGns = [
+    [newEdges, newGns] = link(
       hellOnEarthFrag(id, position),
-      hellOnEarthVert(makeId(), id, position),
-    ];
+      hellOnEarthVert(makeId(), position)
+    );
   } else if (nodeDataType === 'outlineShader') {
-    newGns = [
+    [newEdges, newGns] = link(
       outlineShaderF(id, position),
-      outlineShaderV(makeId(), id, position),
-    ];
+      outlineShaderV(makeId(), position)
+    );
   } else if (nodeDataType === 'perlinClouds') {
     newGns = [perlinCloudsFNode(id, position)];
   } else if (nodeDataType === 'purpleNoiseNode') {

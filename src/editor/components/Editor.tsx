@@ -38,6 +38,7 @@ import {
 
 import {
   findNode,
+  EdgeLink,
   Graph,
   GraphNode,
   Edge,
@@ -52,6 +53,7 @@ import {
   collectConnectedNodes,
   filterGraphFromNode,
   makeEdge,
+  findLinkedNode,
 } from '@core/graph';
 
 import { Engine, EngineContext } from '@core/engine';
@@ -1339,11 +1341,8 @@ const Editor = ({
     const currentToNode = graph.nodes.find(
       (node) => node.id === currentToEdge?.to
     );
-    const otherActiveNode = graph.nodes.find(
-      (n) =>
-        n.id === activeNode.nextStageNodeId ||
-        (n as SourceNode).nextStageNodeId === activeNode.id
-    );
+
+    const otherActiveNode = findLinkedNode(graph, activeNode.id);
 
     // TODO: Guessing for how nodes are parented to a group, and remove those
     // instead of all the inputs to a node

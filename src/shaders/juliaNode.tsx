@@ -56,7 +56,7 @@ void main() {
     'three'
   );
 
-const juliaV = (id: string, nextStageNodeId: string, position: NodePosition) =>
+const juliaV = (id: string, position: NodePosition) =>
   sourceNode(
     id,
     'Julia',
@@ -82,8 +82,7 @@ const juliaV = (id: string, nextStageNodeId: string, position: NodePosition) =>
         gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
     }`,
     'vertex',
-    'three',
-    nextStageNodeId
+    'three'
   );
 
 export { juliaF, juliaV };

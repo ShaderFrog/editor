@@ -41,11 +41,7 @@ void main() {
     'three'
   );
 
-const checkerboardV = (
-  id: string,
-  nextStageNodeId: string,
-  position: NodePosition
-) =>
+const checkerboardV = (id: string, position: NodePosition) =>
   sourceNode(
     id,
     'Checkerboard',
@@ -81,8 +77,7 @@ void main() {
 }
 `,
     'vertex',
-    'three',
-    nextStageNodeId
+    'three'
   );
 
 export { checkerboardF, checkerboardV };

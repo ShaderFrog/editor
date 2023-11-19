@@ -48,7 +48,6 @@ void main() {
 
 const fireVert = (
   id: string,
-  nextStageNodeId: string,
   position: NodePosition,
   uniforms?: UniformDataType[]
 ) =>
@@ -275,8 +274,7 @@ void main() {
     
 `,
     'vertex',
-    'three',
-    nextStageNodeId
+    'three'
   );
 
 export { fireFrag, fireVert };

@@ -1468,7 +1468,13 @@ const Editor = ({
   });
 
   const onMouseMove = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    mouseRef.current.real = { x: event.clientX, y: event.clientY };
+    if (reactFlowWrapper.current) {
+      const { top, left } = reactFlowWrapper.current.getBoundingClientRect();
+      mouseRef.current.real = {
+        x: event.clientX - left,
+        y: event.clientY - top,
+      };
+    }
   }, []);
 
   const setMenuPos = useEditorStore((state) => state.setMenuPosition);
@@ -1627,11 +1633,7 @@ const Editor = ({
         </TabGroup>
         <TabPanels>
           {/* Graph tab */}
-          <TabPanel
-            onMouseMove={onMouseMove}
-            className={styles.growShrinkRows}
-            ref={reactFlowWrapper}
-          >
+          <TabPanel onMouseMove={onMouseMove} className={styles.growShrinkRows}>
             <SplitPane split="vertical" defaultSizes={[0.2, 0.8]}>
               <div
                 className={cx(styles.splitInner, styles.vSplit, styles.vScroll)}
@@ -1643,7 +1645,7 @@ const Editor = ({
                   onSelect={onSelectGroup}
                 />
               </div>
-              <div className={styles.splitInner}>
+              <div className={styles.splitInner} ref={reactFlowWrapper}>
                 <FlowEditor
                   menuItems={menuItems}
                   mouse={mouseRef}

@@ -385,9 +385,6 @@ const DataNodeComponent = memo(
         </div>
 
         <div className="body">
-          <pre style={{ background: '#000' }}>
-            {JSON.stringify(data, null, 2)}
-          </pre>
           {data.type === 'number' ? (
             <NumberEditor id={id} data={data} onChange={onChange} />
           ) : data.type === 'array' ||

@@ -1546,8 +1546,7 @@ const Editor = ({
     [setFlowElements, setGraph]
   );
 
-  const onClickSave = async (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
+  const saveOrFork = async (btnFork = false) => {
     if (!ctx || (!onUpdateShader && !onCreateShader)) {
       return;
     }
@@ -1567,7 +1566,7 @@ const Editor = ({
       },
     };
 
-    if (shader?.id && onUpdateShader && !isFork) {
+    if (shader?.id && onUpdateShader && !isFork && !btnFork) {
       await onUpdateShader({
         id: shader.id,
         ...payload,
@@ -1598,10 +1597,25 @@ const Editor = ({
             </div>
           ) : null}
           <div className="m-right-15">
+            {!shader.id || isFork ? null : (
+              <button
+                disabled={isSaving}
+                className="buttonauto formbutton size2 secondary m-right-10"
+                onClick={(e) => {
+                  e.preventDefault();
+                  saveOrFork(true);
+                }}
+              >
+                Fork
+              </button>
+            )}
             <button
               disabled={isSaving}
               className="buttonauto formbutton size2"
-              onClick={onClickSave}
+              onClick={(e) => {
+                e.preventDefault();
+                saveOrFork();
+              }}
             >
               {isFork ? 'Fork' : 'Save'}
             </button>

@@ -27,6 +27,8 @@ import {
   evaluateNode,
   SamplerCubeNode,
   TextureNode,
+  findLinkedNode,
+  SourceNode,
 } from '@core/graph';
 import { EngineContext, EngineNodeType } from '@core/engine';
 import {
@@ -391,7 +393,8 @@ const BabylonComponent: React.FC<SceneProps> = ({
                     const name = mangleVar(
                       input.displayName,
                       babylengine,
-                      node
+                      node,
+                      findLinkedNode(graph, node.id) as SourceNode
                     );
 
                     // @ts-ignore
@@ -601,7 +604,12 @@ const BabylonComponent: React.FC<SceneProps> = ({
               if (!fromNode) {
                 return;
               }
-              const name = mangleVar(input.displayName, babylengine, node);
+              const name = mangleVar(
+                input.displayName,
+                babylengine,
+                node,
+                findLinkedNode(graph, node.id) as SourceNode
+              );
               if (input.type !== 'property') {
                 uniforms.push(name);
               }

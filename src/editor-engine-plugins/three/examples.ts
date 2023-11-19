@@ -735,12 +735,10 @@ export const addEngineNode = (
   newEdgeData?: Omit<Edge, 'id' | 'from'>,
   defaultValue?: any
 ): [Set<string>, Graph] | undefined => {
-  const makeName = (type: string) => name || type;
   const id = makeId();
-  const groupId = makeId();
   let newGns: GraphNode[] = [];
   let newEdges: Edge[] = [];
-  const { phong, physical } = threngine.constructors;
+  const { phong, physical, toon } = threngine.constructors;
 
   const link = (frag: GraphNode, vert: GraphNode): [Edge[], GraphNode[]] => [
     [linkFromVertToFrag(makeId(), vert.id, frag.id)],
@@ -759,8 +757,8 @@ export const addEngineNode = (
     );
   } else if (nodeDataType === 'toon') {
     [newEdges, newGns] = link(
-      threngine.constructors.toon!(id, 'Toon', position, [], 'fragment'),
-      threngine.constructors.toon!(makeId(), 'Toon', position, [], 'vertex')
+      toon!(id, 'Toon', position, [], 'fragment'),
+      toon!(makeId(), 'Toon', position, [], 'vertex')
     );
   } else if (nodeDataType === 'simpleVertex') {
     newGns = [sinCosVertWarp(makeId(), position)];
@@ -814,24 +812,24 @@ export const addEngineNode = (
   }
 
   if (newGns.length) {
-    let newGEs: Edge[] = newEdgeData
-      ? [
-          makeEdge(
-            makeId(),
-            id,
-            newEdgeData.to,
-            newEdgeData.output,
-            newEdgeData.input,
-            newEdgeData.type
-          ),
-        ]
-      : [];
+    if (newEdgeData) {
+      newEdges = newEdges.concat([
+        makeEdge(
+          makeId(),
+          id,
+          newEdgeData.to,
+          newEdgeData.output,
+          newEdgeData.input,
+          newEdgeData.type
+        ),
+      ]);
+    }
 
     // Expand uniforms on new nodes automatically
     const originalNodes = new Set<string>(newGns.map((n) => n.id));
     return [
       originalNodes,
-      expandUniformDataNodes({ nodes: newGns, edges: newGEs }),
+      expandUniformDataNodes({ nodes: newGns, edges: newEdges }),
     ];
   }
 };

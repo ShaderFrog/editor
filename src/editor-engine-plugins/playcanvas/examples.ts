@@ -6,6 +6,7 @@ import {
   outputNode,
   Edge,
   GraphNode,
+  linkFromVertToFrag,
 } from '@core/graph';
 import { makeId } from '../../editor-util/id';
 import { engine as playengine } from '@core/plugins/playcanvas';
@@ -36,11 +37,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
   let previewObject: string;
   let bg: string = '';
 
-  const physicalGroupId = makeId();
   const physicalF = playengine.constructors.physical!(
     makeId(),
     'Physical',
-    physicalGroupId,
     { x: 178, y: -103 },
     [],
     'fragment'
@@ -48,11 +47,9 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
   const physicalV = playengine.constructors.physical!(
     makeId(),
     'Physical',
-    physicalGroupId,
     { x: 434, y: 130 },
     [],
-    'vertex',
-    physicalF.id
+    'vertex'
   );
 
   const outputF = outputNode(
@@ -66,6 +63,7 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
   newGraph = {
     nodes: [physicalF, physicalV, outputF, outputV],
     edges: [
+      linkFromVertToFrag(makeId(), physicalV.id, physicalF.id),
       edgeFrom(physicalF, outputF.id, 'filler_frogFragOut', 'fragment'),
       edgeFrom(physicalV, outputV.id, 'filler_gl_Position', 'vertex'),
     ],
@@ -91,92 +89,53 @@ export const addEngineNode = (
   newEdgeData?: Omit<Edge, 'id' | 'from'>,
   defaultValue?: any
 ): [Set<string>, Graph] | undefined => {
-  const makeName = (type: string) => name || type;
   const id = makeId();
-  const groupId = makeId();
+
   let newGns: GraphNode[] = [];
+  let newEdges: Edge[] = [];
+  const { phong, physical, toon } = playengine.constructors;
+
+  const link = (frag: GraphNode, vert: GraphNode): [Edge[], GraphNode[]] => [
+    [linkFromVertToFrag(makeId(), vert.id, frag.id)],
+    [frag, vert],
+  ];
 
   if (nodeDataType === 'phong') {
-    newGns = [
-      playengine.constructors.phong!(
-        id,
-        'Phong',
-        groupId,
-        position,
-        [],
-        'fragment'
-      ),
-      playengine.constructors.phong!(
-        makeId(),
-        'Phong',
-        groupId,
-        position,
-        [],
-        'vertex',
-        id
-      ),
-    ];
+    [newEdges, newGns] = link(
+      phong!(id, 'Phong', position, [], 'fragment'),
+      phong!(makeId(), 'Phong', position, [], 'vertex')
+    );
   } else if (nodeDataType === 'physical') {
-    newGns = [
-      playengine.constructors!.physical!(
-        id,
-        'Physical',
-        groupId,
-        position,
-        [],
-        'fragment'
-      ),
-      playengine.constructors!.physical!(
-        makeId(),
-        'Physical',
-        groupId,
-        position,
-        [],
-        'vertex',
-        id
-      ),
-    ];
+    [newEdges, newGns] = link(
+      physical!(id, 'Physical', position, [], 'fragment'),
+      physical!(makeId(), 'Physical', position, [], 'vertex')
+    );
   } else if (nodeDataType === 'toon') {
-    newGns = [
-      playengine.constructors.toon!(
-        id,
-        'Toon',
-        groupId,
-        position,
-        [],
-        'fragment'
-      ),
-      playengine.constructors.toon!(
-        makeId(),
-        'Toon',
-        groupId,
-        position,
-        [],
-        'vertex',
-        id
-      ),
-    ];
+    [newEdges, newGns] = link(
+      toon!(id, 'Toon', position, [], 'fragment'),
+      toon!(makeId(), 'Toon', position, [], 'vertex')
+    );
   }
 
   if (newGns.length) {
-    let newGEs: Edge[] = newEdgeData
-      ? [
-          makeEdge(
-            makeId(),
-            id,
-            newEdgeData.to,
-            newEdgeData.output,
-            newEdgeData.input,
-            newEdgeData.type
-          ),
-        ]
-      : [];
+    if (newEdgeData) {
+      newEdges = newEdges.concat([
+        makeEdge(
+          makeId(),
+          id,
+          newEdgeData.to,
+          newEdgeData.output,
+          newEdgeData.input,
+          newEdgeData.type
+        ),
+      ]);
+    }
 
     // Expand uniforms on new nodes automatically
     const originalNodes = new Set<string>(newGns.map((n) => n.id));
     return [
       originalNodes,
-      expandUniformDataNodes({ nodes: newGns, edges: newGEs }),
+      expandUniformDataNodes({ nodes: newGns, edges: newEdges }),
     ];
   }
 };

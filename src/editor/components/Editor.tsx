@@ -1099,7 +1099,6 @@ const Editor = ({
       if (node) {
         const selected = graph.nodes.find((n) => n.id === node.id) as GraphNode;
         setSelectedNode(selected);
-        log('selecting', selected);
       }
     },
     [graph]

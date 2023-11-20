@@ -1332,7 +1332,8 @@ const Editor = ({
    */
   const onSelectGroup = (shader: EditorShader) => {
     // For now can only replace the currently selected node
-    if (!activeNode || activeNode.type === 'output' || !activeNode.stage) {
+    if (!activeNode || activeNode.type === 'output') {
+      log('Not replacing activeNode', activeNode);
       return;
     }
 

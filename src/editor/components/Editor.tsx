@@ -35,6 +35,8 @@ import {
   XYPosition,
   OnConnectStartParams,
   useStoreApi,
+  ReactFlowProps,
+  OnSelectionChangeFunc,
 } from 'reactflow';
 
 import {
@@ -590,10 +592,15 @@ const Editor = ({
   const [compiling, setCompiling] = useState<boolean>(false);
   const [guiError, setGuiError] = useState<string>('');
 
-  const [activeNode, setActiveNode] = useState<SourceNode>(
+  // Node in the editor
+  const [activeEditingNode, setActiveEditingNode] = useState<SourceNode>(
     (graph.nodes.find((n) => n.type === 'source') ||
       graph.nodes[0]) as SourceNode
   );
+
+  // Selected node (different from editor node because you can't edit data nodes, for now)
+  const [selectedNode, setSelectedNode] =
+    useState<GraphNode>(activeEditingNode);
 
   const [compileResult, setCompileResult] = useState<UICompileGraphResult>();
 
@@ -837,7 +844,7 @@ const Editor = ({
       const newGraph = expandUniformDataNodes(graph);
       setGraph(newGraph);
       setSceneConfig(sceneConfig);
-      setActiveNode(newGraph.nodes[0] as SourceNode);
+      setActiveEditingNode(newGraph.nodes[0] as SourceNode);
       addSelectedNodes([newGraph.nodes[0].id]);
 
       if (ctx) {
@@ -1076,13 +1083,26 @@ const Editor = ({
     (event, node: FlowNode) => {
       if (!('value' in node.data)) {
         const active = graph.nodes.find((n) => n.id === node.id) as SourceNode;
-        setActiveNode(active);
+        setActiveEditingNode(active);
         addSelectedNodes([active.id]);
+        setSelectedNode(active);
 
         setEditorTabIndex(1);
       }
     },
     [addSelectedNodes, graph]
+  );
+
+  const onSelectionChange = useCallback<OnSelectionChangeFunc>(
+    ({ nodes, edges }) => {
+      const node = nodes?.[0];
+      if (node) {
+        const selected = graph.nodes.find((n) => n.id === node.id) as GraphNode;
+        setSelectedNode(selected);
+        log('selecting', selected);
+      }
+    },
+    [graph]
   );
 
   const setTargets = useCallback(
@@ -1332,24 +1352,26 @@ const Editor = ({
    */
   const onSelectGroup = (shader: EditorShader) => {
     // For now can only replace the currently selected node
-    if (!activeNode || activeNode.type === 'output') {
-      log('Not replacing activeNode', activeNode);
+    if (!selectedNode || selectedNode.type === 'output') {
+      log('Not replacing activeNode', selectedNode);
       return;
+    } else {
+      log('Replacing', selectedNode);
     }
 
     // TODO: Gotta figure out how to do this in the context of groups
 
     // Find the current active node and its next stage node if present
-    const curentOutputNode = activeNode;
+    const curentOutputNode = selectedNode;
     const activeNodeIds = new Set([curentOutputNode.id]);
     const currentToEdge = graph.edges.find(
-      (edge) => edge.from === activeNode.id
+      (edge) => edge.from === selectedNode.id
     );
     const currentToNode = graph.nodes.find(
       (node) => node.id === currentToEdge?.to
     );
 
-    const otherActiveNode = findLinkedNode(graph, activeNode.id);
+    const otherActiveNode = findLinkedNode(graph, selectedNode.id);
 
     // TODO: Guessing for how nodes are parented to a group, and remove those
     // instead of all the inputs to a node
@@ -1358,7 +1380,7 @@ const Editor = ({
 
     // Filter the graph from the active node to essentialy remove its data
     // inputs. With groups this should change to the group.
-    const currentElementsToRemove = filterGraphFromNode(graph, activeNode, {
+    const currentElementsToRemove = filterGraphFromNode(graph, selectedNode, {
       node: (node, inputEdges, acc) => {
         return Object.values(acc.edges)
           .map((edge) => edge.from)
@@ -1367,7 +1389,7 @@ const Editor = ({
       edge: (input, toNode, inputEdge, fromNode) => {
         const res = !!(
           fromNode &&
-          toNode.id === activeNode.id &&
+          toNode.id === selectedNode.id &&
           isDataNode(fromNode)
         );
         return res;
@@ -1457,7 +1479,7 @@ const Editor = ({
     setGraph(newGraph);
 
     if (incomingOutNode) {
-      setActiveNode(incomingOutNode as SourceNode);
+      setActiveEditingNode(incomingOutNode as SourceNode);
 
       // Flakey: Select the node visually in the graph. Don't know why flakey
       // so added timeout
@@ -1661,7 +1683,7 @@ const Editor = ({
                 <GroupSearch
                   searchUrl={searchUrl}
                   engine={engine.name}
-                  activeNode={activeNode}
+                  activeNode={activeEditingNode}
                   onSelect={onSelectGroup}
                 />
               </div>
@@ -1679,6 +1701,7 @@ const Editor = ({
                   onNodesChange={onNodesChange}
                   onNodesDelete={onNodesDelete}
                   onNodeDoubleClick={onNodeDoubleClick}
+                  onSelectionChange={onSelectionChange}
                   onEdgesDelete={onEdgesDelete}
                   onConnectStart={onConnectStart}
                   onEdgeUpdateStart={onEdgeUpdateStart}
@@ -1719,10 +1742,10 @@ const Editor = ({
                       const node = graph.nodes.find(
                         (n) => n.id === event.target.value
                       ) as SourceNode;
-                      setActiveNode(node);
+                      setActiveEditingNode(node);
                       addSelectedNodes([node.id]);
                     }}
-                    value={activeNode.id}
+                    value={activeEditingNode.id}
                   >
                     {graph.nodes
                       .filter(
@@ -1734,8 +1757,8 @@ const Editor = ({
                         </option>
                       ))}
                   </select>
-                  {activeNode.config?.properties?.length ||
-                  activeNode.engine ? (
+                  {activeEditingNode.config?.properties?.length ||
+                  activeEditingNode.engine ? (
                     <div className={styles.infoMsg}>
                       Read-only: This node&apos;s source code is generated by{' '}
                       {engine.displayName}, and can&apos;t be edited directly.
@@ -1758,8 +1781,8 @@ const Editor = ({
                 </div>
                 <CodeEditor
                   engine={engine}
-                  identity={activeNode.id}
-                  defaultValue={activeNode.source}
+                  identity={activeEditingNode.id}
+                  defaultValue={activeEditingNode.source}
                   onSave={() => {
                     compile(engine, ctx as EngineContext, graph, flowElements);
                   }}
@@ -1767,7 +1790,7 @@ const Editor = ({
                     if (value) {
                       (
                         graph.nodes.find(
-                          ({ id }) => id === activeNode.id
+                          ({ id }) => id === activeEditingNode.id
                         ) as SourceNode
                       ).source = value;
                     }
@@ -1778,7 +1801,7 @@ const Editor = ({
               <div className={cx(styles.splitInner, styles.nodeEditorPanel)}>
                 <StrategyEditor
                   ctx={ctx}
-                  node={activeNode}
+                  node={activeEditingNode}
                   graph={graph}
                   onSave={() =>
                     compile(engine, ctx as EngineContext, graph, flowElements)

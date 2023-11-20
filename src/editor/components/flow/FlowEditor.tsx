@@ -108,6 +108,7 @@ type FlowEditorProps =
       | 'onNodesChange'
       | 'onNodesDelete'
       | 'onNodeDoubleClick'
+      | 'onSelectionChange'
       | 'onEdgesDelete'
       | 'onConnectStart'
       | 'onEdgeUpdateStart'
@@ -126,6 +127,7 @@ const FlowEditor = ({
   onEdgesChange,
   onNodesChange,
   onNodesDelete,
+  onSelectionChange,
   onNodeDoubleClick,
   onEdgesDelete,
   onConnectStart,
@@ -218,6 +220,7 @@ const FlowEditor = ({
           onEdgesChange={onEdgesChange}
           onNodesChange={onNodesChange}
           onNodesDelete={onNodesDelete}
+          onSelectionChange={onSelectionChange}
           onNodeDoubleClick={onNodeDoubleClick}
           onEdgesDelete={onEdgesDelete}
           connectionLineComponent={ConnectionLine}

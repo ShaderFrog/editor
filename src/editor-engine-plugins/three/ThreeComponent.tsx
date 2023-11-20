@@ -480,7 +480,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const textures = useMemo<Record<string, any>>(
     () => ({
       explosion: new TextureLoader().load(path('/explosion.png')),
-      'grayscale-noise': new TextureLoader().load(path('/grayscale-noise.png')),
+      'grayscale-noise': repeat(
+        new TextureLoader().load(path('/grayscale-noise.png'))
+      ),
       threeTone: (() => {
         const image = new TextureLoader().load(path('/3tone.jpg'));
         image.minFilter = NearestFilter;
@@ -493,13 +495,15 @@ const ThreeComponent: React.FC<SceneProps> = ({
         3,
         3
       ),
-      patternedBrickDiff: new TextureLoader().load(
-        path('/patterned_brick_floor_02_diff.jpg')
+      patternedBrickDiff: repeat(
+        new TextureLoader().load(path('/patterned_brick_floor_02_diff.jpg'))
       ),
       patternedBrickDisplacement: repeat(
-        new TextureLoader().load(path('/patterned_brick_floor_02_disp.jpg')),
-        3,
-        3
+        repeat(
+          new TextureLoader().load(path('/patterned_brick_floor_02_disp.jpg')),
+          3,
+          3
+        )
       ),
       patternedBrickNormal: unflipY(
         repeat(

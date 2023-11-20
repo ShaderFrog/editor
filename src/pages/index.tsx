@@ -19,6 +19,7 @@ function Editor() {
   return (
     <DynamicComponentWithNoSSR
       assetPrefix=""
+      searchUrl=""
       engine={threngine}
       example="DEFAULT"
       examples={{}}

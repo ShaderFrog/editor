@@ -1519,7 +1519,6 @@ const Editor = ({
         (acc, e) => ({ ...acc, [e.id]: true }),
         {}
       );
-      console.log('delete', edges);
       setGraph((graph) => ({
         ...graph,
         edges: graph.edges.filter((edge) => !(edge.id in ids)),

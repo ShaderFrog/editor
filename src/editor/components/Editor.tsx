@@ -360,6 +360,7 @@ export type SceneProps = {
  */
 export type EditorProps = {
   assetPrefix: string;
+  searchUrl: string;
   saveError?: string;
   isFork?: boolean;
   isAuthenticated?: boolean;
@@ -390,12 +391,12 @@ export type EngineProps = {
 
 const GroupSearch = ({
   engine,
-  assetPrefix,
+  searchUrl,
   activeNode,
   onSelect,
 }: {
   engine: string;
-  assetPrefix: string;
+  searchUrl: string;
   activeNode: SourceNode;
   onSelect: (shader: EditorShader) => void;
 }) => {
@@ -408,10 +409,7 @@ const GroupSearch = ({
   const doSearch = useMemo(() => {
     return debounce(async (text: string) => {
       try {
-        const { count, shaders } = await post(
-          `${assetPrefix}/api/shader/search`,
-          { text, engine }
-        );
+        const { count, shaders } = await post(searchUrl, { text, engine });
 
         // Remove shaders with engine nodes. There's probably a more important
         // criteria here that I don't know yet.
@@ -424,7 +422,7 @@ const GroupSearch = ({
         console.error('Error searching', e);
       }
     }, 500);
-  }, [engine, assetPrefix]);
+  }, [engine, searchUrl]);
 
   useEffect(() => {
     doSearch('');
@@ -489,6 +487,7 @@ const GroupSearch = ({
 
 const Editor = ({
   assetPrefix,
+  searchUrl,
   saveError,
   shader: initialShader,
   isFork,
@@ -1655,7 +1654,7 @@ const Editor = ({
                 className={cx(styles.splitInner, styles.vSplit, styles.vScroll)}
               >
                 <GroupSearch
-                  assetPrefix={assetPrefix}
+                  searchUrl={searchUrl}
                   engine={engine.name}
                   activeNode={activeNode}
                   onSelect={onSelectGroup}

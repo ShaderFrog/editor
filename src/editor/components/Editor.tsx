@@ -414,7 +414,11 @@ const GroupSearch = ({
         // Remove shaders with engine nodes. There's probably a more important
         // criteria here that I don't know yet.
         const filtered = (shaders as EditorShader[]).filter((s) => {
-          return !s.config.graph.nodes.find((n) => (n as SourceNode).engine);
+          return (
+            !s.config.graph.nodes.find((n) => (n as SourceNode).engine) &&
+            // And make sure there's actually nodes in the graph
+            s.config.graph.nodes.filter((n) => n.type !== 'output').length > 0
+          );
         });
 
         setEffects({ total: count, shaders: filtered });

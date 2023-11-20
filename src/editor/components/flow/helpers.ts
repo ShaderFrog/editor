@@ -194,9 +194,7 @@ export const graphEdgeToFlowEdge = (
   target: edge.to,
   data: { type: edge.type },
   className: edge.type,
-  deletable: edge.type !== EdgeLink.NEXT_STAGE,
   focusable: edge.type !== EdgeLink.NEXT_STAGE,
-  updatable: edge.type !== EdgeLink.NEXT_STAGE,
   // Not the edge type, the flow edge component type that renders this edge
   type: SHADERFROG_FLOW_EDGE_TYPE,
 });

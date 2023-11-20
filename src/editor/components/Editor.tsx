@@ -1049,11 +1049,13 @@ const Editor = ({
   // Used for selecting edges, also called when an edge is removed, along with
   // onEdgesDelete above
   const onEdgesChange = useCallback(
-    (changes) =>
-      setFlowElements((fe) => ({
+    (changes) => {
+      console.log('onEdgesChange', changes);
+      return setFlowElements((fe) => ({
         ...fe,
         edges: applyEdgeChanges(changes, fe.edges),
-      })),
+      }));
+    },
     [setFlowElements]
   );
 
@@ -1517,6 +1519,7 @@ const Editor = ({
         (acc, e) => ({ ...acc, [e.id]: true }),
         {}
       );
+      console.log('delete', edges);
       setGraph((graph) => ({
         ...graph,
         edges: graph.edges.filter((edge) => !(edge.id in ids)),

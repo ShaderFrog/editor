@@ -481,7 +481,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
     () => ({
       explosion: new TextureLoader().load(path('/explosion.png')),
       'grayscale-noise': repeat(
-        new TextureLoader().load(path('/grayscale-noise.png'))
+        new TextureLoader().load(path('/grayscale-noise.png')),
+        1,
+        1
       ),
       threeTone: (() => {
         const image = new TextureLoader().load(path('/3tone.jpg'));
@@ -496,14 +498,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
         3
       ),
       patternedBrickDiff: repeat(
-        new TextureLoader().load(path('/patterned_brick_floor_02_diff.jpg'))
+        new TextureLoader().load(path('/patterned_brick_floor_02_diff.jpg')),
+        1,
+        1
       ),
       patternedBrickDisplacement: repeat(
-        repeat(
-          new TextureLoader().load(path('/patterned_brick_floor_02_disp.jpg')),
-          3,
-          3
-        )
+        new TextureLoader().load(path('/patterned_brick_floor_02_disp.jpg')),
+        3,
+        3
       ),
       patternedBrickNormal: unflipY(
         repeat(

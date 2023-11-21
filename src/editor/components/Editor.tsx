@@ -462,7 +462,7 @@ const GroupSearch = ({
         ></input>
       </div>
       {count && activeNode ? (
-        <div className="m-top-10 secondary px12">
+        <div className="m-top-10 secondary px12" style={{ height: '28px' }}>
           Replace <span className="primary">&quot;{activeNode.name}&quot;</span>{' '}
           with&hellip;
         </div>

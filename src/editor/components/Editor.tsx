@@ -1371,21 +1371,38 @@ const Editor = ({
     // TODO: Gotta figure out how to do this in the context of groups
 
     // Find the current active node and its next stage node if present
-    const curentOutputNode = selectedNode;
+    let curentOutputNode = selectedNode;
+    const maybeOtherNode = findLinkedNode(graph, curentOutputNode.id);
+
+    // If we selected a vertex node, swap it to the linked fragment node. If
+    // there is no linked fragment node I think this whole thing will break
+    if (
+      maybeOtherNode &&
+      (curentOutputNode as SourceNode)?.stage === 'vertex'
+    ) {
+      curentOutputNode = maybeOtherNode;
+    }
+
     const activeNodeIds = new Set([curentOutputNode.id]);
-    const currentFromEdge = graph.edges.find(
-      (edge) => edge.from === selectedNode.id
+
+    // TODO: This is not actually garaunteed to be a fragment, user could select
+    // vertex node to replace
+    const currentFragFromEdge = graph.edges.find(
+      (edge) => edge.from === curentOutputNode.id
     );
-    const currentToNode = graph.nodes.find(
-      (node) => node.id === currentFromEdge?.to
+    const currentToFragNode = graph.nodes.find(
+      (node) => node.id === currentFragFromEdge?.to
     );
 
     // And its friend and its friend output edge
-    const otherActiveNode = findLinkedNode(graph, selectedNode.id);
-    const currentOtherFromEdge = graph.edges.find(
+    const otherActiveNode = findLinkedNode(graph, curentOutputNode.id);
+    const currentVertFromEdge = graph.edges.find(
       (edge) =>
         // Don't find the link, rather find the output. Link is removed later
         edge.type !== EdgeLink.NEXT_STAGE && edge.from === otherActiveNode?.id
+    );
+    const currentToVertNode = graph.nodes.find(
+      (node) => node.id === currentVertFromEdge?.to
     );
 
     // TODO: Guessing for how nodes are parented to a group, and remove those
@@ -1412,8 +1429,8 @@ const Editor = ({
     // Remove anything downstream from this node
     const currentElementsToRemove = filterGraphFromNode(
       graph,
-      selectedNode,
-      finder(selectedNode)
+      curentOutputNode,
+      finder(curentOutputNode)
     );
 
     // And its friend, if present
@@ -1421,7 +1438,7 @@ const Editor = ({
       ? filterGraphFromNode(
           graph,
           otherActiveNode,
-          finder(otherActiveNode, selectedNode)
+          finder(otherActiveNode, curentOutputNode)
         )
       : consSearchResult();
 
@@ -1429,37 +1446,39 @@ const Editor = ({
       currentElementsToRemove,
       otherElementsToRemove
     );
-    console.log({
-      currentElementsToRemove,
-      otherElementsToRemove,
-      elementsToRemove,
-      currentOtherFromEdge,
-    });
 
     const edgesToRemoveById = groupBy(elementsToRemove.edges, 'id');
     const nodesToRemoveById = groupBy(elementsToRemove.nodes, 'id');
 
     // Figure out some shit from the incoming graph
     const { graph: incomingGraph } = shader.config;
-    const outputFrag = incomingGraph.nodes.find(
+    const incomingOutputFrag = incomingGraph.nodes.find(
       (node) => node.type === 'output' && node.stage === 'fragment'
     );
-    const outputVert = incomingGraph.nodes.find(
+    const incomingOutFragEdge = incomingGraph.edges.find(
+      (edge) => edge.to === incomingOutputFrag?.id
+    );
+    const incomingOutFragNode = incomingGraph.nodes.find(
+      (n) => n.id === incomingOutFragEdge?.from
+    );
+    const incomingFragOutput = incomingOutFragNode?.outputs?.[0];
+
+    const incomingOutputVert = incomingGraph.nodes.find(
       (node) => node.type === 'output' && node.stage === 'vertex'
     );
-    const incomingOutEdge = incomingGraph.edges.find(
-      (edge) => edge.to === outputFrag?.id
+    const incomingOutVertEdge = incomingGraph.edges.find(
+      (edge) => edge.to === incomingOutputVert?.id
     );
-    const incomingOutNode = incomingGraph.nodes.find(
-      (n) => n.id === incomingOutEdge?.from
+    const incomingOutVertNode = incomingGraph.nodes.find(
+      (n) => n.id === incomingOutVertEdge?.from
     );
-    const incomingOutput = incomingOutNode?.outputs?.[0];
+    const incomingVertOutput = incomingOutVertNode?.outputs?.[0];
 
     // Determine the amount we need to shift the incoming graph
-    const delta: XYPosition = incomingOutNode
+    const delta: XYPosition = incomingOutFragNode
       ? {
-          x: incomingOutNode.position.x - selectedNode.position.x,
-          y: incomingOutNode.position.y - selectedNode.position.y,
+          x: incomingOutFragNode.position.x - curentOutputNode.position.x,
+          y: incomingOutFragNode.position.y - curentOutputNode.position.y,
         }
       : { x: 0, y: 0 };
 
@@ -1467,7 +1486,10 @@ const Editor = ({
     const filteredIncomingGraph: Graph = {
       nodes: incomingGraph.nodes
         // remove the output nodes from the incoming graph
-        .filter((n) => n.id !== outputFrag?.id && n.id !== outputVert?.id)
+        .filter(
+          (n) =>
+            n.id !== incomingOutputFrag?.id && n.id !== incomingOutputVert?.id
+        )
         // and give all nodes the parent group id
         .map((n) => ({
           ...n,
@@ -1479,24 +1501,45 @@ const Editor = ({
         })),
       // remove any edges to the output nodes
       edges: incomingGraph.edges.filter(
-        (e) => e.to !== outputFrag?.id && e.to !== outputVert?.id
+        (e) =>
+          e.to !== incomingOutputFrag?.id && e.to !== incomingOutputVert?.id
       ),
     };
 
     // Connect our incoming graph's output contract node with our current
     // graph's active toNode input
-    const newOutEdge =
-      incomingOutNode && incomingOutput && currentFromEdge && currentToNode
+    const newFragOutEdge =
+      incomingOutFragNode &&
+      incomingFragOutput &&
+      currentFragFromEdge &&
+      currentToFragNode
         ? makeEdge(
             // id, from, to, output, input, type
             makeId(),
-            incomingOutNode.id,
-            currentToNode.id,
-            incomingOutput.id,
-            currentFromEdge.input,
+            incomingOutFragNode.id,
+            currentToFragNode.id,
+            incomingFragOutput.id,
+            currentFragFromEdge.input,
             // See TODO in edge. These should be seprate fields on the edge
-            (incomingOutNode as SourceNode).stage ||
-              incomingOutNode.outputs?.[0]?.dataType
+            (incomingOutFragNode as SourceNode).stage ||
+              incomingOutFragNode.outputs?.[0]?.dataType
+          )
+        : null;
+    const newVertOutEdge =
+      incomingOutVertNode &&
+      incomingVertOutput &&
+      currentVertFromEdge &&
+      currentToVertNode
+        ? makeEdge(
+            // id, from, to, output, input, type
+            makeId(),
+            incomingOutVertNode.id,
+            currentToVertNode.id,
+            incomingVertOutput.id,
+            currentVertFromEdge.input,
+            // See TODO in edge. These should be seprate fields on the edge
+            (incomingOutVertNode as SourceNode).stage ||
+              incomingOutVertNode.outputs?.[0]?.dataType
           )
         : null;
 
@@ -1517,14 +1560,15 @@ const Editor = ({
       edges: [
         ...graph.edges.filter(
           (edge) =>
-            edge.id !== currentFromEdge?.id &&
-            edge.id !== currentOtherFromEdge?.id &&
+            edge.id !== currentFragFromEdge?.id &&
+            edge.id !== currentVertFromEdge?.id &&
             !(edge.id in edgesToRemoveById)
         ),
         // And add in the incoming edges
         ...filteredIncomingGraph.edges,
         // Add the contract connector
-        ...(newOutEdge ? [newOutEdge] : []),
+        ...(newFragOutEdge ? [newFragOutEdge] : []),
+        ...(newVertOutEdge ? [newVertOutEdge] : []),
       ],
     };
 
@@ -1533,13 +1577,13 @@ const Editor = ({
     setFlowElements(newFlowGraph);
     setGraph(newGraph);
 
-    if (incomingOutNode) {
-      setActiveEditingNode(incomingOutNode as SourceNode);
+    if (incomingOutFragNode) {
+      setActiveEditingNode(incomingOutFragNode as SourceNode);
 
       // Flakey: Select the node visually in the graph. Don't know why flakey
       // so added timeout
       setTimeout(() => {
-        addSelectedNodes([incomingOutNode.id]);
+        addSelectedNodes([incomingOutFragNode.id]);
       }, 100);
     }
     debouncedSetNeedsCompile(true);

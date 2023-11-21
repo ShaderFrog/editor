@@ -57,6 +57,10 @@ import {
   filterGraphFromNode,
   makeEdge,
   findLinkedNode,
+  Predicates,
+  consSearchResult,
+  SearchResult,
+  mergeSearchResults,
 } from '@core/graph';
 
 import { Engine, EngineContext } from '@core/engine';
@@ -1369,32 +1373,71 @@ const Editor = ({
     // Find the current active node and its next stage node if present
     const curentOutputNode = selectedNode;
     const activeNodeIds = new Set([curentOutputNode.id]);
-    const currentToEdge = graph.edges.find(
+    const currentFromEdge = graph.edges.find(
       (edge) => edge.from === selectedNode.id
     );
     const currentToNode = graph.nodes.find(
-      (node) => node.id === currentToEdge?.to
+      (node) => node.id === currentFromEdge?.to
     );
 
+    // And its friend and its friend output edge
     const otherActiveNode = findLinkedNode(graph, selectedNode.id);
+    const currentOtherFromEdge = graph.edges.find(
+      (edge) =>
+        // Don't find the link, rather find the output. Link is removed later
+        edge.type !== EdgeLink.NEXT_STAGE && edge.from === otherActiveNode?.id
+    );
 
     // TODO: Guessing for how nodes are parented to a group, and remove those
     // instead of all the inputs to a node
     // activeNode.parentId ?
     //     graph.nodes.find((n) => n.id === activeNode.parentId)
 
-    // Remove anything downstream from this node
-    const currentElementsToRemove = filterGraphFromNode(graph, selectedNode, {
+    const finder = (
+      startNode: GraphNode,
+      linkedNode?: GraphNode
+    ): Predicates => ({
       node: (node, inputEdges, acc) => {
-        return acc.edges.map((edge) => edge.from).includes(node.id);
+        return (
+          // Stop at the linked node if present, since the other finder does that.
+          node.id !== linkedNode?.id &&
+          acc.edges.map((edge) => edge.from).includes(node.id)
+        );
       },
       edge: (input, toNode, inputEdge, fromNode, acc) => {
-        return !!(toNode.id === selectedNode.id || toNode.id in acc.nodes);
+        return !!(toNode.id === startNode.id || toNode.id in acc.nodes);
       },
     });
 
-    const edgesToRemoveById = groupBy(currentElementsToRemove.edges, 'id');
-    const nodesToRemoveById = groupBy(currentElementsToRemove.nodes, 'id');
+    // Remove anything downstream from this node
+    const currentElementsToRemove = filterGraphFromNode(
+      graph,
+      selectedNode,
+      finder(selectedNode)
+    );
+
+    // And its friend, if present
+    const otherElementsToRemove = otherActiveNode
+      ? filterGraphFromNode(
+          graph,
+          otherActiveNode,
+          finder(otherActiveNode, selectedNode)
+        )
+      : consSearchResult();
+
+    const elementsToRemove = mergeSearchResults(
+      currentElementsToRemove,
+      otherElementsToRemove
+    );
+    console.log({
+      currentElementsToRemove,
+      otherElementsToRemove,
+      elementsToRemove,
+      currentOtherFromEdge,
+    });
+
+    const edgesToRemoveById = groupBy(elementsToRemove.edges, 'id');
+    const nodesToRemoveById = groupBy(elementsToRemove.nodes, 'id');
 
     // Figure out some shit from the incoming graph
     const { graph: incomingGraph } = shader.config;
@@ -1412,6 +1455,7 @@ const Editor = ({
     );
     const incomingOutput = incomingOutNode?.outputs?.[0];
 
+    // Determine the amount we need to shift the incoming graph
     const delta: XYPosition = incomingOutNode
       ? {
           x: incomingOutNode.position.x - selectedNode.position.x,
@@ -1442,14 +1486,14 @@ const Editor = ({
     // Connect our incoming graph's output contract node with our current
     // graph's active toNode input
     const newOutEdge =
-      incomingOutNode && incomingOutput && currentToEdge && currentToNode
+      incomingOutNode && incomingOutput && currentFromEdge && currentToNode
         ? makeEdge(
             // id, from, to, output, input, type
             makeId(),
             incomingOutNode.id,
             currentToNode.id,
             incomingOutput.id,
-            currentToEdge.input,
+            currentFromEdge.input,
             // See TODO in edge. These should be seprate fields on the edge
             (incomingOutNode as SourceNode).stage ||
               incomingOutNode.outputs?.[0]?.dataType
@@ -1473,7 +1517,9 @@ const Editor = ({
       edges: [
         ...graph.edges.filter(
           (edge) =>
-            edge.id !== currentToEdge?.id && !(edge.id in edgesToRemoveById)
+            edge.id !== currentFromEdge?.id &&
+            edge.id !== currentOtherFromEdge?.id &&
+            !(edge.id in edgesToRemoveById)
         ),
         // And add in the incoming edges
         ...filteredIncomingGraph.edges,

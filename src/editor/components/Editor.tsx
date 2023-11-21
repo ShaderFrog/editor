@@ -440,6 +440,8 @@ const GroupSearch = ({
     doSearch(search);
   };
 
+  const count = effects.shaders.length;
+
   return (
     <>
       <div>
@@ -459,33 +461,37 @@ const GroupSearch = ({
           }}
         ></input>
       </div>
+      {count && activeNode ? (
+        <div className="m-top-10 secondary px12">
+          Replace <span className="primary">&quot;{activeNode.name}&quot;</span>{' '}
+          with&hellip;
+        </div>
+      ) : null}
       <div className="m-top-10">
         <div>
-          <div>
-            <label className="label">Results</label>
-          </div>
-          {effects.shaders.length ? (
-            <div className="grid col2">
-              {effects.shaders.map((shader) => (
-                <div
-                  key={shader.id}
-                  className="shaderCardButton"
-                  onClick={() => onSelect(shader)}
-                >
-                  <div className="cardImg">
-                    <img
-                      src={shader.image as string}
-                      alt={`${shader.name} screenshot`}
-                    />
-                  </div>
-                  <div className="body">{shader.name}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            'No results'
-          )}
+          <label className="label">Results{count ? ` (${count})` : null}</label>
         </div>
+        {count ? (
+          <div className="grid col2">
+            {effects.shaders.map((shader) => (
+              <div
+                key={shader.id}
+                className="shaderCardButton"
+                onClick={() => onSelect(shader)}
+              >
+                <div className="cardImg">
+                  <img
+                    src={shader.image as string}
+                    alt={`${shader.name} screenshot`}
+                  />
+                </div>
+                <div className="body">{shader.name}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          'No results'
+        )}
       </div>
     </>
   );
@@ -1377,23 +1383,16 @@ const Editor = ({
     // activeNode.parentId ?
     //     graph.nodes.find((n) => n.id === activeNode.parentId)
 
-    // Filter the graph from the active node to essentialy remove its data
-    // inputs. With groups this should change to the group.
+    // Remove anything downstream from this node
     const currentElementsToRemove = filterGraphFromNode(graph, selectedNode, {
       node: (node, inputEdges, acc) => {
-        return Object.values(acc.edges)
-          .map((edge) => edge.from)
-          .includes(node.id);
+        return acc.edges.map((edge) => edge.from).includes(node.id);
       },
-      edge: (input, toNode, inputEdge, fromNode) => {
-        const res = !!(
-          fromNode &&
-          toNode.id === selectedNode.id &&
-          isDataNode(fromNode)
-        );
-        return res;
+      edge: (input, toNode, inputEdge, fromNode, acc) => {
+        return !!(toNode.id === selectedNode.id || toNode.id in acc.nodes);
       },
     });
+
     const edgesToRemoveById = groupBy(currentElementsToRemove.edges, 'id');
     const nodesToRemoveById = groupBy(currentElementsToRemove.nodes, 'id');
 
@@ -1413,6 +1412,13 @@ const Editor = ({
     );
     const incomingOutput = incomingOutNode?.outputs?.[0];
 
+    const delta: XYPosition = incomingOutNode
+      ? {
+          x: incomingOutNode.position.x - selectedNode.position.x,
+          y: incomingOutNode.position.y - selectedNode.position.y,
+        }
+      : { x: 0, y: 0 };
+
     const groupId = makeId();
     const filteredIncomingGraph: Graph = {
       nodes: incomingGraph.nodes
@@ -1421,6 +1427,10 @@ const Editor = ({
         // and give all nodes the parent group id
         .map((n) => ({
           ...n,
+          position: {
+            x: n.position.x - delta.x,
+            y: n.position.y - delta.y,
+          },
           parentId: groupId,
         })),
       // remove any edges to the output nodes
@@ -1682,7 +1692,7 @@ const Editor = ({
                 <GroupSearch
                   searchUrl={searchUrl}
                   engine={engine.name}
-                  activeNode={activeEditingNode}
+                  activeNode={selectedNode as SourceNode}
                   onSelect={onSelectGroup}
                 />
               </div>

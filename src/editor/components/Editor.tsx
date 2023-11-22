@@ -1385,7 +1385,7 @@ const Editor = ({
 
     const activeNodeIds = new Set([curentOutputNode.id]);
 
-    // TODO: This is not actually garaunteed to be a fragment, user could select
+    // TODO: This is not actually guaranteed to be a fragment, user could select
     // vertex node to replace
     const currentFragFromEdge = graph.edges.find(
       (edge) => edge.from === curentOutputNode.id

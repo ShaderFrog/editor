@@ -591,6 +591,45 @@ const Editor = ({
     useState<AnySceneConfig>(initialSceneConfig);
   const [graph, setGraph] = useLocalStorage<Graph>('graph', initialGraph);
 
+  const graphIntegrity = useMemo(() => {
+    const nodesById = graph.nodes.reduce<Record<string, GraphNode>>(
+      (acc, node) => ({ ...acc, [node.id]: node }),
+      {}
+    );
+    let errors: string[] = [];
+    errors = errors.concat(
+      graph.edges
+        .filter((edge) => !(edge.to in nodesById) || !(edge.from in nodesById))
+        .map(
+          (edge) =>
+            `Edge "${edge.id}" is linked ${
+              !(edge.to in nodesById) ? `to ${edge.to}` : `from ${edge.from}`
+            } which does not exist!`
+        )
+    );
+    return errors;
+  }, [graph]);
+
+  const tryToUnEffTheGraph = () => {
+    setGraph((graph) => {
+      const nodesById = graph.nodes.reduce<Record<string, GraphNode>>(
+        (acc, node) => ({ ...acc, [node.id]: node }),
+        {}
+      );
+      const orphanedEdgeIds = graph.edges
+        .filter((edge) => !(edge.to in nodesById) || !(edge.from in nodesById))
+        .reduce<Set<string>>((edges, edge) => {
+          edges.add(edge.id);
+          return edges;
+        }, new Set<string>());
+      log('Pruning', orphanedEdgeIds);
+      return {
+        ...graph,
+        edges: graph.edges.filter((edge) => !orphanedEdgeIds.has(edge.id)),
+      };
+    });
+  };
+
   const sceneWrapRef = useRef<HTMLDivElement>(null);
 
   // tabIndex may still be needed to pause rendering
@@ -1936,52 +1975,86 @@ const Editor = ({
                 <TabPanel className="relative">
                   <div className="fullScroll">
                     <div className={cx(styles.uiGroup, 'm0')}>
-                      <h2 className={styles.uiHeader}>Shader Name</h2>
-                      <input
-                        className="textinput"
-                        type="text"
-                        value={shader?.name}
-                        onChange={(e) => {
-                          setShader({
-                            ...shader,
-                            name: e.target.value,
-                          });
-                        }}
-                      ></input>
+                      <div className="grid col2 gap50">
+                        <div>
+                          <h2 className={cx(styles.uiHeader)}>
+                            Screenshot
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                takeScreenshot();
+                              }}
+                              className="buttonauto formbutton size2 m-left-15"
+                            >
+                              Update
+                            </button>
+                          </h2>
+                          {screenshotData ? (
+                            <img
+                              src={screenshotData}
+                              alt={`${shader.name} screenshot`}
+                            />
+                          ) : null}
+                        </div>
+                        <div>
+                          <h2 className={styles.uiHeader}>Shader Name</h2>
+                          <input
+                            className="textinput"
+                            type="text"
+                            value={shader?.name}
+                            onChange={(e) => {
+                              setShader({
+                                ...shader,
+                                name: e.target.value,
+                              });
+                            }}
+                          ></input>
 
-                      <h2 className={cx(styles.uiHeader, 'm-top-25')}>
-                        Description
-                      </h2>
-                      <textarea
-                        className="textinput"
-                        value={shader?.description || ''}
-                        onChange={(e) => {
-                          setShader({
-                            ...shader,
-                            description: e.target.value,
-                          });
-                        }}
-                      ></textarea>
+                          <h2 className={cx(styles.uiHeader, 'm-top-25')}>
+                            Description
+                          </h2>
+                          <textarea
+                            className="textinput"
+                            value={shader?.description || ''}
+                            onChange={(e) => {
+                              setShader({
+                                ...shader,
+                                description: e.target.value,
+                              });
+                            }}
+                          ></textarea>
 
-                      <h2 className={cx(styles.uiHeader, 'm-top-25')}>
-                        Screenshot
-                      </h2>
-                      {screenshotData ? (
-                        <img
-                          src={screenshotData}
-                          alt={`${shader.name} screenshot`}
-                        />
-                      ) : null}
-                      <div className="m-top-15">
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            takeScreenshot();
-                          }}
-                          className="buttonauto formbutton"
-                        >
-                          Update Screenshot
-                        </button>
+                          <h2 className={cx(styles.uiHeader, 'm-top-25')}>
+                            Graph Integrity
+                          </h2>
+                          <div className="m-top-15">
+                            {graphIntegrity.length ? (
+                              <div>
+                                {graphIntegrity.map((t) => (
+                                  <div
+                                    className="errorText px12 m-top-5"
+                                    key={t}
+                                  >
+                                    {t}
+                                  </div>
+                                ))}
+                                <div className="m-top-10">
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      tryToUnEffTheGraph();
+                                    }}
+                                    className="buttonauto formbutton size2"
+                                  >
+                                    Attempt graph fix
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>✅ Integrity check passed</>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

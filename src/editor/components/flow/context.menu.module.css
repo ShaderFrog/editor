@@ -1,11 +1,11 @@
 .contextMenu {
   position: absolute;
   z-index: 10;
-  background: #222;
+  background: linear-gradient(#222, #111 40%);
   color: #fff;
   border-radius: 8px;
   border: 1px solid #444;
-  padding: 0 0 8px 0;
+  padding: 0 0 4px 0;
   user-select: none;
   min-width: 125px;
   font-size: 12px;
@@ -22,22 +22,42 @@
 }
 
 .contextHeader {
-  padding: 4px 12px;
-  color: rgb(165, 165, 165);
-  border-bottom: 1px solid #444;
+  padding: 7px 16px;
+  color: rgb(200, 200, 200);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px 8px 0 0;
   cursor: default;
 }
 
 .contextRow {
-  padding: 4px 4px 4px 12px;
+  padding: 5px 6px 5px 12px;
+  margin: 3px 3px 1px 3px;
+  display: grid;
+  grid-column: span 2;
+  grid-template-columns: subgrid;
+}
+
+.contextRows {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
+.contextRows.col2 {
+  grid-template-columns: 1fr auto;
+  column-gap: 15px;
 }
 
 .contextRow:hover {
-  background: rgb(58, 58, 124);
+  background: linear-gradient(#42982d, #265314);
+  border-radius: 4px;
   cursor: pointer;
 }
 
 .flowContainer {
   height: 100%;
   width: 100%;
+}
+
+.shortcut {
+  color: #aaa;
 }

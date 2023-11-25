@@ -27,6 +27,7 @@ import { FlowEventHack } from '../../flowEventHack';
 import styles from './context.menu.module.css';
 import GraphContextMenu, { MenuItems } from './GraphContextMenu';
 import { FlowEditorContext } from '@editor/editor/flowEditorContext';
+import { isMacintosh } from '@editor/editor-util/platform';
 
 /**
  * This file is an attempt to break up Editor.tsx by abstracting out the view
@@ -109,6 +110,7 @@ type FlowEditorProps =
       mouse: React.MutableRefObject<MouseData>;
       onNodeValueChange: (id: string, value: any) => void;
       onMenuAdd: (type: string) => void;
+      onNodeContextSelect: (nodeId: string, type: string) => void;
     } & Pick<
       ReactFlowProps,
       | 'nodes'
@@ -127,15 +129,30 @@ type FlowEditorProps =
       | 'onConnectEnd'
     >;
 
+export enum NodeContextActions {
+  EDIT_SOURCE = '1',
+  DELETE_NODE_AND_DEPENDENCIES = '2',
+  DELETE_NODE_ONLY = '3',
+}
 const nodeContextMenuItems: MenuItems = [
-  ['Edit Source', 'editsource'],
-  ['Delete Node', 'deletenode'],
+  ['Edit Source', NodeContextActions.EDIT_SOURCE, 'DblClick'],
+  [
+    'Delete Node And Dependencies',
+    NodeContextActions.DELETE_NODE_AND_DEPENDENCIES,
+    isMacintosh() ? 'Delete' : 'Backspace',
+  ],
+  [
+    'Delete Node Only',
+    NodeContextActions.DELETE_NODE_ONLY,
+    isMacintosh() ? 'Option-Delete' : 'Ctrl-Backspace',
+  ],
 ];
 
 const FlowEditor = ({
   mouse,
   menuItems,
   onMenuAdd,
+  onNodeContextSelect,
   nodes,
   edges,
   onConnect,
@@ -234,6 +251,15 @@ const FlowEditor = ({
     ...menuItems,
   ];
 
+  const onContextSelect = useCallback(
+    (type: string) => {
+      if (contextNodeId) {
+        onNodeContextSelect(contextNodeId, type);
+      }
+    },
+    [onNodeContextSelect, contextNodeId]
+  );
+
   return (
     <FlowEditorContext.Provider value={{ openNodeContextMenu }}>
       <div onContextMenu={onContextMenu} className={styles.flowContainer}>
@@ -245,9 +271,10 @@ const FlowEditor = ({
           />
         ) : menu?.menu === ContextMenuType.NODE_CONTEXT ? (
           <GraphContextMenu
+            title="Node Actions"
             menu={nodeContextMenuItems}
             position={menu.position}
-            onSelect={onMenuAdd}
+            onSelect={onContextSelect}
           />
         ) : null}
         <FlowEventHack onChange={onNodeValueChange}>

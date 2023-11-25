@@ -4,6 +4,7 @@ import groupBy from 'lodash.groupby';
 
 import FlowEditor, {
   MouseData,
+  NodeContextActions,
   SHADERFROG_FLOW_EDGE_TYPE,
   useEditorStore,
 } from './flow/FlowEditor';
@@ -93,7 +94,7 @@ import {
   addFlowEdge,
   addGraphEdge,
   updateGraphFromFlowGraph,
-} from './flow/helpers';
+} from './flow/flow-helpers';
 
 import { usePrevious } from '../hooks/usePrevious';
 import {
@@ -105,6 +106,7 @@ import StrategyEditor from './StrategyEditor';
 import randomShaderName from '@api/randomShaderName';
 import { FlowGraphContext } from '@editor/editor/flowGraphContext';
 import { MenuItems } from './flow/GraphContextMenu';
+import { findNodeAndDependencies } from './flow/graph-helpers';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -1102,7 +1104,6 @@ const Editor = ({
   // onEdgesDelete above
   const onEdgesChange = useCallback(
     (changes) => {
-      console.log('onEdgesChange', changes);
       return setFlowElements((fe) => ({
         ...fe,
         edges: applyEdgeChanges(changes, fe.edges),
@@ -1398,38 +1399,31 @@ const Editor = ({
       log('Replacing', selectedNode);
     }
 
+    const {
+      edgesById: edgesToRemoveById,
+      nodesById: nodesToRemoveById,
+      linkedFragmentNode,
+      linkedVertexNode,
+    } = findNodeAndDependencies(graph, selectedNode);
+
     // TODO: Gotta figure out how to do this in the context of groups
 
-    // Find the current active node and its next stage node if present
-    let curentOutputNode = selectedNode;
-    const maybeOtherNode = findLinkedNode(graph, curentOutputNode.id);
-
-    // If we selected a vertex node, swap it to the linked fragment node. If
-    // there is no linked fragment node I think this whole thing will break
-    if (
-      maybeOtherNode &&
-      (curentOutputNode as SourceNode)?.stage === 'vertex'
-    ) {
-      curentOutputNode = maybeOtherNode;
-    }
-
-    const activeNodeIds = new Set([curentOutputNode.id]);
+    const activeNodeIds = new Set([linkedFragmentNode.id]);
 
     // TODO: This is not actually guaranteed to be a fragment, user could select
     // vertex node to replace
     const currentFragFromEdge = graph.edges.find(
-      (edge) => edge.from === curentOutputNode.id
+      (edge) => edge.from === linkedFragmentNode.id
     );
     const currentToFragNode = graph.nodes.find(
       (node) => node.id === currentFragFromEdge?.to
     );
 
     // And its friend and its friend output edge
-    const otherActiveNode = findLinkedNode(graph, curentOutputNode.id);
     const currentVertFromEdge = graph.edges.find(
       (edge) =>
         // Don't find the link, rather find the output. Link is removed later
-        edge.type !== EdgeLink.NEXT_STAGE && edge.from === otherActiveNode?.id
+        edge.type !== EdgeLink.NEXT_STAGE && edge.from === linkedVertexNode?.id
     );
     const currentToVertNode = graph.nodes.find(
       (node) => node.id === currentVertFromEdge?.to
@@ -1439,46 +1433,6 @@ const Editor = ({
     // instead of all the inputs to a node
     // activeNode.parentId ?
     //     graph.nodes.find((n) => n.id === activeNode.parentId)
-
-    const finder = (
-      startNode: GraphNode,
-      linkedNode?: GraphNode
-    ): Predicates => ({
-      node: (node, inputEdges, acc) => {
-        return (
-          // Stop at the linked node if present, since the other finder does that.
-          node.id !== linkedNode?.id &&
-          acc.edges.map((edge) => edge.from).includes(node.id)
-        );
-      },
-      edge: (input, toNode, inputEdge, fromNode, acc) => {
-        return !!(toNode.id === startNode.id || toNode.id in acc.nodes);
-      },
-    });
-
-    // Remove anything downstream from this node
-    const currentElementsToRemove = filterGraphFromNode(
-      graph,
-      curentOutputNode,
-      finder(curentOutputNode)
-    );
-
-    // And its friend, if present
-    const otherElementsToRemove = otherActiveNode
-      ? filterGraphFromNode(
-          graph,
-          otherActiveNode,
-          finder(otherActiveNode, curentOutputNode)
-        )
-      : consSearchResult();
-
-    const elementsToRemove = mergeSearchResults(
-      currentElementsToRemove,
-      otherElementsToRemove
-    );
-
-    const edgesToRemoveById = groupBy(elementsToRemove.edges, 'id');
-    const nodesToRemoveById = groupBy(elementsToRemove.nodes, 'id');
 
     // Figure out some shit from the incoming graph
     const { graph: incomingGraph } = shader.config;
@@ -1507,8 +1461,8 @@ const Editor = ({
     // Determine the amount we need to shift the incoming graph
     const delta: XYPosition = incomingOutFragNode
       ? {
-          x: incomingOutFragNode.position.x - curentOutputNode.position.x,
-          y: incomingOutFragNode.position.y - curentOutputNode.position.y,
+          x: incomingOutFragNode.position.x - linkedFragmentNode.position.x,
+          y: incomingOutFragNode.position.y - linkedFragmentNode.position.y,
         }
       : { x: 0, y: 0 };
 
@@ -1582,7 +1536,7 @@ const Editor = ({
             // And its friends
             !(node.id in nodesToRemoveById) &&
             // And its next stage node if present
-            node.id !== otherActiveNode?.id
+            node.id !== linkedVertexNode?.id
         ),
         ...filteredIncomingGraph.nodes,
       ],
@@ -1634,7 +1588,7 @@ const Editor = ({
     }
   }, []);
 
-  const { setMenu, hideMenu, menu } = useEditorStore();
+  const { hideMenu, menu } = useEditorStore();
 
   const onMenuAdd = useCallback(
     (type: string) => {
@@ -1643,6 +1597,52 @@ const Editor = ({
       hideMenu();
     },
     [graph, addNodeAtPosition, project, hideMenu, menu]
+  );
+
+  const onNodeContextSelect = useCallback(
+    (nodeId: string, type: string) => {
+      const currentNode = graph.nodes.find(
+        (n) => n.id === nodeId
+      ) as SourceNode;
+      if (type === NodeContextActions.EDIT_SOURCE) {
+        setActiveEditingNode(currentNode);
+        addSelectedNodes([currentNode.id]);
+        setSelectedNode(currentNode);
+
+        setEditorTabIndex(1);
+      } else if (type === NodeContextActions.DELETE_NODE_ONLY) {
+        setFlowElements((graph) => ({
+          ...graph,
+          nodes: graph.nodes.filter((node) => node.id !== nodeId),
+          edges: graph.edges.filter(
+            (edge) => edge.source !== nodeId && edge.target !== nodeId
+          ),
+        }));
+        setNeedsCompile(true);
+      } else if (type === NodeContextActions.DELETE_NODE_AND_DEPENDENCIES) {
+        const { edgesById, nodesById } = findNodeAndDependencies(
+          graph,
+          currentNode
+        );
+        setFlowElements((graph) => ({
+          ...graph,
+          nodes: graph.nodes.filter((node) => !(node.id in nodesById)),
+          edges: graph.edges.filter((edge) => !(edge.id in edgesById)),
+        }));
+        setNeedsCompile(true);
+      }
+      hideMenu();
+    },
+    [
+      graph,
+      setFlowElements,
+      setActiveEditingNode,
+      addSelectedNodes,
+      setSelectedNode,
+      setEditorTabIndex,
+      hideMenu,
+      setNeedsCompile,
+    ]
   );
 
   /**
@@ -1659,7 +1659,9 @@ const Editor = ({
 
   const onContainerClick = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
-      if (!hasParent(event.target as HTMLElement, '#x-context-menu')) {
+      if (
+        !hasParent(event.target as HTMLElement, '#x-context-menu, .nodeConfig')
+      ) {
         hideMenu();
       }
     },
@@ -1820,6 +1822,7 @@ const Editor = ({
                   menuItems={menuItems}
                   mouse={mouseRef}
                   onMenuAdd={onMenuAdd}
+                  onNodeContextSelect={onNodeContextSelect}
                   onNodeValueChange={onNodeValueChange}
                   nodes={flowElements.nodes}
                   edges={flowElements.edges}

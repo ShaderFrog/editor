@@ -1,10 +1,11 @@
 import { useCallback, useRef, MouseEvent, useState, useEffect } from 'react';
-
+import classnames from 'classnames';
 import { XYPosition } from 'reactflow';
 
 import styles from './context.menu.module.css';
+const cx = classnames.bind(styles);
 
-export type MenuItems = [string, string | MenuItems][];
+export type MenuItems = [string, string | MenuItems, string?][];
 
 const GraphContextMenu = ({
   position,
@@ -50,31 +51,42 @@ const GraphContextMenu = ({
         onMouseEnter={onMouseEnter}
       >
         <div className={styles.contextHeader}>{title}</div>
-        {menu.map(([display, typeOrChildren], index) =>
-          typeof typeOrChildren === 'string' ? (
-            <div
-              key={display}
-              className={styles.contextRow}
-              onClick={() => onSelect(typeOrChildren)}
-              onMouseEnter={onParentMenuEnter}
-            >
-              {display}
-            </div>
-          ) : (
-            <div
-              key={display}
-              className={styles.contextRow}
-              onMouseEnter={() => {
-                if (timeout.current) {
-                  clearTimeout(timeout.current);
-                }
-                setChildMenu([display, typeOrChildren, index]);
-              }}
-            >
-              {display} ➤
-            </div>
-          )
-        )}
+        <div
+          className={cx(styles.contextRows, {
+            [styles.col2]: !!menu.find(([_a, _b, k]) => !!k),
+          })}
+        >
+          {menu.map(([display, typeOrChildren, keyboardShortcut], index) =>
+            typeof typeOrChildren === 'string' ? (
+              <div
+                key={display}
+                className={styles.contextRow}
+                onClick={() => onSelect(typeOrChildren)}
+                onMouseEnter={onParentMenuEnter}
+              >
+                <span>{display}</span>
+                {keyboardShortcut ? (
+                  <span className={cx('right', styles.shortcut)}>
+                    {keyboardShortcut}
+                  </span>
+                ) : null}
+              </div>
+            ) : (
+              <div
+                key={display}
+                className={styles.contextRow}
+                onMouseEnter={() => {
+                  if (timeout.current) {
+                    clearTimeout(timeout.current);
+                  }
+                  setChildMenu([display, typeOrChildren, index]);
+                }}
+              >
+                {display} ➤
+              </div>
+            )
+          )}
+        </div>
       </div>
       {childMenu ? (
         <GraphContextMenu

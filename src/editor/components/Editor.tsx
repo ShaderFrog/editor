@@ -3,7 +3,6 @@ import debounce from 'lodash.debounce';
 import groupBy from 'lodash.groupby';
 
 import FlowEditor, {
-  MenuItems,
   MouseData,
   SHADERFROG_FLOW_EDGE_TYPE,
   useEditorStore,
@@ -35,7 +34,6 @@ import {
   XYPosition,
   OnConnectStartParams,
   useStoreApi,
-  ReactFlowProps,
   OnSelectionChangeFunc,
 } from 'reactflow';
 
@@ -46,20 +44,17 @@ import {
   GraphNode,
   Edge,
   EdgeType,
-  CodeNode,
   SourceNode,
   NodeInput,
   computeAllContexts,
   computeContextForNodes,
   isDataNode,
   NodeType,
-  collectConnectedNodes,
   filterGraphFromNode,
   makeEdge,
   findLinkedNode,
   Predicates,
   consSearchResult,
-  SearchResult,
   mergeSearchResults,
 } from '@core/graph';
 
@@ -108,6 +103,8 @@ import {
 } from './useGraph';
 import StrategyEditor from './StrategyEditor';
 import randomShaderName from '@api/randomShaderName';
+import { FlowGraphContext } from '@editor/editor/flowGraphContext';
+import { MenuItems } from './flow/GraphContextMenu';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -897,7 +894,7 @@ const Editor = ({
       addSelectedNodes([newGraph.nodes[0].id]);
 
       if (ctx) {
-        const initFlowElements = graphToFlowGraph(newGraph, onInputBakedToggle);
+        const initFlowElements = graphToFlowGraph(newGraph);
         initializeGraph(initFlowElements, ctx, newGraph);
       } else {
         log('NOT Running initializeGraph from example change!');
@@ -938,11 +935,7 @@ const Editor = ({
         //     }
         //   }
         // }
-        initializeGraph(
-          graphToFlowGraph(newGraph, onInputBakedToggle),
-          newCtx,
-          newGraph
-        );
+        initializeGraph(graphToFlowGraph(newGraph), newCtx, newGraph);
         // This branch wasn't here before I started working on the bug where
         // switching away from the scene to the source code tab and back removed
         // the envmap and others. I want to try to cache the whole scene and
@@ -952,7 +945,7 @@ const Editor = ({
         setCtxState(newCtx);
       }
     },
-    [ctx, setCtxState, initializeGraph, graph, onInputBakedToggle]
+    [ctx, setCtxState, initializeGraph, graph]
   );
 
   /**
@@ -1290,7 +1283,6 @@ const Editor = ({
           ...expanded!.nodes.map((newGn, index) =>
             graphNodeToFlowNode(
               newGn,
-              onInputBakedToggle,
               // We only want to position the originally created nodes, to
               // separate vertex/fragment. The auto-expanded uniforms get placed
               // by the expand fn
@@ -1335,7 +1327,6 @@ const Editor = ({
       debouncedSetNeedsCompile,
       engine,
       ctx,
-      onInputBakedToggle,
       setFlowElements,
       setGraph,
     ]
@@ -1611,7 +1602,7 @@ const Editor = ({
       ],
     };
 
-    const newFlowGraph = graphToFlowGraph(newGraph, onInputBakedToggle);
+    const newFlowGraph = graphToFlowGraph(newGraph);
 
     setFlowElements(newFlowGraph);
     setGraph(newGraph);
@@ -1643,16 +1634,15 @@ const Editor = ({
     }
   }, []);
 
-  const setMenuPos = useEditorStore((state) => state.setMenuPosition);
-  const menuPosition = useEditorStore((state) => state.menuPosition);
+  const { setMenu, hideMenu, menu } = useEditorStore();
 
   const onMenuAdd = useCallback(
     (type: string) => {
-      const pos = project(menuPosition as XYPosition);
+      const pos = project(menu?.position as XYPosition);
       addNodeAtPosition(graph, type, '', pos);
-      setMenuPos();
+      hideMenu();
     },
-    [graph, addNodeAtPosition, setMenuPos, project, menuPosition]
+    [graph, addNodeAtPosition, project, hideMenu, menu]
   );
 
   /**
@@ -1670,10 +1660,10 @@ const Editor = ({
   const onContainerClick = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
       if (!hasParent(event.target as HTMLElement, '#x-context-menu')) {
-        setMenuPos();
+        hideMenu();
       }
     },
-    [setMenuPos]
+    [hideMenu]
   );
 
   // onEdgesChange is what applies the edge changes to the flow graph.
@@ -1946,9 +1936,7 @@ const Editor = ({
                   }
                   onGraphChange={() => {
                     setGraph(graph);
-                    setFlowElements(
-                      graphToFlowGraph(graph, onInputBakedToggle)
-                    );
+                    setFlowElements(graphToFlowGraph(graph));
                   }}
                 ></StrategyEditor>
               </div>
@@ -2130,39 +2118,44 @@ const Editor = ({
   );
 
   return (
-    <div
-      className={cx(styles.editorContainer, {
-        [styles.smallScreen]: isSmallScreen,
-      })}
-      onClick={onContainerClick}
-    >
-      {isSmallScreen ? (
-        <Tabs
-          onTabSelect={setSmallScreenEditorTabIndex}
-          selected={smallScreenEditorTabIndex}
-          className={styles.shrinkGrowRows}
-        >
-          <TabGroup>
-            <Tab>Scene</Tab>
-            <Tab>Editor</Tab>
-          </TabGroup>
-          <TabPanels>
-            <TabPanel ref={sceneWrapRef} style={{ height: '100% ' }}>
+    <FlowGraphContext.Provider value={{ onInputBakedToggle }}>
+      <div
+        className={cx(styles.editorContainer, {
+          [styles.smallScreen]: isSmallScreen,
+        })}
+        onClick={onContainerClick}
+      >
+        {isSmallScreen ? (
+          <Tabs
+            onTabSelect={setSmallScreenEditorTabIndex}
+            selected={smallScreenEditorTabIndex}
+            className={styles.shrinkGrowRows}
+          >
+            <TabGroup>
+              <Tab>Scene</Tab>
+              <Tab>Editor</Tab>
+            </TabGroup>
+            <TabPanels>
+              <TabPanel ref={sceneWrapRef} style={{ height: '100% ' }}>
+                {sceneElements}
+              </TabPanel>
+              <TabPanel>{editorElements}</TabPanel>
+            </TabPanels>
+          </Tabs>
+        ) : (
+          <SplitPane
+            onChange={syncSceneSize}
+            defaultSizes={defaultMainSplitSize}
+          >
+            <div className={styles.splitInner}>{editorElements}</div>
+            {/* 3d display split */}
+            <div ref={sceneWrapRef} className={styles.splitInner}>
               {sceneElements}
-            </TabPanel>
-            <TabPanel>{editorElements}</TabPanel>
-          </TabPanels>
-        </Tabs>
-      ) : (
-        <SplitPane onChange={syncSceneSize} defaultSizes={defaultMainSplitSize}>
-          <div className={styles.splitInner}>{editorElements}</div>
-          {/* 3d display split */}
-          <div ref={sceneWrapRef} className={styles.splitInner}>
-            {sceneElements}
-          </div>
-        </SplitPane>
-      )}
-    </div>
+            </div>
+          </SplitPane>
+        )}
+      </div>
+    </FlowGraphContext.Provider>
   );
 };
 

@@ -25,6 +25,8 @@ import { DataNodeComponent, SourceNodeComponent } from './FlowNode';
 import { FlowEventHack } from '../../flowEventHack';
 
 import styles from './context.menu.module.css';
+import GraphContextMenu, { MenuItems } from './GraphContextMenu';
+import { FlowEditorContext } from '@editor/editor/flowEditorContext';
 
 /**
  * This file is an attempt to break up Editor.tsx by abstracting out the view
@@ -38,13 +40,22 @@ import styles from './context.menu.module.css';
  */
 
 interface EditorStore {
-  menuPosition: XYPosition | undefined;
-  setMenuPosition: (p?: XYPosition) => void;
+  menu: ContextMenu | undefined;
+  setMenu: (menu: ContextMenuType, position: XYPosition) => void;
+  hideMenu: () => void;
 }
 
+export enum ContextMenuType {
+  CONTEXT,
+  NODE_CONTEXT,
+}
+
+export type ContextMenu = { menu: ContextMenuType; position: XYPosition };
+
 export const useEditorStore = create<EditorStore>((set) => ({
-  menuPosition: undefined,
-  setMenuPosition: (menuPosition) => set(() => ({ menuPosition })),
+  menu: undefined,
+  setMenu: (menu, position) => set(() => ({ menu: { menu, position } })),
+  hideMenu: () => set(() => ({ menu: undefined })),
 }));
 
 // Terrible hack to make the flow graph full height minus the tab height - I
@@ -116,6 +127,11 @@ type FlowEditorProps =
       | 'onConnectEnd'
     >;
 
+const nodeContextMenuItems: MenuItems = [
+  ['Edit Source', 'editsource'],
+  ['Delete Node', 'deletenode'],
+];
+
 const FlowEditor = ({
   mouse,
   menuItems,
@@ -136,19 +152,36 @@ const FlowEditor = ({
   onConnectEnd,
   onNodeValueChange,
 }: FlowEditorProps) => {
-  const menuPos = useEditorStore((state) => state.menuPosition);
-  const setMenuPos = useEditorStore((state) => state.setMenuPosition);
+  const { menu, setMenu, hideMenu } = useEditorStore();
+  const [contextNodeId, setContextNodeId] = useState<string>();
 
-  useHotkeys('esc', () => setMenuPos());
-  useHotkeys('shift+a', () => setMenuPos(mouse.current.real));
+  useHotkeys('esc', () => hideMenu());
+  useHotkeys('shift+a', () =>
+    setMenu(ContextMenuType.CONTEXT, mouse.current.real)
+  );
+
+  const setContextMenu = useCallback(
+    (type: ContextMenuType) => {
+      setMenu(type, mouse.current.real);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setMenu]
+  );
+
+  const openNodeContextMenu = useCallback(
+    (id: string) => {
+      setContextNodeId(id);
+      setContextMenu(ContextMenuType.NODE_CONTEXT);
+    },
+    [setContextMenu]
+  );
 
   const onContextMenu = useCallback(
     (event: MouseEvent<HTMLElement>) => {
       event.preventDefault();
-      setMenuPos(mouse.current.real);
+      setContextMenu(ContextMenuType.CONTEXT);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [setMenuPos]
+    [setContextMenu]
   );
 
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance>();
@@ -169,7 +202,7 @@ const FlowEditor = ({
   );
 
   // These are processed in useGraph() for the next time you need to figure this out
-  const allMenuItems: MenuItems = [
+  const addNodeMenuItems: MenuItems = [
     [
       'Source Code',
       [
@@ -202,136 +235,59 @@ const FlowEditor = ({
   ];
 
   return (
-    <div onContextMenu={onContextMenu} className={styles.flowContainer}>
-      {menuPos ? (
-        <ContextMenu menu={allMenuItems} position={menuPos} onAdd={onMenuAdd} />
-      ) : null}
-      <FlowEventHack onChange={onNodeValueChange}>
-        <ReactFlow
-          defaultViewport={defaultViewport}
-          style={flowStyles}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          nodes={nodes}
-          edges={edges}
-          onMoveEnd={onMoveEnd}
-          onConnect={onConnect}
-          onEdgeUpdate={onEdgeUpdate}
-          onEdgesChange={onEdgesChange}
-          onNodesChange={onNodesChange}
-          onNodesDelete={onNodesDelete}
-          onSelectionChange={onSelectionChange}
-          onNodeDoubleClick={onNodeDoubleClick}
-          onEdgesDelete={onEdgesDelete}
-          connectionLineComponent={ConnectionLine}
-          onConnectStart={onConnectStart}
-          onEdgeUpdateStart={onEdgeUpdateStart}
-          onEdgeUpdateEnd={onEdgeUpdateEnd}
-          onConnectEnd={onConnectEnd}
-          onInit={setRfInstance}
-          minZoom={0.2}
-        >
-          <Background
-            variant={BackgroundVariant.Lines}
-            gap={25}
-            size={0.5}
-            color="#222222"
+    <FlowEditorContext.Provider value={{ openNodeContextMenu }}>
+      <div onContextMenu={onContextMenu} className={styles.flowContainer}>
+        {menu?.menu === ContextMenuType.CONTEXT ? (
+          <GraphContextMenu
+            menu={addNodeMenuItems}
+            position={menu.position}
+            onSelect={onMenuAdd}
           />
-        </ReactFlow>
-      </FlowEventHack>
-    </div>
+        ) : menu?.menu === ContextMenuType.NODE_CONTEXT ? (
+          <GraphContextMenu
+            menu={nodeContextMenuItems}
+            position={menu.position}
+            onSelect={onMenuAdd}
+          />
+        ) : null}
+        <FlowEventHack onChange={onNodeValueChange}>
+          <ReactFlow
+            defaultViewport={defaultViewport}
+            style={flowStyles}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            nodes={nodes}
+            edges={edges}
+            onMoveEnd={onMoveEnd}
+            onConnect={onConnect}
+            onEdgeUpdate={onEdgeUpdate}
+            onEdgesChange={onEdgesChange}
+            onNodesChange={onNodesChange}
+            onNodesDelete={onNodesDelete}
+            onSelectionChange={onSelectionChange}
+            onNodeDoubleClick={onNodeDoubleClick}
+            onEdgesDelete={onEdgesDelete}
+            connectionLineComponent={ConnectionLine}
+            onConnectStart={onConnectStart}
+            onEdgeUpdateStart={onEdgeUpdateStart}
+            onEdgeUpdateEnd={onEdgeUpdateEnd}
+            onConnectEnd={onConnectEnd}
+            onInit={setRfInstance}
+            minZoom={0.2}
+          >
+            <Background
+              variant={BackgroundVariant.Lines}
+              gap={25}
+              size={0.5}
+              color="#222222"
+            />
+          </ReactFlow>
+        </FlowEventHack>
+      </div>
+    </FlowEditorContext.Provider>
   );
 };
 
 FlowEditor.displayName = 'FlowEditor';
-
-export type MenuItems = [string, string | MenuItems][];
-
-const ContextMenu = ({
-  position,
-  onAdd,
-  menu,
-  title = 'Add a node',
-  onMouseEnter,
-}: {
-  onAdd: (name: string) => void;
-  position: XYPosition;
-  menu: MenuItems;
-  title?: string;
-  onMouseEnter?: (e: MouseEvent<any>) => void;
-}) => {
-  const [childMenu, setChildMenu] = useState<[string, MenuItems, number]>();
-
-  const timeout = useRef<NodeJS.Timeout>();
-  const onParentMenuEnter = useCallback(() => {
-    if (childMenu) {
-      if (timeout.current) {
-        clearTimeout(timeout.current);
-      }
-      timeout.current = setTimeout(() => {
-        setChildMenu(undefined);
-      }, 500);
-    }
-  }, [childMenu, setChildMenu]);
-
-  useEffect(() => {
-    return () => {
-      if (timeout.current) {
-        clearTimeout(timeout.current);
-      }
-    };
-  }, []);
-
-  return (
-    <>
-      <div
-        id="x-context-menu"
-        className={styles.contextMenu}
-        style={{ top: position.y, left: position.x }}
-        onMouseEnter={onMouseEnter}
-      >
-        <div className={styles.contextHeader}>{title}</div>
-        {menu.map(([display, typeOrChildren], index) =>
-          typeof typeOrChildren === 'string' ? (
-            <div
-              key={display}
-              className={styles.contextRow}
-              onClick={() => onAdd(typeOrChildren)}
-              onMouseEnter={onParentMenuEnter}
-            >
-              {display}
-            </div>
-          ) : (
-            <div
-              key={display}
-              className={styles.contextRow}
-              onMouseEnter={() => {
-                if (timeout.current) {
-                  clearTimeout(timeout.current);
-                }
-                setChildMenu([display, typeOrChildren, index]);
-              }}
-            >
-              {display} ➤
-            </div>
-          )
-        )}
-      </div>
-      {childMenu ? (
-        <ContextMenu
-          onAdd={onAdd}
-          position={{ y: position.y + childMenu[2] * 24, x: position.x + 138 }}
-          title={childMenu[0]}
-          menu={childMenu[1]}
-          onMouseEnter={() => {
-            if (timeout.current) {
-              clearTimeout(timeout.current);
-            }
-          }}
-        ></ContextMenu>
-      ) : null}
-    </>
-  );
-};
 
 export default FlowEditor;

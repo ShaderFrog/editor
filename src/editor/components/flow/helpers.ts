@@ -143,7 +143,6 @@ export const toFlowInputs = (node: GraphNode): InputNodeHandle[] =>
 
 export const graphNodeToFlowNode = (
   node: GraphNode,
-  onInputBakedToggle: any,
   position: XYPosition
 ): FlowNode<FlowNodeData> => {
   const data: FlowNodeData = isSourceNode(node)
@@ -154,7 +153,6 @@ export const graphNodeToFlowNode = (
         biStage: node.biStage || false,
         inputs: toFlowInputs(node),
         outputs: node.outputs.map((o) => flowOutput(o.name, o.id)),
-        onInputBakedToggle,
       }
     : {
         label: node.name,
@@ -407,12 +405,9 @@ export const collapseBinaryFlowEdges = (
   };
 };
 
-export const graphToFlowGraph = (
-  graph: Graph,
-  onInputBakedToggle: any
-): FlowElements => {
+export const graphToFlowGraph = (graph: Graph): FlowElements => {
   const nodes = graph.nodes.map((node) =>
-    graphNodeToFlowNode(node, onInputBakedToggle, node.position)
+    graphNodeToFlowNode(node, node.position)
   );
 
   const edges: FlowEdgeOrLink[] = graph.edges.map(graphEdgeToFlowEdge);

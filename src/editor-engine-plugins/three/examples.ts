@@ -51,7 +51,7 @@ import { juliaF, juliaV } from '@editor/shaders/juliaNode';
 import { makeId } from '../../editor-util/id';
 import { threngine } from '@core/plugins/three/threngine';
 import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
-import { MenuItems } from '@editor/editor/components/flow/FlowEditor';
+import { MenuItems } from '@editor/editor/components/flow/GraphContextMenu';
 import { AnySceneConfig } from '@editor/editor/components/Editor';
 
 export enum Example {

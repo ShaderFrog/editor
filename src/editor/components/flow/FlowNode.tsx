@@ -1,6 +1,8 @@
 import React, { memo, MouseEventHandler, useMemo } from 'react';
 import classnames from 'classnames/bind';
 import { Handle, Position } from 'reactflow';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faGear } from '@fortawesome/free-solid-svg-icons';
 
 import styles from './flownode.module.css';
 const cx = classnames.bind(styles);
@@ -18,6 +20,9 @@ import {
 import { ChangeHandler, useFlowEventHack } from '../../flowEventHack';
 import { replaceAt } from '../../../editor-util/replaceAt';
 import groupBy from 'lodash.groupby';
+import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
+import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
+import { useEditorStore } from './FlowEditor';
 
 const headerHeight = 30;
 const labelHeight = 38;
@@ -69,7 +74,6 @@ export interface FlowNodeSourceData extends CoreFlowNode {
    * Whether or not this node can be used for both shader fragment and vertex
    */
   biStage: boolean;
-  onInputBakedToggle: (id: string, name: string, baked: boolean) => void;
 }
 export type FlowNodeData = FlowNodeSourceData | FlowNodeDataData;
 
@@ -366,12 +370,22 @@ const DataNodeComponent = memo(
     yPos: number;
   }) => {
     const onChange = useFlowEventHack();
+    const { openNodeContextMenu } = useFlowEditorContext();
 
     return (
       <FlowWrap data={data} className={cx('flow-node_data', data.type)}>
         <div className="flowlabel">
           {data.label}
           {showPosition(id, xPos, yPos)}
+          <button
+            className="nodeConfig"
+            onClick={(e) => {
+              e.preventDefault();
+              openNodeContextMenu?.(id);
+            }}
+          >
+            <FontAwesomeIcon icon={faGear} />
+          </button>
           <div className="dataType">{data.type}</div>
         </div>
         <div className="flowInputs">
@@ -450,6 +464,8 @@ const SourceNodeComponent = memo(
     id: string;
     data: FlowNodeSourceData;
   }) => {
+    const { onInputBakedToggle } = useFlowGraphContext();
+    const { openNodeContextMenu } = useFlowEditorContext();
     // const updateNodeInternals = useUpdateNodeInternals();
     // const key = `${computeIOKey(data.inputs)}${computeIOKey(data.outputs)}`;
 
@@ -497,6 +513,15 @@ const SourceNodeComponent = memo(
       >
         <div className="flowlabel">
           {data.label} {showPosition(id, xPos, yPos)}
+          <button
+            className="nodeConfig"
+            onClick={(e) => {
+              e.preventDefault();
+              openNodeContextMenu(id);
+            }}
+          >
+            <FontAwesomeIcon icon={faGear} />
+          </button>
           {data.stage ? (
             <div className="stage">
               {data.stage === 'fragment' ? 'FRAG' : 'VERT'}
@@ -521,7 +546,7 @@ const SourceNodeComponent = memo(
                   top={group.offset + labelHeight + index * 20}
                   onClick={(e) => (
                     e.preventDefault(),
-                    data.onInputBakedToggle(id, input.id, !input.baked)
+                    onInputBakedToggle(id, input.id, !input.baked)
                   )}
                 />
               ))}

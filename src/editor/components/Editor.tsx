@@ -593,23 +593,54 @@ const Editor = ({
   const [graph, setGraph] = useLocalStorage<Graph>('graph', initialGraph);
 
   const graphIntegrity = useMemo(() => {
-    const nodesById = graph.nodes.reduce<Record<string, GraphNode>>(
-      (acc, node) => ({ ...acc, [node.id]: node }),
-      {}
+    const flowNodesById = new Set<string>(
+      flowElements.nodes.map((node) => node.id)
     );
+    const graphNodesById = new Set<string>(graph.nodes.map((node) => node.id));
     let errors: string[] = [];
     errors = errors.concat(
       graph.edges
-        .filter((edge) => !(edge.to in nodesById) || !(edge.from in nodesById))
+        .filter(
+          (edge) =>
+            !graphNodesById.has(edge.to) || !graphNodesById.has(edge.from)
+        )
         .map(
           (edge) =>
             `Edge "${edge.id}" is linked ${
-              !(edge.to in nodesById) ? `to ${edge.to}` : `from ${edge.from}`
+              !graphNodesById.has(edge.to)
+                ? `to id "${edge.to}"`
+                : `from id "${edge.from}"`
             } which does not exist!`
         )
     );
+    const allIds = new Set<string>([...flowNodesById, ...graphNodesById]);
+    errors = errors.concat(
+      Array.from(allIds).reduce<string[]>((acc, id) => {
+        if (!graphNodesById.has(id)) {
+          const flowNode = flowElements.nodes.find((n) => id === n.id);
+          const stage = (flowNode?.data as FlowNodeSourceData)?.stage;
+          return [
+            ...acc,
+            `Node ${flowNode?.data?.label} (${
+              stage ? stage + ', ' : ''
+            }id "${id}") found in flow graph but not graph`,
+          ];
+        } else if (!flowNodesById.has(id)) {
+          const node = graph.nodes.find((n) => id === n.id);
+          const stage = (node as SourceNode)?.stage;
+          return [
+            ...acc,
+            `Node "${node?.name}" (${
+              stage ? stage + ', ' : ''
+            }id "${id}") found in graph but not flow graph`,
+          ];
+        }
+        return acc;
+      }, [])
+    );
+
     return errors;
-  }, [graph]);
+  }, [flowElements, graph]);
 
   const tryToUnEffTheGraph = () => {
     setGraph((graph) => {
@@ -1635,10 +1666,22 @@ const Editor = ({
             (edge) => edge.source !== nodeId && edge.target !== nodeId
           ),
         }));
+        setGraph((graph) => ({
+          ...graph,
+          nodes: graph.nodes.filter((node) => node.id !== nodeId),
+          edges: graph.edges.filter(
+            (edge) => edge.to !== nodeId && edge.from !== nodeId
+          ),
+        }));
         debouncedSetNeedsCompile(true);
       } else if (type === NodeContextActions.DELETE_FULL_NODE_TREE) {
         const { edgesById, nodesById } = findNodeTree(graph, currentNode);
         setFlowElements((graph) => ({
+          ...graph,
+          nodes: graph.nodes.filter((node) => !nodesById.has(node.id)),
+          edges: graph.edges.filter((edge) => !edgesById.has(edge.id)),
+        }));
+        setGraph((graph) => ({
           ...graph,
           nodes: graph.nodes.filter((node) => !nodesById.has(node.id)),
           edges: graph.edges.filter((edge) => !edgesById.has(edge.id)),
@@ -1651,12 +1694,18 @@ const Editor = ({
           nodes: graph.nodes.filter((node) => !nodesById.has(node.id)),
           edges: graph.edges.filter((edge) => !edgesById.has(edge.id)),
         }));
+        setGraph((graph) => ({
+          ...graph,
+          nodes: graph.nodes.filter((node) => !nodesById.has(node.id)),
+          edges: graph.edges.filter((edge) => !edgesById.has(edge.id)),
+        }));
         debouncedSetNeedsCompile(true);
       }
       hideMenu();
     },
     [
       graph,
+      setGraph,
       setFlowElements,
       setActiveEditingNode,
       addSelectedNodes,

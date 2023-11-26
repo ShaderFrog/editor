@@ -14,6 +14,7 @@ export type LinkEdgeData = {
 
 export type FlowEdgeData = {
   type?: EdgeType;
+  ghost?: boolean;
 };
 
 export default function FlowEdge({
@@ -50,7 +51,9 @@ export default function FlowEdge({
       {isLink ? null : (
         <path
           style={style}
-          className="react-flow__edge-path-selector"
+          className={
+            'react-flow__edge-path-selector' + (data.ghost ? ' ghost' : '')
+          }
           d={edgePath}
           markerEnd={markerEnd}
           fillRule="evenodd"
@@ -58,7 +61,7 @@ export default function FlowEdge({
       )}
       <path
         style={style}
-        className="react-flow__edge-path"
+        className={'react-flow__edge-path' + (data.ghost ? ' ghost' : '')}
         d={edgePath}
         markerEnd={markerEnd}
         fillRule="evenodd"

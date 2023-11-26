@@ -11,6 +11,7 @@ import ConnectionLine from './ConnectionLine';
 import { create } from 'zustand';
 
 import ReactFlow, {
+  Node as FlowNode,
   Background,
   BackgroundVariant,
   XYPosition,
@@ -18,10 +19,14 @@ import ReactFlow, {
   ReactFlowInstance,
 } from 'reactflow';
 
-import { NodeType, GraphDataType } from '@core/graph';
+import { NodeType, GraphDataType, GraphNode, isDataNode } from '@core/graph';
 import { EngineNodeType } from '@core/engine';
 import FlowEdgeComponent from './FlowEdge';
-import { DataNodeComponent, SourceNodeComponent } from './FlowNode';
+import {
+  DataNodeComponent,
+  FlowNodeData,
+  SourceNodeComponent,
+} from './FlowNode';
 import { FlowEventHack } from '../../flowEventHack';
 
 import styles from './context.menu.module.css';
@@ -111,6 +116,7 @@ type FlowEditorProps =
       onNodeValueChange: (id: string, value: any) => void;
       onMenuAdd: (type: string) => void;
       onNodeContextSelect: (nodeId: string, type: string) => void;
+      onNodeContextHover: (nodeId: string, type: string) => void;
     } & Pick<
       ReactFlowProps,
       | 'nodes'
@@ -133,26 +139,44 @@ export enum NodeContextActions {
   EDIT_SOURCE = '1',
   DELETE_NODE_AND_DEPENDENCIES = '2',
   DELETE_NODE_ONLY = '3',
+  DELETE_FULL_NODE_TREE = '4',
 }
-const nodeContextMenuItems: MenuItems = [
-  ['Edit Source', NodeContextActions.EDIT_SOURCE, 'DblClick'],
-  [
-    'Delete Node And Dependencies',
-    NodeContextActions.DELETE_NODE_AND_DEPENDENCIES,
-    isMacintosh() ? 'Delete' : 'Backspace',
-  ],
-  [
-    'Delete Node Only',
-    NodeContextActions.DELETE_NODE_ONLY,
-    isMacintosh() ? 'Option-Delete' : 'Ctrl-Backspace',
-  ],
-];
+const nodeContextMenuItems = (node?: FlowNode<FlowNodeData>): MenuItems => {
+  if (!node) {
+    return [];
+  }
+  const isData = 'value' in node.data;
+  return isData
+    ? [
+        ['Edit Node Config', NodeContextActions.EDIT_SOURCE, 'Double Click'],
+        [
+          'Delete Node',
+          NodeContextActions.DELETE_NODE_ONLY,
+          isMacintosh() ? 'Delete' : 'Backspace',
+        ],
+      ]
+    : [
+        ['Edit Source', NodeContextActions.EDIT_SOURCE, 'Double Click'],
+        [
+          'Delete Node & Data',
+          NodeContextActions.DELETE_NODE_AND_DEPENDENCIES,
+          isMacintosh() ? 'Delete' : 'Backspace',
+        ],
+        [
+          'Delete Node Only',
+          NodeContextActions.DELETE_NODE_ONLY,
+          isMacintosh() ? 'Option-Delete' : 'Ctrl-Backspace',
+        ],
+        ['Delete Node Tree', NodeContextActions.DELETE_FULL_NODE_TREE],
+      ];
+};
 
 const FlowEditor = ({
   mouse,
   menuItems,
   onMenuAdd,
   onNodeContextSelect,
+  onNodeContextHover,
   nodes,
   edges,
   onConnect,
@@ -260,6 +284,21 @@ const FlowEditor = ({
     [onNodeContextSelect, contextNodeId]
   );
 
+  const onContextItemHover = useCallback(
+    (type: string) => {
+      if (contextNodeId) {
+        onNodeContextHover(contextNodeId, type);
+      }
+    },
+    [onNodeContextHover, contextNodeId]
+  );
+
+  const nodeContextMenu = useMemo(() => {
+    return nodeContextMenuItems(
+      (nodes || []).find((node) => node.id === contextNodeId)
+    );
+  }, [nodes, contextNodeId]);
+
   return (
     <FlowEditorContext.Provider value={{ openNodeContextMenu }}>
       <div onContextMenu={onContextMenu} className={styles.flowContainer}>
@@ -267,13 +306,15 @@ const FlowEditor = ({
           <GraphContextMenu
             menu={addNodeMenuItems}
             position={menu.position}
+            onItemHover={onContextItemHover}
             onSelect={onMenuAdd}
           />
         ) : menu?.menu === ContextMenuType.NODE_CONTEXT ? (
           <GraphContextMenu
             title="Node Actions"
-            menu={nodeContextMenuItems}
+            menu={nodeContextMenu}
             position={menu.position}
+            onItemHover={onContextItemHover}
             onSelect={onContextSelect}
           />
         ) : null}

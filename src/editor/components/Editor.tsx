@@ -90,10 +90,12 @@ import {
   updateFlowInput,
   updateGraphInput,
   updateFlowNodeData,
+  updateFlowNodesData,
   updateGraphNode,
   addFlowEdge,
   addGraphEdge,
   updateGraphFromFlowGraph,
+  updateFlowEdgeData,
 } from './flow/flow-helpers';
 
 import { usePrevious } from '../hooks/usePrevious';
@@ -106,7 +108,7 @@ import StrategyEditor from './StrategyEditor';
 import randomShaderName from '@api/randomShaderName';
 import { FlowGraphContext } from '@editor/editor/flowGraphContext';
 import { MenuItems } from './flow/GraphContextMenu';
-import { findNodeAndDependencies } from './flow/graph-helpers';
+import { findNodeAndData, findNodeTree } from './flow/graph-helpers';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -812,7 +814,7 @@ const Editor = ({
         return;
       }
 
-      setFlowElements((fe) => updateFlowNodeData(fe, nodeId, { value }));
+      setFlowElements((fe) => updateFlowNodesData(fe, nodeId, { value }));
       setGraph((graph) => updateGraphNode(graph, nodeId, { value }));
 
       // Only recompile if a non-data-node value changes
@@ -1404,7 +1406,7 @@ const Editor = ({
       nodesById: nodesToRemoveById,
       linkedFragmentNode,
       linkedVertexNode,
-    } = findNodeAndDependencies(graph, selectedNode);
+    } = findNodeTree(graph, selectedNode);
 
     // TODO: Gotta figure out how to do this in the context of groups
 
@@ -1534,7 +1536,7 @@ const Editor = ({
             // Remove the currently selected node, which we're replacing
             !activeNodeIds.has(node.id) &&
             // And its friends
-            !(node.id in nodesToRemoveById) &&
+            !nodesToRemoveById.has(node.id) &&
             // And its next stage node if present
             node.id !== linkedVertexNode?.id
         ),
@@ -1546,7 +1548,7 @@ const Editor = ({
           (edge) =>
             edge.id !== currentFragFromEdge?.id &&
             edge.id !== currentVertFromEdge?.id &&
-            !(edge.id in edgesToRemoveById)
+            !edgesToRemoveById.has(edge.id)
         ),
         // And add in the incoming edges
         ...filteredIncomingGraph.edges,
@@ -1599,6 +1601,21 @@ const Editor = ({
     [graph, addNodeAtPosition, project, hideMenu, menu]
   );
 
+  const previousMenu = usePrevious(menu);
+  useEffect(() => {
+    if (!menu && previousMenu) {
+      setFlowElements((fe) => ({
+        ...fe,
+        nodes: fe.nodes.map((node) =>
+          updateFlowNodeData(node, { ghost: false })
+        ),
+        edges: fe.edges.map((edge) =>
+          updateFlowEdgeData(edge, { ghost: false })
+        ),
+      }));
+    }
+  }, [setFlowElements, previousMenu, menu]);
+
   const onNodeContextSelect = useCallback(
     (nodeId: string, type: string) => {
       const currentNode = graph.nodes.find(
@@ -1618,18 +1635,23 @@ const Editor = ({
             (edge) => edge.source !== nodeId && edge.target !== nodeId
           ),
         }));
-        setNeedsCompile(true);
-      } else if (type === NodeContextActions.DELETE_NODE_AND_DEPENDENCIES) {
-        const { edgesById, nodesById } = findNodeAndDependencies(
-          graph,
-          currentNode
-        );
+        debouncedSetNeedsCompile(true);
+      } else if (type === NodeContextActions.DELETE_FULL_NODE_TREE) {
+        const { edgesById, nodesById } = findNodeTree(graph, currentNode);
         setFlowElements((graph) => ({
           ...graph,
-          nodes: graph.nodes.filter((node) => !(node.id in nodesById)),
-          edges: graph.edges.filter((edge) => !(edge.id in edgesById)),
+          nodes: graph.nodes.filter((node) => !nodesById.has(node.id)),
+          edges: graph.edges.filter((edge) => !edgesById.has(edge.id)),
         }));
-        setNeedsCompile(true);
+        debouncedSetNeedsCompile(true);
+      } else if (type === NodeContextActions.DELETE_NODE_AND_DEPENDENCIES) {
+        const { edgesById, nodesById } = findNodeAndData(graph, currentNode);
+        setFlowElements((graph) => ({
+          ...graph,
+          nodes: graph.nodes.filter((node) => !nodesById.has(node.id)),
+          edges: graph.edges.filter((edge) => !edgesById.has(edge.id)),
+        }));
+        debouncedSetNeedsCompile(true);
       }
       hideMenu();
     },
@@ -1641,9 +1663,74 @@ const Editor = ({
       setSelectedNode,
       setEditorTabIndex,
       hideMenu,
-      setNeedsCompile,
+      debouncedSetNeedsCompile,
     ]
   );
+
+  const onNodeContextHover = useCallback(
+    (nodeId: string, type: string) => {
+      if (compiling) {
+        return;
+      }
+      const currentNode = graph.nodes.find(
+        (n) => n.id === nodeId
+      ) as SourceNode;
+      if (type === NodeContextActions.DELETE_NODE_ONLY) {
+        setFlowElements((fe) => ({
+          ...fe,
+          nodes: fe.nodes.map((node) =>
+            updateFlowNodeData(node, { ghost: node.id === nodeId })
+          ),
+          edges: fe.edges.map((edge) =>
+            updateFlowEdgeData(edge, {
+              ghost: edge.source === nodeId || edge.target === nodeId,
+            })
+          ),
+        }));
+      } else if (type === NodeContextActions.DELETE_FULL_NODE_TREE) {
+        const { edgesById, nodesById } = findNodeTree(graph, currentNode);
+        setFlowElements((fe) => ({
+          ...fe,
+          nodes: fe.nodes.map((node) =>
+            updateFlowNodeData(node, { ghost: nodesById.has(node.id) })
+          ),
+          edges: fe.edges.map((edge) =>
+            updateFlowEdgeData(edge, { ghost: edgesById.has(edge.id) })
+          ),
+        }));
+      } else if (type === NodeContextActions.DELETE_NODE_AND_DEPENDENCIES) {
+        const { edgesById, nodesById } = findNodeAndData(graph, currentNode);
+        setFlowElements((fe) => ({
+          ...fe,
+          nodes: fe.nodes.map((node) =>
+            updateFlowNodeData(node, { ghost: nodesById.has(node.id) })
+          ),
+          edges: fe.edges.map((edge) =>
+            updateFlowEdgeData(edge, { ghost: edgesById.has(edge.id) })
+          ),
+        }));
+      } else {
+        setFlowElements((fe) => ({
+          ...fe,
+          nodes: fe.nodes.map((node) =>
+            updateFlowNodeData(node, { ghost: false })
+          ),
+          edges: fe.edges.map((edge) =>
+            updateFlowEdgeData(edge, { ghost: false })
+          ),
+        }));
+      }
+    },
+    [compiling, graph, setFlowElements]
+  );
+
+  const onNodeContextClose = useCallback(() => {
+    setFlowElements((fe) => ({
+      ...fe,
+      nodes: fe.nodes.map((node) => updateFlowNodeData(node, { ghost: false })),
+      edges: fe.edges.map((edge) => updateFlowEdgeData(edge, { ghost: false })),
+    }));
+  }, [setFlowElements]);
 
   /**
    * Convenience compilation effect. This lets other callbacks update the
@@ -1688,20 +1775,28 @@ const Editor = ({
   // both fire to update edges in the flow and core graph
   const onNodesDelete = useCallback(
     (nodes: FlowNode[]) => {
+      const graphNode = graph.nodes.find(
+        (node) => node.id === nodes[0].id
+      ) as GraphNode;
       const ids = nodes.reduce<Record<string, boolean>>(
         (acc, n) => ({ ...acc, [n.id]: true }),
         {}
       );
+
+      const { edgesById: edgesToRemoveById, nodesById: nodesToRemoveById } =
+        findNodeTree(graph, graphNode);
+
       setFlowElements(({ nodes, edges }) => ({
-        nodes: nodes.filter((node) => !(node.id in ids)),
-        edges,
+        nodes: nodes.filter((node) => !nodesToRemoveById.has(node.id)),
+        edges: edges.filter((edge) => !edgesToRemoveById.has(edge.id)),
       }));
       setGraph((graph) => ({
         ...graph,
-        nodes: graph.nodes.filter((node) => !(node.id in ids)),
+        nodes: graph.nodes.filter((node) => !nodesToRemoveById.has(node.id)),
+        edges: graph.edges.filter((edge) => !edgesToRemoveById.has(edge.id)),
       }));
     },
-    [setFlowElements, setGraph]
+    [graph, setFlowElements, setGraph]
   );
 
   const saveOrFork = async (btnFork = false) => {
@@ -1797,11 +1892,6 @@ const Editor = ({
           >
             Shader
           </Tab>
-          {editorTabIndex === 0 ? (
-            <div className="secondary m-left-25 m-top-5">
-              Double click nodes to edit GLSL!
-            </div>
-          ) : null}
         </TabGroup>
         <TabPanels>
           {/* Graph tab */}
@@ -1823,6 +1913,7 @@ const Editor = ({
                   mouse={mouseRef}
                   onMenuAdd={onMenuAdd}
                   onNodeContextSelect={onNodeContextSelect}
+                  onNodeContextHover={onNodeContextHover}
                   onNodeValueChange={onNodeValueChange}
                   nodes={flowElements.nodes}
                   edges={flowElements.edges}

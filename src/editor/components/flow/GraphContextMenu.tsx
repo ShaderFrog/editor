@@ -13,26 +13,34 @@ const GraphContextMenu = ({
   menu,
   title = 'Add a node',
   onMouseEnter,
+  onItemHover,
 }: {
   onSelect: (name: string) => void;
   position: XYPosition;
   menu: MenuItems;
   title?: string;
   onMouseEnter?: (e: MouseEvent<any>) => void;
+  onItemHover?: (name: string) => void;
 }) => {
   const [childMenu, setChildMenu] = useState<[string, MenuItems, number]>();
 
   const timeout = useRef<NodeJS.Timeout>();
-  const onParentMenuEnter = useCallback(() => {
-    if (childMenu) {
-      if (timeout.current) {
-        clearTimeout(timeout.current);
+  const onItemMouseEnter = useCallback(
+    (name: string) => {
+      if (childMenu) {
+        if (timeout.current) {
+          clearTimeout(timeout.current);
+        }
+        timeout.current = setTimeout(() => {
+          setChildMenu(undefined);
+        }, 500);
       }
-      timeout.current = setTimeout(() => {
-        setChildMenu(undefined);
-      }, 500);
-    }
-  }, [childMenu, setChildMenu]);
+      if (onItemHover) {
+        onItemHover(name);
+      }
+    },
+    [childMenu, setChildMenu, onItemHover]
+  );
 
   useEffect(() => {
     return () => {
@@ -62,7 +70,7 @@ const GraphContextMenu = ({
                 key={display}
                 className={styles.contextRow}
                 onClick={() => onSelect(typeOrChildren)}
-                onMouseEnter={onParentMenuEnter}
+                onMouseEnter={() => onItemMouseEnter(typeOrChildren)}
               >
                 <span>{display}</span>
                 {keyboardShortcut ? (

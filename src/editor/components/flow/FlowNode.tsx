@@ -58,6 +58,7 @@ export const flowOutput = (name: string, id?: string): OutputNodeHandle => ({
 
 export interface CoreFlowNode {
   label: string;
+  ghost?: boolean;
   outputs: OutputNodeHandle[];
   inputs: InputNodeHandle[];
 }
@@ -161,7 +162,7 @@ const FlowWrap = ({
   className: any;
 }) => (
   <div
-    className={cx('flownode', className)}
+    className={cx('flownode', className, { ghost: data.ghost })}
     style={{
       height:
         height ||

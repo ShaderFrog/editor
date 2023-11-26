@@ -238,22 +238,36 @@ export const updateGraphNode = (
   ),
 });
 
+export const updateFlowEdgeData = (
+  edge: FlowEdge<FlowEdgeData>,
+  data: Partial<FlowEdgeData>
+): FlowEdge<FlowEdgeData> => ({
+  ...edge,
+  data: {
+    ...edge.data,
+    ...data,
+  },
+});
+
 export const updateFlowNodeData = (
+  node: FlowNode<FlowNodeData>,
+  data: Partial<FlowNodeData>
+): FlowNode<FlowNodeData> => ({
+  ...node,
+  data: {
+    ...node.data,
+    ...data,
+  },
+});
+
+export const updateFlowNodesData = (
   flowElements: FlowElements,
   nodeId: string,
   data: Partial<FlowNodeData>
 ): FlowElements => ({
   ...flowElements,
   nodes: flowElements.nodes.map((node) =>
-    node.id === nodeId
-      ? {
-          ...node,
-          data: {
-            ...node.data,
-            ...data,
-          },
-        }
-      : node
+    node.id === nodeId ? updateFlowNodeData(node, data) : node
   ),
 });
 

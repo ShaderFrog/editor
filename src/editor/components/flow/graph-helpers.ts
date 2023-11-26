@@ -7,6 +7,7 @@ import {
   filterGraphFromNode,
   consSearchResult,
   mergeSearchResults,
+  isDataNode,
 } from '@core/graph';
 
 /**
@@ -35,6 +36,7 @@ export const findNodeAndData = (graph: Graph, startNode: GraphNode) => {
     node: (node, inputEdges, acc) => {
       return (
         // Stop at the linked node if present, since the other finder does that.
+        isDataNode(node) &&
         node.id !== linkedNode?.id &&
         acc.edges.map((edge) => edge.from).includes(node.id)
       );

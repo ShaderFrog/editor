@@ -1,6 +1,5 @@
 import styles from '../styles/editor.module.css';
 import debounce from 'lodash.debounce';
-import groupBy from 'lodash.groupby';
 
 import FlowEditor, {
   MouseData,
@@ -57,6 +56,7 @@ import {
   Predicates,
   consSearchResult,
   mergeSearchResults,
+  resetGraphIds,
 } from '@core/graph';
 
 import { Engine, EngineContext } from '@core/engine';
@@ -1468,7 +1468,10 @@ const Editor = ({
     //     graph.nodes.find((n) => n.id === activeNode.parentId)
 
     // Figure out some shit from the incoming graph
-    const { graph: incomingGraph } = shader.config;
+    const { graph: originalIncomingGraph } = shader.config;
+
+    const incomingGraph = resetGraphIds(originalIncomingGraph);
+
     const incomingOutputFrag = incomingGraph.nodes.find(
       (node) => node.type === 'output' && node.stage === 'fragment'
     );

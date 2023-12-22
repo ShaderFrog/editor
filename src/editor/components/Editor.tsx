@@ -680,8 +680,9 @@ const Editor = ({
   );
 
   // Selected node (different from editor node because you can't edit data nodes, for now)
-  const [selectedNode, setSelectedNode] =
-    useState<GraphNode>(activeEditingNode);
+  const [selectedNode, setSelectedNode] = useState<GraphNode | undefined>(
+    activeEditingNode
+  );
 
   const [compileResult, setCompileResult] = useState<UICompileGraphResult>();
 
@@ -1175,6 +1176,8 @@ const Editor = ({
       if (node) {
         const selected = graph.nodes.find((n) => n.id === node.id) as GraphNode;
         setSelectedNode(selected);
+      } else {
+        setSelectedNode(undefined);
       }
     },
     [graph]
@@ -1435,6 +1438,7 @@ const Editor = ({
     const {
       edgesById: edgesToRemoveById,
       nodesById: nodesToRemoveById,
+      edgeToVertexOutput,
       linkedFragmentNode,
       linkedVertexNode,
     } = findNodeTree(graph, selectedNode);
@@ -1452,12 +1456,19 @@ const Editor = ({
       (node) => node.id === currentFragFromEdge?.to
     );
 
-    // And its friend and its friend output edge
-    const currentVertFromEdge = graph.edges.find(
-      (edge) =>
-        // Don't find the link, rather find the output. Link is removed later
-        edge.type !== EdgeLink.NEXT_STAGE && edge.from === linkedVertexNode?.id
-    );
+    // We want to replace the current output vertex edge with the incoming one,
+    // if present. In the case where there's a single linked vertex node (the
+    // second branch below), we can rely on the edge coming out of that. If
+    // the current tree has a lot of fragment and vertex nodes, and there's an
+    // edge that plugs into the *output* node (the first case), use that.
+    const currentVertFromEdge =
+      edgeToVertexOutput ||
+      graph.edges.find(
+        (edge) =>
+          // Don't find the link, rather find the output. Link is removed later
+          edge.type !== EdgeLink.NEXT_STAGE &&
+          edge.from === linkedVertexNode?.id
+      );
     const currentToVertNode = graph.nodes.find(
       (node) => node.id === currentVertFromEdge?.to
     );

@@ -395,7 +395,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
           const node = graph.nodes.find(({ id }) => id === nodeId);
           if (!node) {
             console.warn(
-              'While populating uniforms, no node was found from dataInputs',
+              `While populating uniforms, compileResults.dataInput referenced node id "${nodeId}," but this node is not in the graph.`,
               { nodeId, dataInputs: compileResult.dataInputs, graph }
             );
             return;

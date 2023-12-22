@@ -9,6 +9,7 @@ import {
   mergeSearchResults,
   isDataNode,
 } from '@core/graph';
+import { ensure } from '@core/util/ensure';
 
 /**
  * Find this node and all its data inputs and edges
@@ -94,6 +95,9 @@ export const findNodeAndData = (graph: Graph, startNode: GraphNode) => {
  * Return everything downstream of this node, including:
  * - Any linked node, and its tree
  * - Edges outbound from this node and any linked node
+ * - If there's a linked vertex node that plugs into the output node, return
+ *   it for convenience, so consumers can know to replace that output link if
+ *   present
  */
 export const findNodeTree = (graph: Graph, startNode: GraphNode) => {
   // Find the current active node and its next stage node if present
@@ -129,16 +133,13 @@ export const findNodeTree = (graph: Graph, startNode: GraphNode) => {
     : consSearchResult();
 
   const elements = mergeSearchResults(currentElements, otherElements);
+  const nodesById = new Set<string>(Object.keys(elements.nodes));
 
   // Find outbound edges, which aren't found when filtering node from itself
-  const outboundEdges = graph.edges.filter(
-    (edge) =>
-      edge.from === linkedFragmentNode.id || edge.from === linkedVertexNode?.id
-  );
+  const outboundEdges = graph.edges.filter((edge) => nodesById.has(edge.from));
   elements.edges = elements.edges.concat(outboundEdges);
 
   const edgesById = new Set<string>(elements.edges.map((edge) => edge.id));
-  const nodesById = new Set<string>(Object.keys(elements.nodes));
   nodesById.add(linkedFragmentNode.id);
   elements.nodes[linkedFragmentNode.id] = linkedFragmentNode;
   if (linkedVertexNode) {
@@ -146,9 +147,20 @@ export const findNodeTree = (graph: Graph, startNode: GraphNode) => {
     elements.nodes[linkedVertexNode.id] = linkedVertexNode;
   }
 
+  const outputVertexNode = ensure(
+    graph.nodes.find(
+      (node) => node.type === 'output' && node.stage === 'vertex'
+    ),
+    'No output node found in graph!'
+  );
+  const edgeToVertexOutput = elements.edges.find(
+    (edge) => edge.to === outputVertexNode.id
+  );
+
   return {
     edgesById,
     nodesById,
+    edgeToVertexOutput,
     nodes: elements.nodes,
     edges: elements.edges,
     linkedFragmentNode,

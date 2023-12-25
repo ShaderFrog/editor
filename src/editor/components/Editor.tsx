@@ -59,6 +59,18 @@ import {
   resetGraphIds,
 } from '@core/graph';
 
+/**
+ * 0. Fix time rendering issues
+ * 1. First creating a shader - better examples to choose from
+ * 2. Move all shaders from "examples" into the database
+ * 3. Fix graph node positions not saving in the Graph
+ * 4. Ability to *add* a shader at the cursor rather than just replace
+ * 5. Make output nodes more prominent
+ * 6. Add search to the homepage
+ * 7. Add more textures
+ * 8. Add a better texture picker
+ */
+
 import { Engine, EngineContext } from '@core/engine';
 
 import useThrottle from '../hooks/useThrottle';
@@ -308,7 +320,7 @@ export type AnySceneConfig = BaseSceneConfig & Record<string, any>;
 // moved into Core instead?
 export type EditorShader = {
   id?: string;
-  engine: string;
+  engine: 'three' | 'babylon' | 'playcanvas';
   createdAt?: Date;
   updatedAt?: Date;
   tags: { name: string; slug: string }[];
@@ -372,6 +384,7 @@ export type EditorProps = {
   isFork?: boolean;
   isAuthenticated?: boolean;
   shader?: EditorShader;
+  exampleShader?: EditorShader;
   onCreateShader?: (shader: ShaderCreateInput) => Promise<void>;
   onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
 };
@@ -512,6 +525,7 @@ const Editor = ({
   onCreateShader,
   onUpdateShader,
   engine,
+  exampleShader,
   example,
   examples,
   makeExampleGraph,
@@ -575,15 +589,18 @@ const Editor = ({
   );
 
   const [initialGraph, initialSceneConfig, initialExample] = useMemo(() => {
+    if (exampleShader) {
+      return [exampleShader.config.graph, exampleShader.config.scene];
+    }
     const query = new URLSearchParams(window.location.search);
     const exampleGraph = query.get('example') || example;
     if (initialShader) {
-      return [initialShader.config.graph as Graph, initialShader.config.scene];
+      return [initialShader.config.graph, initialShader.config.scene];
     }
     // @ts-ignore
     const [graph, sceneConfig] = makeExampleGraph(exampleGraph);
     return [expandUniformDataNodes(graph), sceneConfig, exampleGraph];
-  }, [makeExampleGraph, example, initialShader]);
+  }, [makeExampleGraph, example, initialShader, exampleShader]);
 
   const [currentExample, setExample] = useState<string | null | undefined>(
     initialExample

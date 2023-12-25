@@ -704,28 +704,6 @@ export const menuItems: MenuItems = [
       ['Toon', 'toon'],
     ],
   ],
-  [
-    'Example Shaders',
-    [
-      ['Serpent', 'serpent'],
-      ['Fireball', 'fireNode'],
-      ['Julia', 'julia'],
-      ['Bad TV', 'badTv'],
-      ['Checkerboard', 'checkerboardF'],
-      ['Fluid Circles', 'fluidCirclesNode'],
-      ['Heatmap', 'heatmapShaderNode'],
-      ['Hell', 'hellOnEarth'],
-      ['Outline', 'outlineShader'],
-      ['Perlin Clouds', 'perlinClouds'],
-      ['Purple Noise', 'purpleNoiseNode'],
-      ['Solid Color', 'solidColorNode'],
-      ['White Noise', 'whiteNoiseNode'],
-      ['Tangent Noise', 'staticShaderNode'],
-      ['Normal Map-ify', 'normalMapify'],
-      ['Vertex Noise', 'simpleVertex'],
-      ['Cube Map Reflection', 'cubemapReflection'],
-    ],
-  ],
 ];
 
 export const addEngineNode = (

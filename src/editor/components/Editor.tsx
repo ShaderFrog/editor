@@ -1441,6 +1441,27 @@ const Editor = ({
   );
 
   /**
+   * Copy node positions from the flow graph into the domain graph on node move
+   */
+  const onNodeDragStop = (
+    event: React.MouseEvent,
+    node: FlowNode,
+    nodes: FlowNode[]
+  ) => {
+    setGraph((graph) => ({
+      ...graph,
+      nodes: graph.nodes.map((n) =>
+        n.id === node.id
+          ? {
+              ...n,
+              position: node.position,
+            }
+          : n
+      ),
+    }));
+  };
+
+  /**
    * When selecting a group to replace the current node with
    */
   const onSelectGroup = (shader: EditorShader) => {
@@ -2009,6 +2030,7 @@ const Editor = ({
                   onEdgeUpdateStart={onEdgeUpdateStart}
                   onEdgeUpdateEnd={onEdgeUpdateEnd}
                   onConnectEnd={onConnectEnd}
+                  onNodeDragStop={onNodeDragStop}
                 />
                 <div className={styles.graphFooter}>
                   <span className={styles.footerSecondary}>Engine: </span>

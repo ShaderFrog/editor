@@ -132,6 +132,7 @@ type FlowEditorProps =
       | 'onConnectStart'
       | 'onEdgeUpdateStart'
       | 'onEdgeUpdateEnd'
+      | 'onNodeDragStop'
       | 'onConnectEnd'
     >;
 
@@ -191,6 +192,7 @@ const FlowEditor = ({
   onEdgeUpdateStart,
   onEdgeUpdateEnd,
   onConnectEnd,
+  onNodeDragStop,
   onNodeValueChange,
 }: FlowEditorProps) => {
   const { menu, setMenu, hideMenu } = useEditorStore();
@@ -340,6 +342,7 @@ const FlowEditor = ({
             onEdgeUpdateStart={onEdgeUpdateStart}
             onEdgeUpdateEnd={onEdgeUpdateEnd}
             onConnectEnd={onConnectEnd}
+            onNodeDragStop={onNodeDragStop}
             onInit={setRfInstance}
             minZoom={0.2}
           >

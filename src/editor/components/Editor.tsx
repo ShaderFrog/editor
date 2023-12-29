@@ -381,6 +381,7 @@ export type EditorProps = {
   assetPrefix: string;
   searchUrl: string;
   saveErrors?: string[];
+  onCloseSaveErrors?: () => void;
   isFork?: boolean;
   isAuthenticated?: boolean;
   shader?: EditorShader;
@@ -519,6 +520,7 @@ const Editor = ({
   assetPrefix,
   searchUrl,
   saveErrors,
+  onCloseSaveErrors,
   shader: initialShader,
   isFork,
   isAuthenticated,
@@ -1947,6 +1949,13 @@ const Editor = ({
         <div className={cx(styles.tabControls, { [styles.col3]: isLocal })}>
           {saveErrors?.length ? (
             <div className={cx(styles.errorPill, 'm-right-10')}>
+              <button
+                className={styles.close}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onCloseSaveErrors && onCloseSaveErrors();
+                }}
+              >&times;</button>
               <ul>
                 {saveErrors.map((e) => (
                   <li key={e}>{e}</li>

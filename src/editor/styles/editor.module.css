@@ -386,12 +386,35 @@ textarea.error {
 }
 
 .errorPill {
+  position: relative;
   font-size: 14px;
   border-radius: 6px;
-  padding: 4px 10px;
+  padding: 8px 26px 8px 10px;
   background: rgba(255, 0, 0, 0.2);
   border: 1px solid rgb(135, 77, 77);
   color: #fff;
+}
+.errorPill ul {
+  margin: 0 0 0 16px;
+  padding: 0;
+}
+
+.errorPill .close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 4px 6px;
+  cursor: pointer;
+  color: #fff;
+  font-size: 12px;
+  background: rgba(255, 0, 0, 0.2);
+  border-width: 0 0 1px 1px;
+  border-color: rgb(135, 77, 77);
+  border-radius: 0 6px 0 6px;
+  border-style: solid;
+}
+.errorPill .close:hover {
+  background: rgba(255, 0, 0, 0.4);
 }
 
 .vSplit {

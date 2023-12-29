@@ -380,7 +380,7 @@ export type SceneProps = {
 export type EditorProps = {
   assetPrefix: string;
   searchUrl: string;
-  saveError?: string;
+  saveErrors?: string[];
   isFork?: boolean;
   isAuthenticated?: boolean;
   shader?: EditorShader;
@@ -518,7 +518,7 @@ const GroupSearch = ({
 const Editor = ({
   assetPrefix,
   searchUrl,
-  saveError,
+  saveErrors,
   shader: initialShader,
   isFork,
   isAuthenticated,
@@ -1945,9 +1945,13 @@ const Editor = ({
     <>
       {isSmallScreen ? null : isAuthenticated ? (
         <div className={cx(styles.tabControls, { [styles.col3]: isLocal })}>
-          {saveError ? (
+          {saveErrors?.length ? (
             <div className={cx(styles.errorPill, 'm-right-10')}>
-              {saveError}
+              <ul>
+                {saveErrors.map((e) => (
+                  <li key={e}>{e}</li>
+                ))}
+              </ul>
             </div>
           ) : null}
           <div className="m-right-15">

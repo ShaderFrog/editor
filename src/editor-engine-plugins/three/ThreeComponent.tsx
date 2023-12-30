@@ -195,7 +195,7 @@ export const CameraDistances: Record<string, number> = {
   torus: 0.38,
   teapot: 0.9,
   bunny: 0.54,
-  plane: 0.485,
+  plane: 0.24,
   cylinder: 0.38,
   cone: 0.35,
 };

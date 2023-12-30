@@ -50,12 +50,7 @@ import {
   computeContextForNodes,
   isDataNode,
   NodeType,
-  filterGraphFromNode,
   makeEdge,
-  findLinkedNode,
-  Predicates,
-  consSearchResult,
-  mergeSearchResults,
   resetGraphIds,
 } from '@core/graph';
 
@@ -1955,7 +1950,9 @@ const Editor = ({
                   e.preventDefault();
                   onCloseSaveErrors && onCloseSaveErrors();
                 }}
-              >&times;</button>
+              >
+                &times;
+              </button>
               <ul>
                 {saveErrors.map((e) => (
                   <li key={e}>{e}</li>

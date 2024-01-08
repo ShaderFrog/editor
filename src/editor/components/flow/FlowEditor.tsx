@@ -1,13 +1,6 @@
-import React, {
-  useCallback,
-  useRef,
-  MouseEvent,
-  useState,
-  useEffect,
-  useMemo,
-} from 'react';
+import React, { useCallback, MouseEvent, useState, useMemo } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { useHotkeys } from 'react-hotkeys-hook';
-import ConnectionLine from './ConnectionLine';
 import { create } from 'zustand';
 
 import ReactFlow, {
@@ -19,8 +12,10 @@ import ReactFlow, {
   ReactFlowInstance,
 } from 'reactflow';
 
-import { NodeType, GraphDataType, GraphNode, isDataNode } from '@core/graph';
+import { NodeType, GraphDataType } from '@core/graph';
 import { EngineNodeType } from '@core/engine';
+
+import ConnectionLine from './ConnectionLine';
 import FlowEdgeComponent from './FlowEdge';
 import {
   DataNodeComponent,
@@ -29,10 +24,11 @@ import {
 } from './FlowNode';
 import { FlowEventHack } from '../../flowEventHack';
 
-import styles from './context.menu.module.css';
 import GraphContextMenu, { MenuItems } from './GraphContextMenu';
 import { FlowEditorContext } from '@editor/editor/flowEditorContext';
 import { isMacintosh } from '@editor/editor-util/platform';
+
+import styles from './context.menu.module.css';
 
 /**
  * This file is an attempt to break up Editor.tsx by abstracting out the view
@@ -107,7 +103,11 @@ const edgeTypes: Record<typeof SHADERFROG_FLOW_EDGE_TYPE, any> = {
   [SHADERFROG_FLOW_EDGE_TYPE]: FlowEdgeComponent,
 };
 
-export type MouseData = { real: XYPosition; projected: XYPosition };
+export type MouseData = {
+  real: XYPosition;
+  viewport: XYPosition;
+  projected: XYPosition;
+};
 
 type FlowEditorProps =
   | {
@@ -200,12 +200,12 @@ const FlowEditor = ({
 
   useHotkeys('esc', () => hideMenu());
   useHotkeys('shift+a', () =>
-    setMenu(ContextMenuType.CONTEXT, mouse.current.real)
+    setMenu(ContextMenuType.CONTEXT, mouse.current.viewport)
   );
 
   const setContextMenu = useCallback(
     (type: ContextMenuType) => {
-      setMenu(type, mouse.current.real);
+      setMenu(type, mouse.current.viewport);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [setMenu]
@@ -301,9 +301,17 @@ const FlowEditor = ({
     );
   }, [nodes, contextNodeId]);
 
+  const { isOver, setNodeRef } = useDroppable({
+    id: 'droppable',
+  });
+
   return (
     <FlowEditorContext.Provider value={{ openNodeContextMenu }}>
-      <div onContextMenu={onContextMenu} className={styles.flowContainer}>
+      <div
+        onContextMenu={onContextMenu}
+        className={styles.flowContainer}
+        ref={setNodeRef}
+      >
         {menu?.menu === ContextMenuType.CONTEXT ? (
           <GraphContextMenu
             menu={addNodeMenuItems}

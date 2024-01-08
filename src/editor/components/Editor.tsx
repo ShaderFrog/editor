@@ -1,14 +1,12 @@
 import styles from '../styles/editor.module.css';
 import debounce from 'lodash.debounce';
-
-import FlowEditor, {
-  MouseData,
-  NodeContextActions,
-  SHADERFROG_FLOW_EDGE_TYPE,
-  useEditorStore,
-} from './flow/FlowEditor';
-
-import { SplitPane } from '@andrewray/react-multi-split-pane';
+import {
+  DndContext,
+  useDraggable,
+  DragOverlay,
+  DragStartEvent,
+  useDndMonitor,
+} from '@dnd-kit/core';
 import cx from 'classnames';
 import React, {
   useCallback,
@@ -20,6 +18,8 @@ import React, {
   MouseEvent,
   MutableRefObject,
   FunctionComponent,
+  HTMLAttributes,
+  forwardRef,
 } from 'react';
 
 import {
@@ -36,6 +36,8 @@ import {
   useStoreApi,
   OnSelectionChangeFunc,
 } from 'reactflow';
+
+import { SplitPane } from '@andrewray/react-multi-split-pane';
 
 import {
   findNode,
@@ -65,6 +67,13 @@ import {
  * 7. Add more textures
  * 8. Add a better texture picker
  */
+
+import FlowEditor, {
+  MouseData,
+  NodeContextActions,
+  SHADERFROG_FLOW_EDGE_TYPE,
+  useEditorStore,
+} from './flow/FlowEditor';
 
 import { Engine, EngineContext } from '@core/engine';
 
@@ -405,6 +414,42 @@ export type EngineProps = {
   sceneComponent: FunctionComponent<SceneProps>;
 };
 
+const ShaderPreview = forwardRef<
+  HTMLDivElement,
+  {
+    shader: EditorShader;
+  } & HTMLAttributes<HTMLDivElement>
+>(function ShaderWithRef({ shader, ...props }, ref) {
+  return (
+    <div ref={ref} key={shader.id} className="shaderCardButton" {...props}>
+      <div className="cardImg">
+        <img src={shader.image as string} alt={`${shader.name} screenshot`} />
+      </div>
+      <div className="body">{shader.name}</div>
+    </div>
+  );
+});
+
+const DraggableShaderPreview = ({
+  shader,
+  ...props
+}: { shader: EditorShader } & HTMLAttributes<HTMLDivElement>) => {
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: `draggable_${shader.id}`,
+    data: { shader },
+  });
+
+  return (
+    <ShaderPreview
+      shader={shader}
+      ref={setNodeRef}
+      {...props}
+      {...listeners}
+      {...attributes}
+    />
+  );
+};
+
 const GroupSearch = ({
   engine,
   searchUrl,
@@ -488,19 +533,11 @@ const GroupSearch = ({
         {count ? (
           <div className="grid col2">
             {effects.shaders.map((shader) => (
-              <div
+              <DraggableShaderPreview
                 key={shader.id}
-                className="shaderCardButton"
+                shader={shader}
                 onClick={() => onSelect(shader)}
-              >
-                <div className="cardImg">
-                  <img
-                    src={shader.image as string}
-                    alt={`${shader.name} screenshot`}
-                  />
-                </div>
-                <div className="body">{shader.name}</div>
-              </div>
+              />
             ))}
           </div>
         ) : (
@@ -1383,7 +1420,7 @@ const Editor = ({
     ]
   );
 
-  const { project } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const onConnectEnd = useCallback(
@@ -1394,7 +1431,6 @@ const Editor = ({
 
       if (targetIsPane && reactFlowWrapper.current && connecting.current) {
         // Remove the wrapper bounds to get the correct position
-        const { top, left } = reactFlowWrapper.current.getBoundingClientRect();
         const { node, input } = connecting.current;
 
         let type: EdgeType | undefined = input.dataType;
@@ -1416,9 +1452,9 @@ const Editor = ({
           graph,
           type,
           input.displayName,
-          project({
-            x: event.clientX - left,
-            y: event.clientY - top,
+          screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY,
           } as XYPosition),
           {
             to: node.id,
@@ -1434,7 +1470,7 @@ const Editor = ({
       // Clear the connection info on drag stop
       connecting.current = null;
     },
-    [graph, project, addNodeAtPosition, resetTargets]
+    [graph, screenToFlowPosition, addNodeAtPosition, resetTargets]
   );
 
   /**
@@ -1657,28 +1693,39 @@ const Editor = ({
 
   const mouseRef = useRef<MouseData>({
     real: { x: 0, y: 0 },
+    viewport: { x: 0, y: 0 },
     projected: { x: 0, y: 0 },
   });
 
-  const onMouseMove = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    if (reactFlowWrapper.current) {
-      const { top, left } = reactFlowWrapper.current.getBoundingClientRect();
-      mouseRef.current.real = {
-        x: event.clientX - left,
-        y: event.clientY - top,
-      };
-    }
-  }, []);
+  const onMouseMove = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (reactFlowWrapper.current) {
+        const { top, left } = reactFlowWrapper.current.getBoundingClientRect();
+        mouseRef.current.real = {
+          x: event.clientX,
+          y: event.clientY,
+        };
+        mouseRef.current.viewport = {
+          x: event.clientX - left,
+          y: event.clientY - top,
+        };
+        mouseRef.current.projected = screenToFlowPosition(
+          mouseRef.current.real
+        );
+      }
+    },
+    [screenToFlowPosition]
+  );
 
   const { hideMenu, menu } = useEditorStore();
 
   const onMenuAdd = useCallback(
     (type: string) => {
-      const pos = project(menu?.position as XYPosition);
+      const pos = screenToFlowPosition(menu?.position as XYPosition);
       addNodeAtPosition(graph, type, '', pos);
       hideMenu();
     },
-    [graph, addNodeAtPosition, project, hideMenu, menu]
+    [graph, addNodeAtPosition, screenToFlowPosition, hideMenu, menu]
   );
 
   const previousMenu = usePrevious(menu);
@@ -1822,13 +1869,13 @@ const Editor = ({
     [compiling, graph, setFlowElements]
   );
 
-  const onNodeContextClose = useCallback(() => {
-    setFlowElements((fe) => ({
-      ...fe,
-      nodes: fe.nodes.map((node) => updateFlowNodeData(node, { ghost: false })),
-      edges: fe.edges.map((edge) => updateFlowEdgeData(edge, { ghost: false })),
-    }));
-  }, [setFlowElements]);
+  // const onNodeContextClose = useCallback(() => {
+  //   setFlowElements((fe) => ({
+  //     ...fe,
+  //     nodes: fe.nodes.map((node) => updateFlowNodeData(node, { ghost: false })),
+  //     edges: fe.edges.map((edge) => updateFlowEdgeData(edge, { ghost: false })),
+  //   }));
+  // }, [setFlowElements]);
 
   /**
    * Convenience compilation effect. This lets other callbacks update the
@@ -1896,6 +1943,68 @@ const Editor = ({
     },
     [graph, setFlowElements, setGraph]
   );
+
+  const store = useStoreApi();
+  const getSomethingYouShit = useCallback(
+    (xy: XYPosition) => {
+      const MIN_DISTANCE = 150;
+
+      const { nodeInternals } = store.getState();
+      const storeNodes = Array.from(nodeInternals.values());
+
+      const closestNode = storeNodes.reduce<{
+        distance: number;
+        node: FlowNode | null;
+      }>(
+        (res, n) => {
+          const dx = n.positionAbsolute!.x + n.width! / 2 - xy.x;
+          const dy = n.positionAbsolute!.y + n.height! / 2 - xy.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+
+          if (d < res.distance && d < MIN_DISTANCE) {
+            res.distance = d;
+            res.node = n;
+          }
+
+          return res;
+        },
+        {
+          distance: Number.MAX_VALUE,
+          node: null,
+        }
+      );
+
+      return closestNode.node;
+    },
+    [store]
+  );
+
+  const [active, setActive] = useState<EditorShader | null>(null);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const shader = event.active.data.current!.shader as EditorShader;
+    setActive(shader);
+  };
+
+  const handleDragEnd = () => {
+    setActive(null);
+  };
+
+  useDndMonitor({
+    onDragMove(event) {
+      if (mouseRef.current) {
+        const closestNode = getSomethingYouShit(mouseRef.current.projected);
+        setFlowElements((fe) => ({
+          ...fe,
+          nodes: fe.nodes.map((node) =>
+            updateFlowNodeData(node, { ghost: closestNode?.id === node.id })
+          ),
+        }));
+      }
+    },
+    onDragStart: handleDragStart,
+    onDragEnd: handleDragEnd,
+  });
 
   const saveOrFork = async (btnFork = false) => {
     if (!ctx || (!onUpdateShader && !onCreateShader)) {
@@ -2006,7 +2115,7 @@ const Editor = ({
         </TabGroup>
         <TabPanels>
           {/* Graph tab */}
-          <TabPanel onMouseMove={onMouseMove} className={styles.growShrinkRows}>
+          <TabPanel className={styles.growShrinkRows}>
             <SplitPane split="vertical" defaultSizes={[0.2, 0.8]}>
               <div
                 className={cx(styles.splitInner, styles.vSplit, styles.vScroll)}
@@ -2330,6 +2439,7 @@ const Editor = ({
           [styles.smallScreen]: isSmallScreen,
         })}
         onClick={onContainerClick}
+        onMouseMove={onMouseMove}
       >
         {isSmallScreen ? (
           <Tabs
@@ -2360,19 +2470,38 @@ const Editor = ({
             </div>
           </SplitPane>
         )}
+        <DragOverlay>
+          {active ? <ShaderPreview shader={active} /> : null}
+        </DragOverlay>
       </div>
+      <div
+        style={{
+          position: 'absolute',
+          width: `4px`,
+          height: `4px`,
+          background: `red`,
+          borderRadius: `20px`,
+          zIndex: `200`,
+          left: `${mouseRef.current.real.x}px`,
+          top: `${mouseRef.current.real.y}px`,
+        }}
+      />
     </FlowGraphContext.Provider>
   );
 };
 
 // Use React Flow Provider to get project(), to figure out the mouse position
 // in the graph
-const WithProvider = (props: EditorProps & EngineProps) => (
-  <ReactFlowProvider>
-    <Hoisty>
-      <Editor {...props} />
-    </Hoisty>
-  </ReactFlowProvider>
-);
+const WithProvider = (props: EditorProps & EngineProps) => {
+  return (
+    <DndContext>
+      <ReactFlowProvider>
+        <Hoisty>
+          <Editor {...props} />
+        </Hoisty>
+      </ReactFlowProvider>
+    </DndContext>
+  );
+};
 
 export default WithProvider;

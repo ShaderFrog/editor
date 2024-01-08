@@ -6,6 +6,11 @@ import {
   DragOverlay,
   DragStartEvent,
   useDndMonitor,
+  MouseSensor,
+  useSensor,
+  useSensors,
+  DragMoveEvent,
+  DragEndEvent,
 } from '@dnd-kit/core';
 import cx from 'classnames';
 import React, {
@@ -734,6 +739,7 @@ const Editor = ({
   const [selectedNode, setSelectedNode] = useState<GraphNode | undefined>(
     activeEditingNode
   );
+  const [replacingNode, setReplacingNode] = useState<FlowNode | null>(null);
 
   const [compileResult, setCompileResult] = useState<UICompileGraphResult>();
 
@@ -1497,13 +1503,16 @@ const Editor = ({
   /**
    * When selecting a group to replace the current node with
    */
-  const onSelectGroup = (shader: EditorShader) => {
+  const onSelectGroup = (
+    nodeToReplace: GraphNode | undefined,
+    shader: EditorShader
+  ) => {
     // For now can only replace the currently selected node
-    if (!selectedNode || selectedNode.type === 'output') {
-      log('Not replacing activeNode', selectedNode);
+    if (!nodeToReplace || nodeToReplace.type === 'output') {
+      log('Not replacing activeNode', nodeToReplace);
       return;
     } else {
-      log('Replacing', selectedNode);
+      log('Replacing', nodeToReplace);
     }
 
     const {
@@ -1512,7 +1521,7 @@ const Editor = ({
       edgeToVertexOutput,
       linkedFragmentNode,
       linkedVertexNode,
-    } = findNodeTree(graph, selectedNode);
+    } = findNodeTree(graph, nodeToReplace);
 
     // TODO: Gotta figure out how to do this in the context of groups
 
@@ -1979,31 +1988,45 @@ const Editor = ({
     [store]
   );
 
-  const [active, setActive] = useState<EditorShader | null>(null);
+  const [activeShader, setActiveShader] = useState<EditorShader | null>(null);
 
-  const handleDragStart = (event: DragStartEvent) => {
+  const onDragStart = (event: DragStartEvent) => {
     const shader = event.active.data.current!.shader as EditorShader;
-    setActive(shader);
+    setActiveShader(shader);
   };
 
-  const handleDragEnd = () => {
-    setActive(null);
+  const onDragEnd = (over: DragEndEvent) => {
+    setFlowElements((fe) => ({
+      ...fe,
+      nodes: fe.nodes.map((node) => updateFlowNodeData(node, { ghost: false })),
+    }));
+    setActiveShader(null);
+    if (replacingNode && activeShader) {
+      onSelectGroup(
+        graph.nodes.find((n) => n.id === replacingNode.id),
+        activeShader
+      );
+      setReplacingNode(null);
+    }
+  };
+
+  const onDragMove = (event: DragMoveEvent) => {
+    if (mouseRef.current) {
+      const closestNode = getSomethingYouShit(mouseRef.current.projected);
+      setFlowElements((fe) => ({
+        ...fe,
+        nodes: fe.nodes.map((node) =>
+          updateFlowNodeData(node, { ghost: closestNode?.id === node.id })
+        ),
+      }));
+      setReplacingNode(closestNode);
+    }
   };
 
   useDndMonitor({
-    onDragMove(event) {
-      if (mouseRef.current) {
-        const closestNode = getSomethingYouShit(mouseRef.current.projected);
-        setFlowElements((fe) => ({
-          ...fe,
-          nodes: fe.nodes.map((node) =>
-            updateFlowNodeData(node, { ghost: closestNode?.id === node.id })
-          ),
-        }));
-      }
-    },
-    onDragStart: handleDragStart,
-    onDragEnd: handleDragEnd,
+    onDragMove,
+    onDragStart,
+    onDragEnd,
   });
 
   const saveOrFork = async (btnFork = false) => {
@@ -2124,7 +2147,9 @@ const Editor = ({
                   searchUrl={searchUrl}
                   engine={engine.name}
                   activeNode={selectedNode as SourceNode}
-                  onSelect={onSelectGroup}
+                  onSelect={(selection) =>
+                    onSelectGroup(selectedNode, selection)
+                  }
                 />
               </div>
               <div className={styles.splitInner} ref={reactFlowWrapper}>
@@ -2471,21 +2496,9 @@ const Editor = ({
           </SplitPane>
         )}
         <DragOverlay>
-          {active ? <ShaderPreview shader={active} /> : null}
+          {activeShader ? <ShaderPreview shader={activeShader} /> : null}
         </DragOverlay>
       </div>
-      <div
-        style={{
-          position: 'absolute',
-          width: `4px`,
-          height: `4px`,
-          background: `red`,
-          borderRadius: `20px`,
-          zIndex: `200`,
-          left: `${mouseRef.current.real.x}px`,
-          top: `${mouseRef.current.real.y}px`,
-        }}
-      />
     </FlowGraphContext.Provider>
   );
 };
@@ -2493,8 +2506,14 @@ const Editor = ({
 // Use React Flow Provider to get project(), to figure out the mouse position
 // in the graph
 const WithProvider = (props: EditorProps & EngineProps) => {
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 10,
+    },
+  });
+  const sensors = useSensors(mouseSensor);
   return (
-    <DndContext>
+    <DndContext sensors={sensors}>
       <ReactFlowProvider>
         <Hoisty>
           <Editor {...props} />

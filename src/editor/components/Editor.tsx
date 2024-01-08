@@ -2007,6 +2007,81 @@ const Editor = ({
         activeShader
       );
       setReplacingNode(null);
+    } else if (activeShader) {
+      // Figure out some shit from the incoming graph
+      const { graph: originalIncomingGraph } = activeShader.config;
+
+      const incomingGraph = resetGraphIds(originalIncomingGraph);
+
+      const incomingOutputFrag = incomingGraph.nodes.find(
+        (node) => node.type === 'output' && node.stage === 'fragment'
+      );
+      const incomingOutFragEdge = incomingGraph.edges.find(
+        (edge) => edge.to === incomingOutputFrag?.id
+      );
+      const incomingOutFragNode = incomingGraph.nodes.find(
+        (n) => n.id === incomingOutFragEdge?.from
+      );
+      const incomingFragOutput = incomingOutFragNode?.outputs?.[0];
+
+      const incomingOutputVert = incomingGraph.nodes.find(
+        (node) => node.type === 'output' && node.stage === 'vertex'
+      );
+      const incomingOutVertEdge = incomingGraph.edges.find(
+        (edge) => edge.to === incomingOutputVert?.id
+      );
+      const incomingOutVertNode = incomingGraph.nodes.find(
+        (n) => n.id === incomingOutVertEdge?.from
+      );
+      const incomingVertOutput = incomingOutVertNode?.outputs?.[0];
+
+      // Determine the amount we need to shift the incoming graph
+      const delta: XYPosition = incomingOutFragNode
+        ? {
+            x: incomingOutFragNode.position.x - mouseRef.current.projected.x,
+            y: incomingOutFragNode.position.y - mouseRef.current.projected.y,
+          }
+        : { x: 0, y: 0 };
+
+      const groupId = makeId();
+      const filteredIncomingGraph: Graph = {
+        nodes: incomingGraph.nodes
+          // remove the output nodes from the incoming graph
+          .filter(
+            (n) =>
+              n.id !== incomingOutputFrag?.id && n.id !== incomingOutputVert?.id
+          )
+          // and give all nodes the parent group id
+          .map((n) => ({
+            ...n,
+            position: {
+              x: n.position.x - delta.x,
+              y: n.position.y - delta.y,
+            },
+            parentId: groupId,
+          })),
+        // remove any edges to the output nodes
+        edges: incomingGraph.edges.filter(
+          (e) =>
+            e.to !== incomingOutputFrag?.id && e.to !== incomingOutputVert?.id
+        ),
+      };
+
+      const newGraph: Graph = {
+        nodes: [...graph.nodes, ...filteredIncomingGraph.nodes],
+        edges: [
+          ...graph.edges,
+          // And add in the incoming edges
+          ...filteredIncomingGraph.edges,
+        ],
+      };
+
+      const newFlowGraph = graphToFlowGraph(newGraph);
+
+      setFlowElements(newFlowGraph);
+      setGraph(newGraph);
+
+      debouncedSetNeedsCompile(true);
     }
   };
 
@@ -2495,7 +2570,7 @@ const Editor = ({
             </div>
           </SplitPane>
         )}
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeShader ? <ShaderPreview shader={activeShader} /> : null}
         </DragOverlay>
       </div>

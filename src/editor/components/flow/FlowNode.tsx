@@ -2,7 +2,11 @@ import React, { memo, MouseEventHandler, useMemo } from 'react';
 import classnames from 'classnames/bind';
 import { Handle, Position } from 'reactflow';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGear } from '@fortawesome/free-solid-svg-icons';
+import {
+  faGear,
+  faRightLong,
+  faTerminal,
+} from '@fortawesome/free-solid-svg-icons';
 
 import styles from './flownode.module.css';
 const cx = classnames.bind(styles);
@@ -22,11 +26,10 @@ import { replaceAt } from '../../../editor-util/replaceAt';
 import groupBy from 'lodash.groupby';
 import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
 import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
-import { useEditorStore } from './FlowEditor';
 
 const headerHeight = 30;
 const labelHeight = 38;
-const inputHeight = 20;
+const inputHeight = 22;
 const outputHandleTopWithLabel = 38;
 // If there are no labeled input sections, move the output handle top higher up
 const outputHandleTopWithoutLabel = 24;
@@ -38,6 +41,7 @@ export type InputNodeHandle = {
   type: string;
   dataType?: GraphDataType;
   validTarget: boolean;
+  connected: boolean;
   accepts?: InputCategory[];
   baked?: boolean;
   bakeable: boolean;
@@ -45,12 +49,14 @@ export type InputNodeHandle = {
 
 type OutputNodeHandle = {
   validTarget: boolean;
+  connected: boolean;
   category?: InputCategory;
   id: string;
   name: string;
 };
 
 export const flowOutput = (name: string, id?: string): OutputNodeHandle => ({
+  connected: false,
   validTarget: false,
   id: id || name,
   name,
@@ -117,21 +123,20 @@ const InputHande = ({
     key={input.id}
     isConnectable
     id={input.id}
-    className={cx({ validTarget: input.validTarget })}
     type="target"
+    className={cx({
+      validTarget: input.validTarget,
+      connected: input.connected,
+    })}
     position={Position.Left}
     style={{
       top: `${top}px`,
     }}
   >
-    <div
-      className={cx('react-flow_handle_label', {
-        validTarget: input.validTarget,
-      })}
-    >
+    <div className="react-flow_handle_label">
       {input.bakeable ? (
         <div
-          className="switch"
+          className={cx('switch', { baked: input.baked })}
           title={
             input.baked
               ? 'This input is currently hard coded into the shader source code. Switch it to a property of the material?'
@@ -139,7 +144,11 @@ const InputHande = ({
           }
           onClick={onClick}
         >
-          {input.baked ? '🔒 ' : '➡️'}
+          {input.baked ? (
+            <FontAwesomeIcon icon={faTerminal} />
+          ) : (
+            <FontAwesomeIcon icon={faRightLong} />
+          )}
         </div>
       ) : null}
       {input.name}
@@ -168,12 +177,12 @@ const FlowWrap = ({
         height ||
         `${
           outputHandleTopWithLabel +
-          Math.min(Math.max(data.inputs.length, 1) * 20, 100)
+          Math.min(Math.max(data.inputs.length, 1) * inputHeight, 100)
         }px`,
       zIndex: 0,
     }}
   >
-    {children}
+    <div className="contents">{children}</div>
   </div>
 );
 
@@ -394,7 +403,7 @@ const DataNodeComponent = memo(
             <InputHande
               key={input.id}
               input={input}
-              top={outputHandleTopWithLabel + index * 20}
+              top={outputHandleTopWithLabel + index * inputHeight}
             />
           ))}
         </div>
@@ -434,10 +443,15 @@ const DataNodeComponent = memo(
               key={output.name}
               isConnectable
               id={output.id}
-              className={cx({ validTarget: output.validTarget })}
+              className={cx({
+                validTarget: output.validTarget,
+                connected: output.connected,
+              })}
               type="source"
               position={Position.Right}
-              style={{ top: `${outputHandleTopWithLabel + index * 20}px` }}
+              style={{
+                top: `${outputHandleTopWithLabel + index * inputHeight}px`,
+              }}
             >
               <div
                 className={cx('react-flow_handle_label', styles.outputLabel)}
@@ -544,7 +558,7 @@ const SourceNodeComponent = memo(
                 <InputHande
                   key={input.id}
                   input={input}
-                  top={group.offset + labelHeight + index * 20}
+                  top={group.offset + labelHeight + index * inputHeight}
                   onClick={(e) => (
                     e.preventDefault(),
                     onInputBakedToggle(id, input.id, !input.baked)
@@ -562,13 +576,14 @@ const SourceNodeComponent = memo(
                 id={output.id}
                 className={cx({
                   validTarget: output.validTarget,
+                  connected: output.connected,
                 })}
                 style={{
                   top: `${
                     (height
                       ? outputHandleTopWithLabel
                       : outputHandleTopWithoutLabel) +
-                    index * 20
+                    index * inputHeight
                   }px`,
                 }}
                 type="source"

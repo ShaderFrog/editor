@@ -10,7 +10,8 @@
 }
 
 .vectorLabel {
-  color: #666;
+  color: #999;
+  background: #000;
   display: inline-block;
   margin-right: 4px;
 }
@@ -23,12 +24,13 @@
 }
 
 .inputSection {
-  color: #eee;
+  color: #ddd;
   background: linear-gradient(#333, #333344);
   position: absolute;
   right: 0;
   left: 0;
-  padding: 2px 0 2px 12px;
+  padding: 4px 0 3px 12px;
+  font-size: 14px;
 }
 
 .outputLabel {

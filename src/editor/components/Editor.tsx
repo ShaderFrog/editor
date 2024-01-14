@@ -40,6 +40,7 @@ import {
   OnConnectStartParams,
   useStoreApi,
   OnSelectionChangeFunc,
+  NodeChange,
 } from 'reactflow';
 
 import { SplitPane } from '@andrewray/react-multi-split-pane';
@@ -117,6 +118,7 @@ import {
   addGraphEdge,
   updateGraphFromFlowGraph,
   updateFlowEdgeData,
+  markInputsConnected,
 } from './flow/flow-helpers';
 
 import { usePrevious } from '../hooks/usePrevious';
@@ -869,12 +871,14 @@ const Editor = ({
           });
 
           setFlowElements(
-            setFlowNodeCategories(
-              {
-                ...flowElements,
-                nodes: updatedFlowNodes,
-              },
-              result.dataNodes
+            markInputsConnected(
+              setFlowNodeCategories(
+                {
+                  ...flowElements,
+                  nodes: updatedFlowNodes,
+                },
+                result.dataNodes
+              )
             )
           );
 
@@ -1186,15 +1190,19 @@ const Editor = ({
   );
 
   const onEdgeUpdate = useCallback(
-    (oldEdge: FlowEdge, newConnection: Connection) =>
-      addConnection(newConnection),
+    (oldEdge: FlowEdge, newConnection: Connection) => {
+      edgeUpdateSuccessful.current = true;
+      addConnection(newConnection);
+    },
     [addConnection]
   );
 
-  // Used for selecting edges, also called when an edge is removed, along with
-  // onEdgesDelete above
+  /**
+   * Used for selecting edges, also called when an edge is removed, along with
+   * onEdgesDelete above. See also sister function onNodesChange.
+   */
   const onEdgesChange = useCallback(
-    (changes) => {
+    (changes: NodeChange[]) => {
       return setFlowElements((fe) => ({
         ...fe,
         edges: applyEdgeChanges(changes, fe.edges),
@@ -1203,13 +1211,37 @@ const Editor = ({
     [setFlowElements]
   );
 
-  // Handles selection, dragging, and deletion
+  /**
+   * When React Flow makes a change to the graph *nodes*, it proposes a set of
+   * changes. This callback lets you intercept those changes. It handles at
+   * least node selection, dragging, and deletion changes. See also sister
+   * function onEdgesChange.
+   *
+   * This strategy to is taken from https://github.com/xyflow/xyflow/issues/3092
+   */
   const onNodesChange = useCallback(
-    (changes) =>
-      setFlowElements((elements) => ({
-        nodes: applyNodeChanges(changes, elements.nodes),
-        edges: elements.edges,
-      })),
+    (changes: NodeChange[]) => {
+      setFlowElements((elements) => {
+        // Prevent deleting of output nodes
+        const nextChanges = changes.reduce<NodeChange[]>((acc, change) => {
+          if (change.type === 'remove') {
+            const node = ensure(elements.nodes.find((n) => n.id === change.id));
+
+            if (node.type !== 'output') {
+              return [...acc, change];
+            }
+            return acc;
+          }
+
+          return [...acc, change];
+        }, []);
+
+        return {
+          nodes: applyNodeChanges(nextChanges, elements.nodes),
+          edges: elements.edges,
+        };
+      });
+    },
     [setFlowElements]
   );
 
@@ -1248,31 +1280,29 @@ const Editor = ({
           edges: flowElements.edges,
           nodes: flowElements.nodes.map((node) => {
             if (
-              node.data &&
-              'stage' in source &&
-              'stage' in node.data &&
-              'label' in node.data &&
-              (node.data.stage === source.stage ||
-                !source.stage ||
-                !node.data.stage) &&
-              node.id !== nodeId
+              // Can't connect to yourself - you'll go blind
+              node.id === source.id ||
+              // Stages can only connect to the same stage if present
+              ('stage' in source &&
+                'stage' in node.data &&
+                source.stage !== node.data.stage)
             ) {
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  inputs: node.data.inputs.map((input) => ({
-                    ...input,
-                    validTarget: handleType === 'source',
-                  })),
-                  outputs: node.data.outputs.map((output) => ({
-                    ...output,
-                    validTarget: handleType === 'target',
-                  })),
-                },
-              };
+              return node;
             }
-            return node;
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                inputs: node.data.inputs.map((input) => ({
+                  ...input,
+                  validTarget: handleType === 'source',
+                })),
+                outputs: node.data.outputs.map((output) => ({
+                  ...output,
+                  validTarget: handleType === 'target',
+                })),
+              },
+            };
           }),
         };
       });
@@ -1302,8 +1332,13 @@ const Editor = ({
     });
   }, [setFlowElements]);
 
+  // Used for deleting edge on drag off
+  const edgeUpdateSuccessful = useRef(true);
+
   const onEdgeUpdateStart = useCallback(
     (event: any, edge: any) => {
+      edgeUpdateSuccessful.current = false;
+
       const g = event.target.parentElement;
       const handleType =
         [...g.parentElement.children].indexOf(g) === 3 ? 'source' : 'target';
@@ -1313,25 +1348,54 @@ const Editor = ({
     [setTargets]
   );
 
-  const connecting = useRef<{ node: GraphNode; input: NodeInput } | null>();
+  const createNodeOnDragRef = useRef<{
+    node: GraphNode;
+    input: NodeInput;
+  } | null>();
+
+  /**
+   * Called when dragging from any handle, input and output
+   */
   const onConnectStart = useCallback(
     (_: React.MouseEvent | React.TouchEvent, params: OnConnectStartParams) => {
       const { nodeId, handleType, handleId } = params;
-      if (handleType === 'source' || !nodeId || !handleType) {
+      if (!nodeId || !handleType) {
         return;
       }
       const node = ensure(graph.nodes.find((n) => n.id === nodeId));
 
-      connecting.current = {
-        node,
-        input: ensure(node.inputs.find((i) => i.id === handleId)),
-      };
+      if (handleType !== 'source') {
+        createNodeOnDragRef.current = {
+          node,
+          input: ensure(node.inputs.find((i) => i.id === handleId)),
+        };
+      }
       setTargets(nodeId, handleType);
     },
     [graph, setTargets]
   );
 
-  const onEdgeUpdateEnd = () => resetTargets();
+  /**
+   * Called after edge drag finishes, for succssful and unsuccessfull connections
+   */
+  const onEdgeUpdateEnd = useCallback(
+    (_, edge) => {
+      resetTargets();
+
+      // Delete edge dragged off node
+      // From https://reactflow.dev/examples/edges/delete-edge-on-drop
+      if (!edgeUpdateSuccessful.current) {
+        setFlowElements((graph) =>
+          markInputsConnected({
+            ...graph,
+            edges: graph.edges.filter((e) => e.id !== edge.id),
+          })
+        );
+      }
+      edgeUpdateSuccessful.current = true;
+    },
+    [resetTargets, setFlowElements]
+  );
 
   const addNodeAtPosition = useCallback(
     (
@@ -1435,9 +1499,13 @@ const Editor = ({
       // Make sure we only drop over the grid, not over a node
       const targetIsPane = event.target.classList.contains('react-flow__pane');
 
-      if (targetIsPane && reactFlowWrapper.current && connecting.current) {
+      if (
+        targetIsPane &&
+        reactFlowWrapper.current &&
+        createNodeOnDragRef.current
+      ) {
         // Remove the wrapper bounds to get the correct position
-        const { node, input } = connecting.current;
+        const { node, input } = createNodeOnDragRef.current;
 
         let type: EdgeType | undefined = input.dataType;
         if (!type) {
@@ -1474,7 +1542,7 @@ const Editor = ({
       }
 
       // Clear the connection info on drag stop
-      connecting.current = null;
+      createNodeOnDragRef.current = null;
     },
     [graph, screenToFlowPosition, addNodeAtPosition, resetTargets]
   );
@@ -1909,7 +1977,7 @@ const Editor = ({
     [hideMenu]
   );
 
-  // onEdgesChange is what applies the edge changes to the flow graph.
+  // onEdgesChange is what applies the edge changes to the flow graph
   const onEdgesDelete = useCallback(
     (edges: FlowEdge[]) => {
       const ids = edges.reduce<Record<string, boolean>>(
@@ -1932,10 +2000,10 @@ const Editor = ({
       const graphNode = graph.nodes.find(
         (node) => node.id === nodes[0].id
       ) as GraphNode;
-      const ids = nodes.reduce<Record<string, boolean>>(
-        (acc, n) => ({ ...acc, [n.id]: true }),
-        {}
-      );
+
+      if (graphNode.type === 'output') {
+        return;
+      }
 
       const { edgesById: edgesToRemoveById, nodesById: nodesToRemoveById } =
         findNodeTree(graph, graphNode);
@@ -2022,18 +2090,10 @@ const Editor = ({
       const incomingOutFragNode = incomingGraph.nodes.find(
         (n) => n.id === incomingOutFragEdge?.from
       );
-      const incomingFragOutput = incomingOutFragNode?.outputs?.[0];
 
       const incomingOutputVert = incomingGraph.nodes.find(
         (node) => node.type === 'output' && node.stage === 'vertex'
       );
-      const incomingOutVertEdge = incomingGraph.edges.find(
-        (edge) => edge.to === incomingOutputVert?.id
-      );
-      const incomingOutVertNode = incomingGraph.nodes.find(
-        (n) => n.id === incomingOutVertEdge?.from
-      );
-      const incomingVertOutput = incomingOutVertNode?.outputs?.[0];
 
       // Determine the amount we need to shift the incoming graph
       const delta: XYPosition = incomingOutFragNode

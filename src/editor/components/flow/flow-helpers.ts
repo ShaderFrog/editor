@@ -138,6 +138,7 @@ export const toFlowInputs = (node: GraphNode): InputNodeHandle[] =>
       baked: input.baked,
       bakeable: input.bakeable,
       validTarget: false,
+      connected: false,
       accepts: input.accepts,
     }));
 
@@ -419,6 +420,39 @@ export const collapseBinaryFlowEdges = (
   };
 };
 
+export const markInputsConnected = (graph: FlowElements): FlowElements => {
+  const byTarget = graph.edges.reduce(
+    (acc, edge) => ({
+      ...acc,
+      [`${edge.source}_${edge.sourceHandle}`]: true,
+      [`${edge.target}_${edge.targetHandle}`]: true,
+    }),
+    {}
+  );
+
+  const connected = graph.nodes.map((node) => {
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        inputs: node.data.inputs.map((input) => ({
+          ...input,
+          connected: `${node.id}_${input.id}` in byTarget,
+        })),
+        outputs: node.data.outputs.map((output) => ({
+          ...output,
+          connected: `${node.id}_${output.id}` in byTarget,
+        })),
+      },
+    };
+  });
+
+  return {
+    ...graph,
+    nodes: connected,
+  };
+};
+
 export const graphToFlowGraph = (graph: Graph): FlowElements => {
   const nodes = graph.nodes.map((node) =>
     graphNodeToFlowNode(node, node.position)
@@ -426,7 +460,7 @@ export const graphToFlowGraph = (graph: Graph): FlowElements => {
 
   const edges: FlowEdgeOrLink[] = graph.edges.map(graphEdgeToFlowEdge);
 
-  return setFlowNodeStages({ nodes, edges });
+  return markInputsConnected(setFlowNodeStages({ nodes, edges }));
 };
 
 export const updateGraphFromFlowGraph = (

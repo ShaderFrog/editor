@@ -41,6 +41,7 @@ import {
   useStoreApi,
   OnSelectionChangeFunc,
   NodeChange,
+  EdgeChange,
 } from 'reactflow';
 
 import { SplitPane } from '@andrewray/react-multi-split-pane';
@@ -1202,7 +1203,7 @@ const Editor = ({
    * onEdgesDelete above. See also sister function onNodesChange.
    */
   const onEdgesChange = useCallback(
-    (changes: NodeChange[]) => {
+    (changes: EdgeChange[]) => {
       return setFlowElements((fe) => ({
         ...fe,
         edges: applyEdgeChanges(changes, fe.edges),

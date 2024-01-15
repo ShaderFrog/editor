@@ -169,16 +169,15 @@ const post = async (path: string, body: any) => {
  *    - API improvement ideas:
  *      - Make shader generation and uniform generation part of engines, not
  *        components
- *    - Up next: Instead of inlining baked values, declare them as a variable
- *      and reference that variable in the filler code
- *    - Merge vertex and fragment shaders together into the same nodes, to avoid
- *      duplicating uniforms between the two nodes
+ * - Up next: Instead of inlining baked values, declare them as a variable
+ *   and reference that variable in the filler code
+ * - Merge vertex and fragment shaders together into the same nodes, to avoid
+ *   duplicating uniforms between the two nodes
  * - Add comments to shaders (and likes)
  * - Add standalone shader viewer page
  * - Add ability to export shaders
  * - Add an "easy mode" to the graph so it's easier for newcomers to use
- * - Add screen space shader support, like shadertoy
- * - Improve the compiler speed (or explore using)
+ * - Improve the compiler speed
  * - Add anonymous shader saving
  * - Launch: Feedback, URL sharing, examples
  * - Caching contexts would be helpful
@@ -198,8 +197,8 @@ const post = async (path: string, body: any) => {
  *   to be able to multiply the rim lighting by the threejs lighting output
  *   specifically.
  * - Add post processing effect support
- * - Add playcanvas support
- * - Add screen space shader support
+ * - Add screen space shader support, like shadertoy
+ * - ✅ Add playcanvas support
  * - ✅ Try SDF image shader https://www.youtube.com/watch?v=1b5hIMqz_wM
  * - ✅ Have uniforms added per shader in the graph
  *
@@ -212,9 +211,9 @@ const post = async (path: string, body: any) => {
  *   lose their relationship with the attribute on the geometry.
  * - Autosave shader while editing ( + memoizing to avoid recompiling three
  *   every time)
- * - Fix graph saving of positions, when loading a graph nodes move around
  * - Add ability to delete inputs from nodes? When removing a uniform, its
  *   inputs don't go away.
+ * - ✅ Fix graph saving of positions, when loading a graph nodes move around
  * - ✅ Do different things based on shader settings. They are independent of the
  *   uniforms and/or set the uniforms. Right now there's no way to plug into a
  *   property like "map" or "envMap". Should there be a separate "properties"
@@ -2639,15 +2638,16 @@ const Editor = ({
   );
 };
 
-// Use React Flow Provider to get project(), to figure out the mouse position
-// in the graph
-const WithProvider = (props: EditorProps & EngineProps) => {
+const EditorWithProviders = (props: EditorProps & EngineProps) => {
+  // For dragging shaders into the graph, make sure the mouse has to travel,
+  // to avoid clicking on a siderbar shader causing a drag state
   const mouseSensor = useSensor(MouseSensor, {
     activationConstraint: {
       distance: 10,
     },
   });
   const sensors = useSensors(mouseSensor);
+
   return (
     <DndContext sensors={sensors}>
       <ReactFlowProvider>
@@ -2659,4 +2659,4 @@ const WithProvider = (props: EditorProps & EngineProps) => {
   );
 };
 
-export default WithProvider;
+export default EditorWithProviders;

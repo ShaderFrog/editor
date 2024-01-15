@@ -37,6 +37,7 @@ import {
   Texture,
   TextureLoader,
   TorusKnotGeometry,
+  TorusGeometry,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -96,6 +97,7 @@ export type SceneConfig = {
   doubleSide: boolean;
   transparent: boolean;
   torusKnotResolution: [number, number];
+  torusResolution: [number, number];
   boxResolution: [number, number, number];
   planeResolution: [number, number];
   sphereResolution: [number, number];
@@ -104,6 +106,7 @@ export type SceneConfig = {
 
 const maxResolution = 256;
 const defaultResolution = {
+  torusResolution: [200, 32],
   torusKnotResolution: [200, 32],
   boxResolution: [64, 64, 64],
   planeResolution: [64, 64],
@@ -119,6 +122,10 @@ const resolutionConfigMapping: Record<
   string,
   { labels: string[]; key: keyof typeof defaultResolution }
 > = {
+  torus: {
+    labels: ['Tube Segments', 'Radial Segments'],
+    key: 'torusResolution',
+  },
   torusknot: {
     labels: ['Tube Segments', 'Radial Segments'],
     key: 'torusKnotResolution',
@@ -584,7 +591,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     let mesh: Mesh;
     let geometry: BufferGeometry;
-    if (sceneConfig.previewObject === 'torusknot') {
+    if (sceneConfig.previewObject === 'torus') {
+      geometry = new TorusGeometry(
+        0.6,
+        0.25,
+        ...(sceneConfig.torusResolution || defaultResolution.torusResolution)
+      );
+    } else if (sceneConfig.previewObject === 'torusknot') {
       geometry = new TorusKnotGeometry(
         0.6,
         0.25,
@@ -678,6 +691,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     sceneConfig.showTangents,
     sceneConfig.showNormals,
     sceneConfig.previewObject,
+    sceneConfig.torusResolution,
     sceneConfig.torusKnotResolution,
     sceneConfig.boxResolution,
     sceneConfig.planeResolution,
@@ -1183,6 +1197,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   <option value="sphere">Sphere</option>
                   <option value="cube">Cube</option>
                   <option value="plane">Plane</option>
+                  <option value="torus">Torus</option>
                   <option value="torusknot">Torus Knot</option>
                   <option value="icosahedron">Icosahedron</option>
                 </select>

@@ -575,6 +575,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       previousSceneConfig?.previewObject === sceneConfig.previewObject &&
       previousSceneConfig?.showNormals === sceneConfig.showNormals &&
       previousSceneConfig?.showTangents === sceneConfig.showTangents &&
+      previousSceneConfig?.torusResolution === sceneConfig.torusResolution &&
       previousSceneConfig?.torusKnotResolution ===
         sceneConfig.torusKnotResolution &&
       previousSceneConfig?.boxResolution === sceneConfig.boxResolution &&

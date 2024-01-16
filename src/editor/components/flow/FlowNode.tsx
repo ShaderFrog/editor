@@ -385,8 +385,11 @@ const DataNodeComponent = memo(
     return (
       <FlowWrap data={data} className={cx('flow-node_data', data.type)}>
         <div className="flowlabel">
-          {data.label}
-          {showPosition(id, xPos, yPos)}
+          <div className="title">
+            {data.label}
+            {showPosition(id, xPos, yPos)}
+          </div>
+          <div className="dataType">{data.type}</div>
           <button
             className="nodeConfig"
             onClick={(e) => {
@@ -396,7 +399,6 @@ const DataNodeComponent = memo(
           >
             <FontAwesomeIcon icon={faGear} />
           </button>
-          <div className="dataType">{data.type}</div>
         </div>
         <div className="flowInputs">
           {data.inputs.map((input, index) => (
@@ -526,8 +528,15 @@ const SourceNodeComponent = memo(
         height={height + headerHeight}
         className={cx(data.stage, data.category, { inactive: !data.active })}
       >
-        <div className="flowlabel">
-          {data.label} {showPosition(id, xPos, yPos)}
+        <div className={cx('flowlabel', { three: !!data.stage })}>
+          <div className="title">
+            {data.label} {showPosition(id, xPos, yPos)}
+          </div>
+          {data.stage ? (
+            <div className="stage">
+              {data.stage === 'fragment' ? 'FRAG' : 'VERT'}
+            </div>
+          ) : null}
           <button
             className="nodeConfig"
             onClick={(e) => {
@@ -537,11 +546,6 @@ const SourceNodeComponent = memo(
           >
             <FontAwesomeIcon icon={faGear} />
           </button>
-          {data.stage ? (
-            <div className="stage">
-              {data.stage === 'fragment' ? 'FRAG' : 'VERT'}
-            </div>
-          ) : null}
         </div>
         <div className="flowInputs">
           {groups.map((group) => (

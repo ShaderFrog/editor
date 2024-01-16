@@ -12,7 +12,7 @@ import {
   Edge as GraphEdge,
   EdgeLink,
 } from '@core/graph';
-import { Node as FlowNode, Edge as FlowEdge, XYPosition } from 'reactflow';
+import { Node as ReactFlowNode, Edge as FlowEdge, XYPosition } from 'reactflow';
 import { FlowEdgeData } from './FlowEdge';
 import {
   FlowNodeData,
@@ -22,19 +22,20 @@ import {
 } from './FlowNode';
 import { SHADERFROG_FLOW_EDGE_TYPE } from './FlowEditor';
 
-export type FlowElement = FlowNode<FlowNodeData> | FlowEdge<FlowEdgeData>;
+export type FlowElement = ReactFlowNode<FlowNodeData> | FlowEdge<FlowEdgeData>;
 export type FlowEdgeOrLink = FlowEdge<FlowEdgeData>;
+export type FlowNode = ReactFlowNode<FlowNodeData>;
 export type FlowElements = {
-  nodes: FlowNode<FlowNodeData>[];
+  nodes: FlowNode[];
   edges: FlowEdgeOrLink[];
 };
 
 // Determine the stage of a node (vertex/fragment) by recursively looking at
 // the nodes that feed into this one, until we find one that has a stage set
 export const findInputStage = (
-  ids: Record<string, FlowNode<FlowNodeData>>,
+  ids: Record<string, FlowNode>,
   edgesByTarget: Record<string, FlowEdge<FlowEdgeData>[]>,
-  node: FlowNode<FlowNodeData>
+  node: FlowNode
 ): ShaderStage | undefined => {
   let nodeData = node.data as FlowNodeSourceData;
   return (
@@ -145,7 +146,7 @@ export const toFlowInputs = (node: GraphNode): InputNodeHandle[] =>
 export const graphNodeToFlowNode = (
   node: GraphNode,
   position: XYPosition
-): FlowNode<FlowNodeData> => {
+): FlowNode => {
   const data: FlowNodeData = isSourceNode(node)
     ? {
         label: node.name,
@@ -251,9 +252,9 @@ export const updateFlowEdgeData = (
 });
 
 export const updateFlowNodeData = (
-  node: FlowNode<FlowNodeData>,
+  node: FlowNode,
   data: Partial<FlowNodeData>
-): FlowNode<FlowNodeData> => ({
+): FlowNode => ({
   ...node,
   data: {
     ...node.data,
@@ -262,24 +263,21 @@ export const updateFlowNodeData = (
 });
 
 export const updateFlowNodesData = (
-  flowElements: FlowElements,
+  nodes: FlowNode[],
   nodeId: string,
   data: Partial<FlowNodeData>
-): FlowElements => ({
-  ...flowElements,
-  nodes: flowElements.nodes.map((node) =>
+): FlowNode[] =>
+  nodes.map((node) =>
     node.id === nodeId ? updateFlowNodeData(node, data) : node
-  ),
-});
+  );
 
 export const updateFlowInput = (
-  flowElements: FlowElements,
+  nodes: FlowNode[],
   nodeId: string,
   inputId: string,
   data: Partial<InputNodeHandle>
-): FlowElements => ({
-  ...flowElements,
-  nodes: flowElements.nodes.map((node) =>
+): FlowNode[] =>
+  nodes.map((node) =>
     node.id === nodeId
       ? {
           ...node,
@@ -296,8 +294,7 @@ export const updateFlowInput = (
           },
         }
       : node
-  ),
-});
+  );
 
 export const addGraphEdge = (graph: Graph, newEdge: GraphEdge): Graph => {
   const updatedEdges = graph.edges.filter(
@@ -431,20 +428,17 @@ export const markInputsConnected = (graph: FlowElements): FlowElements => {
   );
 
   const connected = graph.nodes.map((node) => {
-    return {
-      ...node,
-      data: {
-        ...node.data,
-        inputs: node.data.inputs.map((input) => ({
-          ...input,
-          connected: `${node.id}_${input.id}` in byTarget,
-        })),
-        outputs: node.data.outputs.map((output) => ({
-          ...output,
-          connected: `${node.id}_${output.id}` in byTarget,
-        })),
-      },
-    };
+    return updateFlowNodeData(node, {
+      ...node.data,
+      inputs: node.data.inputs.map((input) => ({
+        ...input,
+        connected: `${node.id}_${input.id}` in byTarget,
+      })),
+      outputs: node.data.outputs.map((output) => ({
+        ...output,
+        connected: `${node.id}_${output.id}` in byTarget,
+      })),
+    });
   });
 
   return {

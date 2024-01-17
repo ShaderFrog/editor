@@ -28,9 +28,10 @@ import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
 import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
 
 const headerHeight = 30;
-const labelHeight = 38;
+const labelHeight = 44;
 const inputHeight = 22;
 const outputHandleTopWithLabel = 38;
+const INPUT_LABEL_START_OFFSET = 5;
 // If there are no labeled input sections, move the output handle top higher up
 const outputHandleTopWithoutLabel = 24;
 const textHeight = 10;
@@ -553,7 +554,7 @@ const SourceNodeComponent = memo(
               <div
                 className={styles.inputSection}
                 style={{
-                  top: `${2 + group.offset}px`,
+                  top: `${INPUT_LABEL_START_OFFSET + group.offset}px`,
                 }}
               >
                 {group.name}

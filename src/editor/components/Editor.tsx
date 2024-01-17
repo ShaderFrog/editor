@@ -1200,21 +1200,9 @@ const Editor = ({
   );
 
   /**
-   * Used for selecting edges, also called when an edge is removed, along with
-   * onEdgesDelete above. See also sister function onNodesChange.
-   */
-  // const onEdgesChange = useCallback(
-  //   (changes: EdgeChange[]) => {
-  //     applyEdgesChange(changes);
-  //   },
-  //   [applyEdgesChange]
-  // );
-
-  /**
    * When React Flow makes a change to the graph *nodes*, it proposes a set of
    * changes. This callback lets you intercept those changes. It handles at
-   * least node selection, dragging, and deletion changes. See also sister
-   * function onEdgesChange.
+   * least node selection, dragging, and deletion changes.
    *
    * This strategy to is taken from https://github.com/xyflow/xyflow/issues/3092
    */
@@ -1964,7 +1952,6 @@ const Editor = ({
     [hideMenu]
   );
 
-  // onEdgesChange is what applies the edge changes to the flow graph
   const onEdgesDelete = useCallback(
     (edges: ReactFlowEdge[]) => {
       const ids = edges.reduce<Record<string, boolean>>(
@@ -1980,8 +1967,8 @@ const Editor = ({
     [setGraph]
   );
 
-  // Note if an edge is connected to this node, onEdgesDelete and onEdgesChange
-  // both fire to update edges in the flow and core graph
+  // Note if an edge is connected to this node, onEdgesDelete fires to update
+  // edges in the flow and core graph
   const onNodesDelete = useCallback(
     (nodes: FlowNode[]) => {
       const graphNode = graph.nodes.find(
@@ -2292,7 +2279,6 @@ const Editor = ({
                   edges={flowEdges}
                   onConnect={onConnect}
                   onEdgeUpdate={onEdgeUpdate}
-                  // onEdgesChange={onEdgesChange}
                   onNodesChange={onNodesChange}
                   onNodesDelete={onNodesDelete}
                   onNodeDoubleClick={onNodeDoubleClick}

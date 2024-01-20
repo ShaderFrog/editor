@@ -234,6 +234,8 @@ const post = async (path: string, body: any) => {
  *   - Add three.js ability to switch lighting megashader and/or save node
  *     positions for examples?
  *   - Show input type by the input
+ *   - "scene styler" setting - give you a scene to apply multiple shaders to
+ *   - "multi-shader" mode - preview on multiple objects or with multiple shaders
  *   - ✅ Allow dragging uniform edge out backwards to create a data node for it
  *   - ✅ Auto rename the data inputs to uniforms to be that uniform name
  *   - ✅ Sort node inputs into engine, uniforms, properties

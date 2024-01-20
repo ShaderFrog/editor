@@ -819,17 +819,6 @@ const Editor = ({
     sceneHeight: 0,
   });
 
-  const setGlResult = useCallback(
-    (result: {
-      fragError: string;
-      vertError: string;
-      programError: string;
-    }) => {
-      extendUiState(result);
-    },
-    [extendUiState]
-  );
-
   // Compile function, meant to be called manually in places where we want to
   // trigger a compile. I tried making this a useEffect, however this function
   // needs to update "flowElements" at the end, which leads to an infinite loop
@@ -897,34 +886,6 @@ const Editor = ({
     [updateNodeInternals, setEdges, setNodes]
   );
 
-  const onNodeValueChange = useCallback(
-    (nodeId: string, value: any) => {
-      if (!compileResult) {
-        return;
-      }
-
-      setNodes((nodes) => updateFlowNodesData(nodes, nodeId, { value }));
-      setGraph((graph) => updateGraphNode(graph, nodeId, { value }));
-
-      // Only recompile if a non-data-node value changes
-      const { dataNodes } = compileResult;
-      if (!(nodeId in dataNodes)) {
-        debouncedSetNeedsCompile(true);
-      }
-    },
-    [compileResult, debouncedSetNeedsCompile, setNodes, setGraph]
-  );
-
-  const onInputBakedToggle = useCallback(
-    (nodeId: string, inputId: string, baked: boolean) => {
-      setNodes((nodes) => updateFlowInput(nodes, nodeId, inputId, { baked }));
-      // setFlowElements((fe) => updateFlowInput(fe, nodeId, inputId, { baked }));
-      setGraph((graph) => updateGraphInput(graph, nodeId, inputId, { baked }));
-      debouncedSetNeedsCompile(true);
-    },
-    [setGraph, setNodes, debouncedSetNeedsCompile]
-  );
-
   // Let child components call compile after, say, their lighting has finished
   // updating. I'm doing this to avoid having to figure out the flow control
   // of: parent updates lights, child gets updates, sets lights, then parent
@@ -937,6 +898,17 @@ const Editor = ({
       });
     },
     [engine, compile, graph, flowNodes, flowEdges]
+  );
+
+  const setGlResult = useCallback(
+    (result: {
+      fragError: string;
+      vertError: string;
+      programError: string;
+    }) => {
+      extendUiState(result);
+    },
+    [extendUiState]
   );
 
   // Computes and recompiles an entirely new graph
@@ -978,39 +950,6 @@ const Editor = ({
     [compile, engine, setNodes, setEdges]
   );
 
-  const previousExample = usePrevious(currentExample);
-  useEffect(() => {
-    if (currentExample !== previousExample && previousExample !== undefined) {
-      log('🧶 Loading new example!', currentExample);
-      const [graph, sceneConfig] = makeExampleGraph(
-        // @ts-ignore
-        currentExample || examples.DEFAULT
-      );
-      const newGraph = expandUniformDataNodes(graph);
-      setGraph(newGraph);
-      setSceneConfig(sceneConfig);
-      setActiveEditingNode(newGraph.nodes[0] as SourceNode);
-      addSelectedNodes([newGraph.nodes[0].id]);
-
-      if (ctx) {
-        const initFlowElements = graphToFlowGraph(newGraph);
-        initializeGraph(initFlowElements, ctx, newGraph);
-      } else {
-        log('NOT Running initializeGraph from example change!');
-      }
-    }
-  }, [
-    addSelectedNodes,
-    currentExample,
-    previousExample,
-    setGraph,
-    ctx,
-    initializeGraph,
-    examples,
-    makeExampleGraph,
-    onInputBakedToggle,
-  ]);
-
   // Once we receive a new engine context, re-initialize the graph. This method
   // is passed to engine specific editor components
   const setCtx = useCallback(
@@ -1046,6 +985,67 @@ const Editor = ({
     },
     [ctx, setCtxState, initializeGraph, graph]
   );
+
+  const onNodeValueChange = useCallback(
+    (nodeId: string, value: any) => {
+      if (!compileResult) {
+        return;
+      }
+
+      setNodes((nodes) => updateFlowNodesData(nodes, nodeId, { value }));
+      setGraph((graph) => updateGraphNode(graph, nodeId, { value }));
+
+      // Only recompile if a non-data-node value changes
+      const { dataNodes } = compileResult;
+      if (!(nodeId in dataNodes)) {
+        debouncedSetNeedsCompile(true);
+      }
+    },
+    [compileResult, debouncedSetNeedsCompile, setNodes, setGraph]
+  );
+
+  const onInputBakedToggle = useCallback(
+    (nodeId: string, inputId: string, baked: boolean) => {
+      setNodes((nodes) => updateFlowInput(nodes, nodeId, inputId, { baked }));
+      // setFlowElements((fe) => updateFlowInput(fe, nodeId, inputId, { baked }));
+      setGraph((graph) => updateGraphInput(graph, nodeId, inputId, { baked }));
+      debouncedSetNeedsCompile(true);
+    },
+    [setGraph, setNodes, debouncedSetNeedsCompile]
+  );
+
+  const previousExample = usePrevious(currentExample);
+  useEffect(() => {
+    if (currentExample !== previousExample && previousExample !== undefined) {
+      log('🧶 Loading new example!', currentExample);
+      const [graph, sceneConfig] = makeExampleGraph(
+        // @ts-ignore
+        currentExample || examples.DEFAULT
+      );
+      const newGraph = expandUniformDataNodes(graph);
+      setGraph(newGraph);
+      setSceneConfig(sceneConfig);
+      setActiveEditingNode(newGraph.nodes[0] as SourceNode);
+      addSelectedNodes([newGraph.nodes[0].id]);
+
+      if (ctx) {
+        const initFlowElements = graphToFlowGraph(newGraph);
+        initializeGraph(initFlowElements, ctx, newGraph);
+      } else {
+        log('NOT Running initializeGraph from example change!');
+      }
+    }
+  }, [
+    addSelectedNodes,
+    currentExample,
+    previousExample,
+    setGraph,
+    ctx,
+    initializeGraph,
+    examples,
+    makeExampleGraph,
+    onInputBakedToggle,
+  ]);
 
   /**
    * Split state mgmt
@@ -2000,7 +2000,7 @@ const Editor = ({
   );
 
   const store = useStoreApi();
-  const getSomethingYouShit = useCallback(
+  const getClosestNodeToPosition = useCallback(
     (xy: XYPosition) => {
       const MIN_DISTANCE = 150;
 
@@ -2041,7 +2041,10 @@ const Editor = ({
     setActiveShader(shader);
   };
 
-  const onDragEnd = (over: DragEndEvent) => {
+  const onDragEnd = (event: DragEndEvent) => {
+    if (!event.over) {
+      return;
+    }
     setNodes((nodes) =>
       nodes.map((node) => updateFlowNodeData(node, { ghost: false }))
     );
@@ -2125,7 +2128,7 @@ const Editor = ({
 
   const onDragMove = (event: DragMoveEvent) => {
     if (mouseRef.current) {
-      const closestNode = getSomethingYouShit(mouseRef.current.projected);
+      const closestNode = getClosestNodeToPosition(mouseRef.current.projected);
       setNodes((nodes) =>
         nodes.map((node) =>
           updateFlowNodeData(node, { ghost: closestNode?.id === node.id })

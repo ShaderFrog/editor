@@ -358,7 +358,7 @@ const FlowEditor = ({
               variant={BackgroundVariant.Lines}
               gap={25}
               size={0.5}
-              color="#222222"
+              color={isOver ? '#223322' : '#222222'}
             />
           </ReactFlow>
         </FlowEventHack>

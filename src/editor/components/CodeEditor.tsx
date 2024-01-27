@@ -1,10 +1,12 @@
-import MonacoEditor, { Monaco } from '@monaco-editor/react';
+import MonacoEditor, { Monaco, OnMount } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { monacoGlsl } from '../monaco-glsl';
 
 import { Engine } from '@core/engine';
 import { usePrevious } from '../hooks/usePrevious';
 import { useEffect, useRef } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
+import { isMacintosh, isWindows } from '@editor/editor-util/platform';
 
 type AnyFn = (...args: any) => any;
 
@@ -16,6 +18,7 @@ type MonacoProps = {
   readOnly?: boolean;
   onChange?: AnyFn;
   onSave?: AnyFn;
+  onCompile?: AnyFn;
 };
 const CodeEditor = ({
   engine,
@@ -25,6 +28,7 @@ const CodeEditor = ({
   readOnly,
   onChange,
   onSave,
+  onCompile,
 }: MonacoProps) => {
   const lastIdentity = usePrevious(identity);
   const beforeMount = (monaco: Monaco) => {
@@ -68,41 +72,23 @@ const CodeEditor = ({
 
   const monacoRef = useRef<monaco.editor.IStandaloneCodeEditor>();
 
-  const onMount = (
-    editor: monaco.editor.IStandaloneCodeEditor,
-    monaco: Monaco
-  ) => {
+  const onMount: OnMount = (editor, monaco) => {
     monacoRef.current = editor;
     if (onSave) {
       editor.addAction({
-        // An unique identifier of the contributed action.
-        id: 'my-unique-id',
-
-        // A label of the action that will be presented to the user.
-        label: 'My Label!!!',
-
-        // An optional array of keybindings for the action.
-        // @ts-ignore https://github.com/suren-atoyan/monaco-react/issues/338
-        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S],
-
-        // A precondition for this action.
-        // precondition: null,
-
-        // A rule to evaluate on top of the precondition in order to dispatch the keybindings.
-        // keybindingContext: null,
-
-        contextMenuGroupId: 'navigation',
-
-        contextMenuOrder: 1.5,
-
-        // Method that will be executed when the action is triggered.
-        // @param editor The editor instance is passed in as a convenience
-        run: function (ed: any) {
-          console.log(
-            'Monaco command-s run() called at editor position ' +
-              ed.getPosition()
-          );
-          onSave();
+        id: 'save',
+        label: 'Save',
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+        run: () => {
+          onSave?.();
+        },
+      });
+      editor.addAction({
+        id: 'compile',
+        label: 'Compile',
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Quote],
+        run: () => {
+          onCompile?.();
         },
       });
     }

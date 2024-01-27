@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@andrewray/react-multi-split-pane": "^0.3.5",
-    "@monaco-editor/react": "^4.3.1",
+    "@monaco-editor/react": "^4.6.0",
     "@react-hook/resize-observer": "^1.2.6",
     "@types/lodash.groupby": "^4.6.7",
     "@types/three": "^0.131.0",
@@ -23,7 +23,7 @@
     "lodash.groupby": "^4.6.0",
     "lodash.throttle": "^4.1.1",
     "playcanvas": "^1.65.3",
-    "react-hotkeys-hook": "^3.4.6",
+    "react-hotkeys-hook": "^4.4.4",
     "reactflow": "^11.10.1",
     "three": ">=0.149.0"
   },

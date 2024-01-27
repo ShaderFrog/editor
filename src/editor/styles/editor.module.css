@@ -240,13 +240,15 @@ textarea.error {
 
 /* shy header, greedy footer */
 .shrinkGrowRows {
-  min-height: 100%;
+  position: relative;
+  height: 100%;
   display: grid;
   grid-template-rows: auto 1fr;
 }
 /* greedy header, shy footer */
 .growShrinkRows {
-  min-height: 100%;
+  position: relative;
+  height: 100%;
   display: grid;
   grid-template-rows: 1fr auto;
 }

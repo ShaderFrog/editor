@@ -64,15 +64,26 @@ import {
 } from '@core/graph';
 
 /**
- * 0. Fix time rendering issues
- * 1. First creating a shader - better examples to choose from
- * 2. Move all shaders from "examples" into the database
- * 3. Fix graph node positions not saving in the Graph
- * 4. Ability to *add* a shader at the cursor rather than just replace
- * 5. Make output nodes more prominent
- * 6. Add search to the homepage
+ * 0. ✅ Fix time rendering issues
+ * 1. ✅ First creating a shader - better examples to choose from
+ * 2. ✅ Move all shaders from "examples" into the database
+ * 3. ✅ Fix graph node positions not saving in the Graph
+ * 4. ✅ Ability to *add* a shader at the cursor rather than just replace
+ * 5. ✅ Make output nodes more prominent
+ * 6. ✅ Add search to the homepage
+ * 6.5. ✅ Fix graph size overflowing(?) pane - the watermark is cut off again
+ * 6.6. ✅ Keyboard shortcuts for compile and save
+ * 6.11 There is a shader in production with an error - find out why/how
+ * 6.7. Be able to pause and scrub time for debugging
  * 7. Add more textures
  * 8. Add a better texture picker
+ * 9. Show GLSL errors in the editor
+ * 10. Add config editor to data nodes
+ * 11. Add inline node controls
+ * 12. Add xy grid for 2d node
+ * 13. Add time slider/pause for the running shader
+ * 14. Add time slider to screenshot picker
+ * 15. Add angle picker to screenshot picker
  */
 
 import FlowEditor, {
@@ -135,6 +146,8 @@ import randomShaderName from '@api/randomShaderName';
 import { FlowGraphContext } from '@editor/editor/flowGraphContext';
 import { MenuItems } from './flow/GraphContextMenu';
 import { findNodeAndData, findNodeTree } from './flow/graph-helpers';
+import { isMacintosh } from '@editor/editor-util/platform';
+import { useHotkeys } from 'react-hotkeys-hook';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -324,6 +337,15 @@ const post = async (path: string, body: any) => {
  *     redeclaring the variable. Is this a bug? Also this case would have been
  *     alievated by the global variable detection system: parsing engine
  *     variables out of engine shaders.
+ *
+ * - Teaching
+ *   - Teaching tools: make only part of the ast/source code type-able in the
+ *     editor so students can fill in the function
+ *   - For teachers: upload scenes where you can style a specific element (like
+ *     the flag on earth or on the moon), and make pre-made teaching scenes
+ * - Pro
+ *   - Multi-object shader preview, make a matrix of objects up to 10x10(? or
+ *     any arbitrary limit) and preview multiple shaders
  */
 
 export type BaseSceneConfig = {
@@ -2188,6 +2210,21 @@ const Editor = ({
     }
   }, [isSmallScreen, syncSceneSize]);
 
+  useHotkeys(isMacintosh() ? `cmd+'` : `ctrl+'`, () => {
+    compile(engine, ctx as EngineContext, graph, {
+      nodes: flowNodes,
+      edges: flowEdges,
+    });
+  });
+
+  useHotkeys(
+    'meta+s',
+    () => {
+      saveOrFork();
+    },
+    { preventDefault: true }
+  );
+
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
   const editorElements = (
@@ -2232,6 +2269,7 @@ const Editor = ({
                 e.preventDefault();
                 saveOrFork();
               }}
+              title={`${isMacintosh() ? `⌘-s` : `Ctrl-s`}`}
             >
               {isFork ? 'Fork' : 'Save'}
             </button>
@@ -2359,6 +2397,7 @@ const Editor = ({
                           edges: flowEdges,
                         })
                       }
+                      title={`${isMacintosh() ? `⌘-'` : `Ctrl+'`}`}
                     >
                       Compile
                     </button>
@@ -2369,6 +2408,9 @@ const Editor = ({
                   identity={activeEditingNode.id}
                   defaultValue={activeEditingNode.source}
                   onSave={() => {
+                    saveOrFork();
+                  }}
+                  onCompile={() => {
                     compile(engine, ctx as EngineContext, graph, {
                       nodes: flowNodes,
                       edges: flowEdges,

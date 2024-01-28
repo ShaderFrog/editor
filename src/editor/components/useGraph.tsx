@@ -15,6 +15,8 @@ import {
   compileSource,
   Edge,
   linkFromVertToFrag,
+  isError,
+  NodeErrors,
 } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
@@ -27,7 +29,7 @@ const compileGraphAsync = async (
   graph: Graph,
   engine: Engine,
   ctx: EngineContext
-): Promise<UICompileGraphResult> =>
+): Promise<NodeErrors | UICompileGraphResult> =>
   new Promise((resolve, reject) => {
     setTimeout(async () => {
       console.warn('Compiling!', graph, 'for nodes', ctx.nodes);
@@ -35,22 +37,15 @@ const compileGraphAsync = async (
       const allStart = performance.now();
 
       try {
-        const {
-          compileResult,
-          fragmentResult,
-          vertexResult,
-          dataNodes,
-          dataInputs,
-        } = await compileSource(graph, engine, ctx);
+        const result = await compileSource(graph, engine, ctx);
+        if (isError(result)) {
+          resolve(result);
+        }
 
         resolve({
           compileMs: (performance.now() - allStart).toFixed(3),
-          compileResult,
-          fragmentResult,
-          vertexResult,
-          dataNodes,
-          dataInputs,
           graph,
+          ...result,
         });
       } catch (err) {
         return reject(err);

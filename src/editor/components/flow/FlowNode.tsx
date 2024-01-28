@@ -31,7 +31,7 @@ const headerHeight = 30;
 const labelHeight = 44;
 const inputHeight = 22;
 const outputHandleTopWithLabel = 38;
-const INPUT_LABEL_START_OFFSET = 5;
+const INPUT_LABEL_START_OFFSET = 4;
 // If there are no labeled input sections, move the output handle top higher up
 const outputHandleTopWithoutLabel = 24;
 const textHeight = 10;
@@ -82,6 +82,7 @@ export interface FlowNodeSourceData extends CoreFlowNode {
    * Whether or not this node can be used for both shader fragment and vertex
    */
   biStage: boolean;
+  glslError?: boolean;
 }
 export type FlowNodeData = FlowNodeSourceData | FlowNodeDataData;
 
@@ -482,7 +483,7 @@ const SourceNodeComponent = memo(
     id: string;
     data: FlowNodeSourceData;
   }) => {
-    const { onInputBakedToggle } = useFlowGraphContext();
+    const { onInputBakedToggle, jumpToError } = useFlowGraphContext();
     const { openNodeContextMenu } = useFlowEditorContext();
     // const updateNodeInternals = useUpdateNodeInternals();
     // const key = `${computeIOKey(data.inputs)}${computeIOKey(data.outputs)}`;
@@ -529,6 +530,11 @@ const SourceNodeComponent = memo(
         height={height + headerHeight}
         className={cx(data.stage, data.category, { inactive: !data.active })}
       >
+        {data.glslError ? (
+          <div className="glslError" onClick={() => jumpToError(id)}>
+            GLSL Error!
+          </div>
+        ) : null}
         <div className={cx('flowlabel', { three: !!data.stage })}>
           <div className="title">
             {data.label} {showPosition(id, xPos, yPos)}

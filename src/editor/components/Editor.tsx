@@ -61,6 +61,8 @@ import {
   NodeType,
   makeEdge,
   resetGraphIds,
+  isError,
+  NodeErrors,
 } from '@core/graph';
 
 /**
@@ -674,6 +676,7 @@ const Editor = ({
   const [sceneConfig, setSceneConfig] =
     useState<AnySceneConfig>(initialSceneConfig);
   const [graph, setGraph] = useLocalStorage<Graph>('graph', initialGraph);
+  const [nodeErrors, setNodeErrors] = useState<Record<string, NodeErrors>>({});
 
   const graphIntegrity = useMemo(() => {
     const flowNodesById = new Set<string>(flowNodes.map((node) => node.id));
@@ -859,9 +862,22 @@ const Editor = ({
       log('Starting compileGraphAsync()!');
       compileGraphAsync(graph, engine, ctx)
         .then((result) => {
+          if (isError(result)) {
+            setNodeErrors((nodeErrors) => ({
+              ...nodeErrors,
+              [result.nodeId]: result,
+            }));
+            setNodes((nodes) =>
+              updateFlowNodesData(nodes, result.nodeId, { glslError: true })
+            );
+            return;
+          }
+
           log(`Compile complete in ${result.compileMs} ms!`, {
             compileResult: result,
           });
+
+          setNodeErrors({});
           setGuiError('');
           setCompileResult(result);
 
@@ -874,6 +890,7 @@ const Editor = ({
           const updatedFlowNodes = flowElements.nodes.map((node) => {
             return updateFlowNodeData(node, {
               ...node.data,
+              glslError: false,
               inputs: toFlowInputs(byId[node.id]),
               active: result.compileResult.activeNodeIds.has(node.id),
             });
@@ -942,9 +959,17 @@ const Editor = ({
       setTimeout(async () => {
         try {
           const result = await computeAllContexts(newCtx, engine, graph);
-          if (result.type === 'errors') {
+          if (isError(result)) {
+            setNodeErrors((nodeErrors) => ({
+              ...nodeErrors,
+              [result.nodeId]: result,
+            }));
+            setNodes((nodes) =>
+              updateFlowNodesData(nodes, result.nodeId, { glslError: true })
+            );
+
             setContexting(false);
-            const errors = result.errors as any[];
+            const { errors } = result;
             console.error('Error computing context!', errors);
             setGuiError(`Error computing context: ${errors[0]}`);
 
@@ -953,13 +978,19 @@ const Editor = ({
             // anyway, so the graph still shows up
             setNodes(initialElements.nodes);
             setEdges(initialElements.edges);
-          } else {
-            log('Initializing flow nodes and compiling graph!', {
-              graph,
-              newCtx,
-            });
-            compile(engine, newCtx, graph, initialElements);
           }
+
+          log('Initializing flow nodes and compiling graph!', {
+            graph,
+            newCtx,
+          });
+
+          setNodes((nodes) =>
+            nodes.map((node) => updateFlowNodeData(node, { glslError: false }))
+          );
+
+          setNodeErrors({});
+          compile(engine, newCtx, graph, initialElements);
         } catch (error: any) {
           setContexting(false);
           console.error('Error computing context!', error);
@@ -1250,18 +1281,25 @@ const Editor = ({
     [getNode, applyNodesChange]
   );
 
+  const openNodeEditor = useCallback(
+    (nodeId: string) => {
+      const active = graph.nodes.find((n) => n.id === nodeId) as SourceNode;
+      setActiveEditingNode(active);
+      addSelectedNodes([active.id]);
+      setSelectedNode(active);
+
+      setEditorTabIndex(1);
+    },
+    [addSelectedNodes, graph]
+  );
+
   const onNodeDoubleClick = useCallback(
     (event, node: FlowNode) => {
       if (!('value' in node.data)) {
-        const active = graph.nodes.find((n) => n.id === node.id) as SourceNode;
-        setActiveEditingNode(active);
-        addSelectedNodes([active.id]);
-        setSelectedNode(active);
-
-        setEditorTabIndex(1);
+        openNodeEditor(node.id);
       }
     },
-    [addSelectedNodes, graph]
+    [openNodeEditor]
   );
 
   const onSelectionChange = useCallback<OnSelectionChangeFunc>(
@@ -2407,6 +2445,7 @@ const Editor = ({
                   engine={engine}
                   identity={activeEditingNode.id}
                   defaultValue={activeEditingNode.source}
+                  errors={nodeErrors[activeEditingNode.id]}
                   onSave={() => {
                     saveOrFork();
                   }}
@@ -2625,7 +2664,9 @@ const Editor = ({
   );
 
   return (
-    <FlowGraphContext.Provider value={{ onInputBakedToggle }}>
+    <FlowGraphContext.Provider
+      value={{ onInputBakedToggle, jumpToError: openNodeEditor }}
+    >
       <div
         className={cx(styles.editorContainer, {
           [styles.smallScreen]: isSmallScreen,

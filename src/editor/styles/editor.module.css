@@ -240,7 +240,8 @@ textarea.error {
 
 /* shy header, greedy footer */
 .shrinkGrowRows {
-  position: relative;
+  position: relative; /* apparently required to force inner 100% height elements to stay within 
+     the container, rather than be 100% of page height */
   height: 100%;
   display: grid;
   grid-template-rows: auto 1fr;

@@ -1,19 +1,25 @@
-import MonacoEditor, { Monaco, OnMount } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import MonacoEditor, {
+  BeforeMount,
+  Monaco,
+  OnMount,
+} from '@monaco-editor/react';
+// import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import { editor } from 'monaco-editor';
 import { monacoGlsl } from '../monaco-glsl';
 
 import { Engine } from '@core/engine';
 import { usePrevious } from '../hooks/usePrevious';
-import { useEffect, useRef } from 'react';
-import { useHotkeys } from 'react-hotkeys-hook';
-import { isMacintosh, isWindows } from '@editor/editor-util/platform';
+import { useCallback, useEffect, useRef } from 'react';
+import { NodeErrors } from '@core/graph';
+import { GlslSyntaxError } from '@shaderfrog/glsl-parser';
 
 type AnyFn = (...args: any) => any;
 
-type MonacoProps = {
+type CodeEditorProps = {
   engine: Engine;
   identity?: string;
   defaultValue?: string;
+  errors?: NodeErrors;
   value?: string;
   readOnly?: boolean;
   onChange?: AnyFn;
@@ -23,15 +29,19 @@ type MonacoProps = {
 const CodeEditor = ({
   engine,
   identity,
+  errors,
   value,
   defaultValue,
   readOnly,
   onChange,
   onSave,
   onCompile,
-}: MonacoProps) => {
+}: CodeEditorProps) => {
+  const lastErrors = usePrevious(errors);
   const lastIdentity = usePrevious(identity);
-  const beforeMount = (monaco: Monaco) => {
+  const beforeMount: BeforeMount = (monaco) => {
+    monacoGlsl(monaco);
+
     monaco.editor.defineTheme('frogTheme', {
       base: 'vs-dark', // can also be vs-dark or hc-black
       inherit: true, // can also be false to completely replace the builtin rules
@@ -48,8 +58,6 @@ const CodeEditor = ({
         'editor.background': '#000000',
       },
     });
-
-    monacoGlsl(monaco);
 
     monaco.languages.registerCompletionItemProvider('glsl', {
       provideCompletionItems: (model, position) => {
@@ -70,10 +78,15 @@ const CodeEditor = ({
     });
   };
 
-  const monacoRef = useRef<monaco.editor.IStandaloneCodeEditor>();
+  const lastDecorators = useRef<string[]>([]);
+  const editorRef = useRef<editor.IStandaloneCodeEditor>();
+  const monacoRef = useRef<Monaco>();
 
   const onMount: OnMount = (editor, monaco) => {
-    monacoRef.current = editor;
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    checkErrors();
+
     if (onSave) {
       editor.addAction({
         id: 'save',
@@ -94,11 +107,74 @@ const CodeEditor = ({
     }
   };
 
-  useEffect(() => {
-    if (identity !== lastIdentity && monacoRef.current) {
-      monacoRef.current.setValue(defaultValue || '');
+  const checkErrors = useCallback(() => {
+    if (!editorRef.current || !monacoRef.current) {
+      return;
     }
-  }, [identity, lastIdentity, defaultValue]);
+
+    // Highlight error lines
+    const nodeErrors = errors?.errors || [];
+
+    // Highlight the gutter and the code background. deltaDecorations clears
+    // the previous decorations apparently. it's deprecated but there's no
+    // clear replacement method, since createDecorationsCollection doesn't
+    // have a way to clear
+    lastDecorators.current = editorRef.current!.deltaDecorations(
+      lastDecorators.current,
+
+      (
+        nodeErrors.filter(
+          (error) => typeof error !== 'string'
+        ) as GlslSyntaxError[]
+      ).map((error) => ({
+        range: {
+          startLineNumber: error.location.start.line,
+          startColumn: error.location.start.column,
+          endLineNumber: error.location.end.line,
+          endColumn: error.location.end.column,
+        },
+        options: {
+          isWholeLine: true,
+          inlineClassName: 'lineError',
+          linesDecorationsClassName: 'lineError',
+        },
+      }))
+    );
+
+    monacoRef.current.editor.setModelMarkers(
+      editorRef.current.getModel()!,
+      'owner',
+      nodeErrors.map((error) =>
+        typeof error === 'string'
+          ? {
+              startLineNumber: 1,
+              startColumn: 1,
+              endLineNumber: 1,
+              endColumn: 1,
+              message: error,
+              severity: monacoRef.current!.MarkerSeverity.Error,
+            }
+          : {
+              startLineNumber: error.location.start.line,
+              startColumn: error.location.start.column,
+              endLineNumber: error.location.end.line,
+              endColumn: error.location.end.column,
+              message: error.message,
+              severity: monacoRef.current!.MarkerSeverity.Error,
+            }
+      )
+    );
+  }, [errors]);
+
+  useEffect(() => {
+    if (!editorRef.current) {
+      return;
+    }
+    if (identity !== lastIdentity) {
+      editorRef.current.setValue(defaultValue || '');
+    }
+    checkErrors();
+  }, [identity, lastIdentity, defaultValue, checkErrors]);
 
   return (
     <MonacoEditor

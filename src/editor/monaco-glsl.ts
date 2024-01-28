@@ -1,4 +1,6 @@
-export const monacoGlsl = (monaco: any) => {
+import { Monaco } from '@monaco-editor/react';
+
+export const monacoGlsl = (monaco: Monaco) => {
   // Register a new language
   monaco.languages.register({ id: 'glsl' });
 

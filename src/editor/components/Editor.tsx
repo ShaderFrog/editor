@@ -1243,7 +1243,7 @@ const Editor = ({
       let originalNodes: Set<string> | undefined;
       let expanded: Graph | undefined;
 
-      if (engine.name === 'three') {
+      if (addEngineNode) {
         [originalNodes, expanded] =
           addEngineNode(
             nodeDataType,

@@ -128,10 +128,10 @@ const CodeEditor = ({
         ) as GlslSyntaxError[]
       ).map((error) => ({
         range: {
-          startLineNumber: error.location.start.line,
-          startColumn: error.location.start.column,
-          endLineNumber: error.location.end.line,
-          endColumn: error.location.end.column,
+          startLineNumber: error?.location?.start?.line || 0,
+          startColumn: error?.location?.start?.column || 0,
+          endLineNumber: error?.location?.end?.line || 0,
+          endColumn: error?.location?.end?.column || 0,
         },
         options: {
           isWholeLine: true,
@@ -155,10 +155,10 @@ const CodeEditor = ({
               severity: monacoRef.current!.MarkerSeverity.Error,
             }
           : {
-              startLineNumber: error.location.start.line,
-              startColumn: error.location.start.column,
-              endLineNumber: error.location.end.line,
-              endColumn: error.location.end.column,
+              startLineNumber: error?.location?.start?.line,
+              startColumn: error?.location?.start?.column,
+              endLineNumber: error?.location?.end?.line,
+              endColumn: error?.location?.end?.column,
               message: error.message,
               severity: monacoRef.current!.MarkerSeverity.Error,
             }

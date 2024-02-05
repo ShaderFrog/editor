@@ -26,6 +26,7 @@ import { replaceAt } from '../../../editor-util/replaceAt';
 import groupBy from 'lodash.groupby';
 import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
 import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
+import { useQueryAssets } from 'src/pages/api/asset/useQueryAssets';
 
 const headerHeight = 30;
 const labelHeight = 44;
@@ -34,7 +35,6 @@ const outputHandleTopWithLabel = 38;
 const INPUT_LABEL_START_OFFSET = 4;
 // If there are no labeled input sections, move the output handle top higher up
 const outputHandleTopWithoutLabel = 24;
-const textHeight = 10;
 
 export type InputNodeHandle = {
   name: string;
@@ -345,11 +345,47 @@ const textures: Record<'texture' | 'samplerCube', [string, string][]> = {
 const TextureEditor = ({
   id,
   data,
+  onChange,
+}: {
+  id: string;
+  data: FlowNodeDataData;
+  onChange: ChangeHandler;
+}) => {
+  const { assets, groups } = useQueryAssets();
+  return (
+    <>
+      {data.value in assets ? (
+        <img
+          src={assets[data.value].thumbnail}
+          alt={assets[data.value].name}
+          style={{ maxHeight: '128px' }}
+        />
+      ) : null}
+      <select
+        className="nodrag select"
+        style={{ width: 'auto' }}
+        onChange={(e) => onChange(id, e.currentTarget.value)}
+        value={data.value}
+      >
+        {Object.values(assets).map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.name}
+            {a.subtype ? ` (${a.subtype})` : null}
+          </option>
+        ))}
+      </select>
+    </>
+  );
+};
+
+const SamplerEditor = ({
+  id,
+  data,
   tex,
   onChange,
 }: {
   id: string;
-  tex: (typeof textures)['texture'];
+  tex: (typeof textures)['samplerCube'];
   data: FlowNodeDataData;
   onChange: ChangeHandler;
 }) => (
@@ -423,14 +459,9 @@ const DataNodeComponent = memo(
           ) : data.type === 'rgb' || data.type === 'rgba' ? (
             <ColorEditor id={id} data={data} onChange={onChange} />
           ) : data.type === 'texture' ? (
-            <TextureEditor
-              id={id}
-              data={data}
-              onChange={onChange}
-              tex={textures.texture}
-            />
+            <TextureEditor id={id} data={data} onChange={onChange} />
           ) : data.type === 'samplerCube' ? (
-            <TextureEditor
+            <SamplerEditor
               id={id}
               data={data}
               onChange={onChange}

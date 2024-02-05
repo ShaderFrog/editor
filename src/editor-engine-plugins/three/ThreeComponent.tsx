@@ -84,6 +84,7 @@ import { PMREMGenerator } from 'three';
 import { RoomEnvironment } from './RoomEnvironment';
 import { SceneProps } from '@editor/editor/components/Editor';
 import classnames from 'classnames';
+import { useQueryAssets } from 'src/pages/api/asset/useQueryAssets';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
@@ -435,7 +436,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
               let newValue = value;
               if (fromNode.type === 'texture') {
                 // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
-                newValue = textures[(fromNode as TextureNode).value];
+                const val = (fromNode as TextureNode).value;
+                newValue = loadTexture(val) || textures[val];
               }
               // TODO RENDER TARGET
               if (fromNode.type === 'samplerCube') {
@@ -484,8 +486,32 @@ const ThreeComponent: React.FC<SceneProps> = ({
     }
   );
 
-  const textures = useMemo<Record<string, any>>(
-    () => ({
+  const { assets } = useQueryAssets();
+  const textureCache = useRef<Record<string, Texture>>({});
+  const loadTexture = useCallback(
+    (id: string) => {
+      if (!textureCache.current) {
+        return;
+      }
+      if (textureCache.current[id]) {
+        return textureCache.current[id];
+      }
+      if (id in assets) {
+        const { url, subtype } = assets[id];
+        const tl = new TextureLoader();
+        const texture = repeat(tl.load(url), 3, 3);
+        if (subtype === 'Diffuse') {
+          texture.encoding = sRGBEncoding;
+        }
+        textureCache.current[id] = texture;
+        return texture;
+      }
+    },
+    [assets, textureCache]
+  );
+
+  const textures = useMemo<Record<string, any>>(() => {
+    return {
       explosion: new TextureLoader().load(path('/explosion.png')),
       'grayscale-noise': repeat(
         new TextureLoader().load(path('/grayscale-noise.png')),
@@ -546,9 +572,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
         3,
         3
       ),
-    }),
-    [path]
-  );
+    };
+  }, [path]);
 
   const pondCubeMap = useCubeMap(path('/envmaps/pond/'));
   textures.pondCubeMap = pondCubeMap;
@@ -928,7 +953,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
             if (fromNode.type === 'texture') {
               // THIS DUPLICATES OTHER LINE
               // This is instantiation of initial shader
-              newValue = textures[(fromNode as TextureNode).value];
+              const val = (fromNode as TextureNode).value;
+              newValue = loadTexture(val) || textures[val];
             } else if (fromNode.type === 'samplerCube') {
               newValue = textures[(fromNode as SamplerCubeNode).value];
             }

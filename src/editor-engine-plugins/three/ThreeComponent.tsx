@@ -503,6 +503,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
         if (subtype === 'Diffuse') {
           texture.encoding = sRGBEncoding;
         }
+        texture.anisotropy = 16;
         textureCache.current[id] = texture;
         return texture;
       }
@@ -1015,7 +1016,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     mesh.material = material;
     shadersUpdated.current = true;
-  }, [sceneConfig, compileResult, ctx, textures]);
+  }, [loadTexture, sceneConfig, compileResult, ctx, textures]);
 
   const prevLights = usePrevious(sceneConfig.lights);
   const previousShowHelpers = usePrevious(sceneConfig.showHelpers);

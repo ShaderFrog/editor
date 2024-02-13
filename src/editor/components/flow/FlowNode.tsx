@@ -178,8 +178,10 @@ const FlowWrap = ({
       height:
         height ||
         `${
-          outputHandleTopWithLabel +
-          Math.min(Math.max(data.inputs.length, 1) * inputHeight, 100)
+          (data as any).type === 'texture'
+            ? 210
+            : outputHandleTopWithLabel +
+              Math.min(Math.max(data.inputs.length, 1) * inputHeight, 100)
         }px`,
       zIndex: 0,
     }}
@@ -358,15 +360,21 @@ const TextureEditor = ({
         <img
           src={assets[data.value].thumbnail}
           alt={assets[data.value].name}
-          style={{ maxHeight: '128px' }}
+          style={{ height: '128px' }}
         />
       ) : null}
       <select
         className="nodrag select"
-        style={{ width: 'auto' }}
+        style={{ width: '100%' }}
         onChange={(e) => onChange(id, e.currentTarget.value)}
         value={data.value}
       >
+        <option>Choose a texture</option>
+        {textures.texture.map((t) => (
+          <option key={t[0]} value={t[0]}>
+            {t[1]}
+          </option>
+        ))}
         {Object.values(assets).map((a) => (
           <option key={a.id} value={a.id}>
             {a.name}

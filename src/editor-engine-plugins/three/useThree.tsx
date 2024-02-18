@@ -36,7 +36,7 @@ type ScenePersistence = {
   renderer: WebGLRenderer;
 };
 
-export const useThree = (callback: Callback) => {
+export const useThree = (callback: Callback, isPaused = false) => {
   const { getRefData } = useHoisty();
   const { sceneData, scene, cubeCamera, camera, renderer } =
     getRefData<ScenePersistence>('three', () => {
@@ -136,12 +136,14 @@ export const useThree = (callback: Callback) => {
       if (controlsRef.current) {
         controlsRef.current.update();
       }
-      renderer.render(scene, camera);
+      if (isPaused !== true) {
+        renderer.render(scene, camera);
+      }
       savedCallback.current(time);
 
       frameRef.current = requestAnimationFrame(animate);
     },
-    [camera, renderer, scene]
+    [camera, renderer, scene, isPaused]
   );
 
   useEffect(() => {

@@ -76,15 +76,18 @@ import {
   createMaterial,
 } from '@core/plugins/three/threngine';
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPause, faPlay } from '@fortawesome/free-solid-svg-icons';
+
 import { useThree } from './useThree';
 import { usePrevious } from '../../editor/hooks/usePrevious';
 import { ensure } from '../../editor-util/ensure';
 import { useSize } from '../../editor/hooks/useSize';
 import { PMREMGenerator } from 'three';
 import { RoomEnvironment } from './RoomEnvironment';
-import { SceneProps } from '@editor/editor/components/Editor';
 import classnames from 'classnames';
 import { useQueryAssets } from 'src/pages/api/asset/useQueryAssets';
+import { SceneProps } from '@/editor/editor/components/editorTypes';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
@@ -325,6 +328,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const shadersUpdated = useRef<boolean>(false);
   const sceneWrapper = useRef<HTMLDivElement>(null);
   const sceneWrapperSize = useSize(sceneWrapper);
+  const [isPaused, setIsPaused] = useState(false);
 
   const { sceneData, scene, camera, threeDomCbRef, renderer } = useThree(
     (time) => {
@@ -336,26 +340,30 @@ const ThreeComponent: React.FC<SceneProps> = ({
       if (shadersUpdated.current) {
         const gl = renderer.getContext();
 
-        const { fragmentShader, vertexShader, program } = renderer.properties
-          .get(mesh.material)
-          .programs.values()
-          .next().value;
+        const { programs } = renderer.properties.get(mesh.material);
 
-        const compiled = gl.getProgramParameter(program, gl.LINK_STATUS);
-        if (!compiled) {
-          const log = gl.getProgramInfoLog(program)?.trim();
+        // These can be null if the scene isn't rendering
+        if (programs) {
+          const { fragmentShader, vertexShader, program } = programs
+            .values()
+            .next().value;
 
-          setGlResult({
-            fragError: gl.getShaderInfoLog(fragmentShader)?.trim() || log,
-            vertError: gl.getShaderInfoLog(vertexShader)?.trim() || log,
-            programError: log,
-          });
-        } else {
-          setGlResult({
-            fragError: null,
-            vertError: null,
-            programError: null,
-          });
+          const compiled = gl.getProgramParameter(program, gl.LINK_STATUS);
+          if (!compiled) {
+            const log = gl.getProgramInfoLog(program)?.trim();
+
+            setGlResult({
+              fragError: gl.getShaderInfoLog(fragmentShader)?.trim() || log,
+              vertError: gl.getShaderInfoLog(vertexShader)?.trim() || log,
+              programError: log,
+            });
+          } else {
+            setGlResult({
+              fragError: null,
+              vertError: null,
+              programError: null,
+            });
+          }
         }
 
         shadersUpdated.current = false;
@@ -483,7 +491,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
         // @ts-ignore
         mesh.material.uniforms.cameraPosition.value = camera.position;
       }
-    }
+    },
+    isPaused
   );
 
   const { assets } = useQueryAssets();
@@ -1122,7 +1131,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     }
   }, [sceneWrapperSize, ctx.runtime]);
 
-  const [editorTabIndex, setEditorTabIndex] = useState<number>(0);
+  const [editorTabIndex, setEditorTabIndex] = useState(0);
 
   const resolutionConfig = resolutionConfigMapping[sceneConfig.previewObject];
 
@@ -1132,6 +1141,22 @@ const ThreeComponent: React.FC<SceneProps> = ({
         <TabGroup className={styles.tabBar}>
           <Tab>Scene</Tab>
           <Tab>Settings</Tab>
+          <div className={styles.sceneTabControls}>
+            <button
+              className={styles.playPause}
+              onClick={(e) => {
+                e.preventDefault();
+                setIsPaused((p) => !p);
+              }}
+              title={isPaused ? 'Resume rendering' : 'Pause rendering'}
+            >
+              {isPaused ? (
+                <FontAwesomeIcon icon={faPlay} />
+              ) : (
+                <FontAwesomeIcon icon={faPause} />
+              )}
+            </button>
+          </div>
         </TabGroup>
         <TabPanels>
           <TabPanel className={styles.sceneControls}>

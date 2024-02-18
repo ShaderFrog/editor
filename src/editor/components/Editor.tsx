@@ -2,7 +2,6 @@ import styles from '../styles/editor.module.css';
 import debounce from 'lodash.debounce';
 import {
   DndContext,
-  useDraggable,
   DragOverlay,
   DragStartEvent,
   useDndMonitor,
@@ -21,14 +20,9 @@ import React, {
   useRef,
   useState,
   MouseEvent,
-  MutableRefObject,
-  FunctionComponent,
-  HTMLAttributes,
-  forwardRef,
 } from 'react';
 
 import {
-  Node as ReactFlowNode,
   Edge as ReactFlowEdge,
   Connection,
   ReactFlowProvider,
@@ -39,7 +33,6 @@ import {
   useStoreApi,
   OnSelectionChangeFunc,
   NodeChange,
-  EdgeChange,
   useNodesState,
   useEdgesState,
 } from 'reactflow';
@@ -78,7 +71,6 @@ import useThrottle from '../hooks/useThrottle';
 
 import { useAsyncExtendedState } from '../hooks/useAsyncExtendedState';
 
-import { FlowEdgeData } from './flow/FlowEdge';
 import { FlowNodeSourceData, FlowNodeDataData } from './flow/FlowNode';
 
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
@@ -123,267 +115,24 @@ import {
 import StrategyEditor from './StrategyEditor';
 import randomShaderName from '@api/randomShaderName';
 import { FlowGraphContext } from '@editor/editor/flowGraphContext';
-import { MenuItems } from './flow/GraphContextMenu';
 import { findNodeAndData, findNodeTree } from './flow/graph-helpers';
 import { isMacintosh } from '@editor/editor-util/platform';
 import { useHotkeys } from 'react-hotkeys-hook';
-
-export type PreviewLight = 'point' | '3point' | 'spot';
+import {
+  AnySceneConfig,
+  EditorProps,
+  EditorShader,
+  EngineProps,
+} from './editorTypes';
+import EffectSearch from './EffectSearch';
+import ShaderPreview from './ShaderPreview';
+import { Asset } from '@/model/asset_model';
+import TextureBrowser from './TextureBrowser';
 
 const SMALL_SCREEN_WIDTH = 500;
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
-
-const post = async (path: string, body: any) => {
-  const result = await fetch(path, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-  if (!result.status.toString().startsWith('2')) {
-    console.error('Fetch error', result);
-    throw new Error(result.toString());
-  }
-  return await result.json();
-};
-
-export type BaseSceneConfig = {
-  bg: string | null;
-  lights: string;
-  previewObject: string;
-};
-export type AnySceneConfig = BaseSceneConfig & Record<string, any>;
-
-// This must be kept in sync with the site/ shader model. TODO: Should that be
-// moved into Core instead?
-export type EditorShader = {
-  id?: string;
-  engine: 'three' | 'babylon' | 'playcanvas';
-  createdAt?: Date;
-  updatedAt?: Date;
-  tags: { name: string; slug: string }[];
-  userId?: string;
-  image?: string | null;
-  name: string;
-  description?: string | null;
-  visibility: number;
-  config: {
-    graph: {
-      nodes: GraphNode[];
-      edges: Edge[];
-    };
-    scene: AnySceneConfig;
-  };
-};
-// Ditto. Maybe one day extract a @shaderfrog/types library or something
-type ShaderUpdateInput = Omit<
-  EditorShader,
-  'createdAt' | 'updatedAt' | 'userId'
-> & {
-  id: string;
-  tags: string[];
-};
-
-type ShaderCreateInput = Omit<
-  EditorShader,
-  'id' | 'createdAt' | 'updatedAt' | 'userId'
-> & { imageData: string; tags: string[] };
-
-type AnyFn = (...args: any) => any;
-
-/**
- * This is the interface for the props that any engine scene component must
- * accept. Usage:
- *    <Editor sceneComponent={MyEngineEditor} />
- * Where MyEngineEditor (the component) must accept these props, because this
- * parent editor component controls their state/functionality
- */
-export type SceneProps = {
-  compile: AnyFn;
-  compileResult: UICompileGraphResult | undefined;
-  graph: Graph;
-  setCtx: (ctx: EngineContext) => void;
-  sceneConfig: AnySceneConfig;
-  setSceneConfig: (config: AnySceneConfig) => void;
-  setGlResult: AnyFn;
-  width: number;
-  height: number;
-  assetPrefix: string;
-  takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
-};
-
-/**
- * Props you must pass to <Editor /> from the wrapping page
- */
-export type EditorProps = {
-  assetPrefix: string;
-  searchUrl: string;
-  saveErrors?: string[];
-  onCloseSaveErrors?: () => void;
-  isFork?: boolean;
-  isAuthenticated?: boolean;
-  shader?: EditorShader;
-  exampleShader?: EditorShader;
-  onCreateShader?: (shader: ShaderCreateInput) => Promise<void>;
-  onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
-};
-
-/**
- * Props that individual engine components (like ThreeEditor.tsx) combine with
- * parent EditorProps to this component.
- */
-export type EngineProps = {
-  engine: Engine;
-  example: string;
-  examples: Record<string, string>;
-  makeExampleGraph: (example: string) => [Graph, AnySceneConfig];
-  menuItems: MenuItems;
-  addEngineNode: (
-    nodeDataType: string,
-    name: string,
-    position: { x: number; y: number },
-    newEdgeData?: Omit<Edge, 'id' | 'from'>,
-    defaultValue?: any
-  ) => [Set<string>, Graph] | undefined;
-  sceneComponent: FunctionComponent<SceneProps>;
-};
-
-const ShaderPreview = forwardRef<
-  HTMLDivElement,
-  {
-    shader: EditorShader;
-  } & HTMLAttributes<HTMLDivElement>
->(function ShaderWithRef({ shader, ...props }, ref) {
-  return (
-    <div ref={ref} key={shader.id} className="shaderCardButton" {...props}>
-      <div className="cardImg">
-        <img src={shader.image as string} alt={`${shader.name} screenshot`} />
-      </div>
-      <div className="body">{shader.name}</div>
-    </div>
-  );
-});
-
-const DraggableShaderPreview = ({
-  shader,
-  ...props
-}: { shader: EditorShader } & HTMLAttributes<HTMLDivElement>) => {
-  const { attributes, listeners, setNodeRef } = useDraggable({
-    id: `draggable_${shader.id}`,
-    data: { shader },
-  });
-
-  return (
-    <ShaderPreview
-      shader={shader}
-      ref={setNodeRef}
-      {...props}
-      {...listeners}
-      {...attributes}
-    />
-  );
-};
-
-const GroupSearch = ({
-  engine,
-  searchUrl,
-  activeNode,
-  onSelect,
-}: {
-  engine: string;
-  searchUrl: string;
-  activeNode: SourceNode;
-  onSelect: (shader: EditorShader) => void;
-}) => {
-  const [search, setSearch] = useState<string>('');
-  const [effects, setEffects] = useState<{
-    total: number;
-    shaders: EditorShader[];
-  }>({ total: 0, shaders: [] });
-
-  const doSearch = useMemo(() => {
-    return debounce(async (text: string) => {
-      try {
-        const { count, shaders } = await post(searchUrl, { text, engine });
-
-        // Remove shaders with engine nodes. There's probably a more important
-        // criteria here that I don't know yet.
-        const filtered = (shaders as EditorShader[]).filter((s) => {
-          return (
-            !s.config.graph.nodes.find((n) => (n as SourceNode).engine) &&
-            // And make sure there's actually nodes in the graph
-            s.config.graph.nodes.filter((n) => n.type !== 'output').length > 0
-          );
-        });
-
-        setEffects({ total: count, shaders: filtered });
-      } catch (e) {
-        console.error('Error searching', e);
-      }
-    }, 500);
-  }, [engine, searchUrl]);
-
-  useEffect(() => {
-    doSearch('');
-  }, [doSearch]);
-
-  const onChange = (event: React.FormEvent<HTMLInputElement>) => {
-    const search = event.currentTarget.value || '';
-    setSearch(search);
-    doSearch(search);
-  };
-
-  const count = effects.shaders.length;
-
-  return (
-    <>
-      <div>
-        <label className="label" htmlFor="efsrc">
-          Effect Search
-        </label>
-        <input
-          name="search"
-          id="efsrc"
-          className="textinput"
-          placeholder="Effect name"
-          onChange={onChange}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              doSearch(search);
-            }
-          }}
-        ></input>
-      </div>
-      {count && activeNode ? (
-        <div className="m-top-10 secondary px12" style={{ height: '28px' }}>
-          Replace <span className="primary">&quot;{activeNode.name}&quot;</span>{' '}
-          with&hellip;
-        </div>
-      ) : null}
-      <div className="m-top-10">
-        <div>
-          <label className="label">Results{count ? ` (${count})` : null}</label>
-        </div>
-        {count ? (
-          <div className="grid col2">
-            {effects.shaders.map((shader) => (
-              <DraggableShaderPreview
-                key={shader.id}
-                shader={shader}
-                onClick={() => onSelect(shader)}
-              />
-            ))}
-          </div>
-        ) : (
-          'No results'
-        )}
-      </div>
-    </>
-  );
-};
 
 const Editor = ({
   assetPrefix,
@@ -1602,6 +1351,15 @@ const Editor = ({
     debouncedSetNeedsCompile(true);
   };
 
+  const onSelectAsset = (asset: Asset) => {
+    console.log({ asset });
+  };
+
+  const [isAssetBrowserOpen, setIsAssetBrowserOpen] = useState(false);
+  const onCloseAsset = () => {
+    setIsAssetBrowserOpen((i) => !i);
+  };
+
   const mouseRef = useRef<MouseData>({
     real: { x: 0, y: 0 },
     viewport: { x: 0, y: 0 },
@@ -2139,7 +1897,7 @@ const Editor = ({
               <div
                 className={cx(styles.splitInner, styles.vSplit, styles.vScroll)}
               >
-                <GroupSearch
+                <EffectSearch
                   searchUrl={searchUrl}
                   engine={engine.name}
                   activeNode={selectedNode as SourceNode}
@@ -2149,6 +1907,10 @@ const Editor = ({
                 />
               </div>
               <div className={styles.splitInner} ref={reactFlowWrapper}>
+                <TextureBrowser
+                  onSelect={onSelectAsset}
+                  onClose={onCloseAsset}
+                />
                 <FlowEditor
                   menuItems={menuItems}
                   mouse={mouseRef}

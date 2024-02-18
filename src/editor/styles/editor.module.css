@@ -460,7 +460,7 @@ textarea.error {
   box-shadow: 0 0 10px #000;
 }
 .modalContent {
-  height: 200px;
+  height: calc(min(400px, 50vh));
   padding: 10px;
   overflow: scroll;
 }

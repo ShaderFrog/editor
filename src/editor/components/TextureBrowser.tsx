@@ -1,5 +1,5 @@
 import styles from '../styles/editor.module.css';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { useQueryAssets } from '@/pages/api/asset/useQueryAssets';
 import groupBy from 'lodash.groupby';
@@ -32,16 +32,30 @@ const TextureBrowser = ({
 
   const [showGroups, setShowGroups] = useState(true);
   const [search, setSearch] = useState('');
+
   const [filteredGroups, setFilteredGroups] = useState(Object.values(groups));
+  const [filteredAssets, setFilteredAssets] = useState(
+    Object.values(assets).filter((a) => a.subtype === 'Diffuse')
+  );
 
   const doSearch = (search: string) => {
-    setFilteredGroups(
-      Object.values(groups).filter(
-        (g) =>
-          g.name.toLowerCase().includes(search.toLowerCase()) ||
-          g.description.toLowerCase().includes(search.toLowerCase())
-      )
-    );
+    if (showGroups) {
+      setFilteredGroups(
+        Object.values(groups).filter(
+          (g) =>
+            g.name.toLowerCase().includes(search.toLowerCase()) ||
+            g.description.toLowerCase().includes(search.toLowerCase())
+        )
+      );
+    } else {
+      setFilteredAssets(
+        Object.values(assets).filter(
+          (a) =>
+            a.subtype === 'Diffuse' &&
+            a.name.toLowerCase().includes(search.toLowerCase())
+        )
+      );
+    }
   };
 
   const onChange = (event: React.FormEvent<HTMLInputElement>) => {
@@ -53,6 +67,11 @@ const TextureBrowser = ({
   const handleChange = (event: React.FormEvent<HTMLInputElement>) => {
     setShowGroups(event.currentTarget.value === 'true');
   };
+  useEffect(() => {
+    setSearch('');
+    doSearch('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showGroups]);
 
   return (
     <div className={styles.bottomModal}>
@@ -120,7 +139,7 @@ const TextureBrowser = ({
         </div>
         {showGroups ? (
           <div className={styles.assetList}>
-            {Object.values(assets).map((asset) => (
+            {filteredAssets.map((asset) => (
               <div
                 key={`${asset.name}${asset.subtype}`}
                 className={styles.assetCard}

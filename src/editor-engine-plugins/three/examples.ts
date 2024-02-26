@@ -52,7 +52,7 @@ import { makeId } from '../../editor-util/id';
 import { threngine } from '@core/plugins/three/threngine';
 import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
 import { MenuItems } from '@editor/editor/components/flow/GraphContextMenu';
-import { AnySceneConfig } from '@editor/editor/components/Editor';
+import { AnySceneConfig } from '@/editor/editor/components/editorTypes';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

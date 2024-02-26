@@ -7,9 +7,8 @@ import {
   menuItems,
 } from '.';
 
-import ShaderfrogEditor, {
-  EditorProps,
-} from '@editor/editor/components/Editor';
+import ShaderfrogEditor from '@editor/editor/components/Editor';
+import { EditorProps } from '@/editor/editor/components/editorTypes';
 
 const Editor = (props: EditorProps) => {
   const example = Example.DEFAULT;

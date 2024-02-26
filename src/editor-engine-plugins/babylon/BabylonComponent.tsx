@@ -42,7 +42,7 @@ import { useBabylon } from './useBabylon';
 import { usePrevious } from '../../editor/hooks/usePrevious';
 import { useSize } from '../../editor/hooks/useSize';
 import { Nullable } from 'babylonjs';
-import { SceneProps } from '@editor/editor/components/Editor';
+import { SceneProps } from '@/editor/editor/components/editorTypes';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 

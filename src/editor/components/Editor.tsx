@@ -1907,10 +1907,24 @@ const Editor = ({
                 />
               </div>
               <div className={styles.splitInner} ref={reactFlowWrapper}>
-                <TextureBrowser
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* TODO TEXTURE BROWSER AUTO OPEN */}
+                {/* I'm committing with texture browser closed to test asset thumbnail generation */}
+                {/* <TextureBrowser
                   onSelect={onSelectAsset}
                   onClose={onCloseAsset}
-                />
+                /> */}
                 <FlowEditor
                   menuItems={menuItems}
                   mouse={mouseRef}

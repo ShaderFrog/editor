@@ -357,8 +357,9 @@ const TextureEditor = ({
   return (
     <>
       {data.value in assets ? (
+        // TODO: NEED TO PICK THE RIGHT VERSION HERE
         <img
-          src={assets[data.value].thumbnail}
+          src={assets[data.value].versions[0].thumbnail}
           alt={assets[data.value].name}
           style={{ height: '128px' }}
         />

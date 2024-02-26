@@ -506,7 +506,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
         return textureCache.current[id];
       }
       if (id in assets) {
-        const { url, subtype } = assets[id];
+        const { subtype } = assets[id];
+        // TODO: Need to load the right version here!
+        const { url } = assets[id].versions[0];
         const tl = new TextureLoader();
         const texture = repeat(tl.load(url), 3, 3);
         if (subtype === 'Diffuse') {

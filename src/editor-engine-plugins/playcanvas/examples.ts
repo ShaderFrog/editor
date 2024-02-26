@@ -11,8 +11,8 @@ import {
 import { makeId } from '../../editor-util/id';
 import { engine as playengine } from '@core/plugins/playcanvas';
 import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
-import { AnySceneConfig } from '@editor/editor/components/Editor';
 import { MenuItems } from '@editor/editor/components/flow/GraphContextMenu';
+import { AnySceneConfig } from '@/editor/editor/components/editorTypes';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

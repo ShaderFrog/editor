@@ -146,7 +146,8 @@ const TextureBrowser = ({
                 onClick={() => onSelect(asset)}
               >
                 <div className={styles.assetThumbnail}>
-                  <img src={asset.thumbnail} alt={asset.name} />
+                  {/* TODO: NEED TO PICK RIGHT ASSET VERSION HERE */}
+                  <img src={asset.versions[0].thumbnail} alt={asset.name} />
                 </div>
                 <div className={styles.assetSubtype}>{asset.name}</div>
               </div>
@@ -166,7 +167,8 @@ const TextureBrowser = ({
                     onClick={() => onSelect(asset)}
                   >
                     <div className={styles.assetThumbnail}>
-                      <img src={asset.thumbnail} alt={asset.name} />
+                      {/* TODO: NEED TO PICK RIGHT ASSET VERSION HERE */}
+                      <img src={asset.versions[0].thumbnail} alt={asset.name} />
                     </div>
                     <div className={styles.assetSubtype}>{asset.subtype}</div>
                   </div>

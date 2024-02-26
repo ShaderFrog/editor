@@ -29,8 +29,8 @@ import normalMapify from '../../shaders/normalmapifyNode';
 import { convertNode } from '@core/engine';
 import { babylengine } from '@core/plugins/babylon/bablyengine';
 import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
-import { AnySceneConfig } from '@editor/editor/components/Editor';
 import { MenuItems } from '@editor/editor/components/flow/GraphContextMenu';
+import { AnySceneConfig } from '@/editor/editor/components/editorTypes';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

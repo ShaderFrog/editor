@@ -42,7 +42,7 @@ import {
   playengine,
 } from '@core/plugins/playcanvas/playengine';
 import { usePlayCanvas } from './usePlayCanvas';
-import { SceneProps } from '@editor/editor/components/Editor';
+import { SceneProps } from '@/editor/editor/components/editorTypes';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 

@@ -1929,6 +1929,7 @@ const Editor = ({
                   menuItems={menuItems}
                   mouse={mouseRef}
                   onMenuAdd={onMenuAdd}
+                  onMenuClose={hideMenu}
                   onNodeContextSelect={onNodeContextSelect}
                   onNodeContextHover={onNodeContextHover}
                   onNodeValueChange={onNodeValueChange}

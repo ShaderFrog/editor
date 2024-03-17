@@ -24,7 +24,7 @@ import {
 } from './FlowNode';
 import { FlowEventHack } from '../../flowEventHack';
 
-import GraphContextMenu, { MenuItems } from './GraphContextMenu';
+import ContextMenu, { MenuItems } from '../ContextMenu';
 import { FlowEditorContext } from '@editor/editor/flowEditorContext';
 import { isMacintosh } from '@editor/editor-util/platform';
 
@@ -115,6 +115,7 @@ type FlowEditorProps =
       mouse: React.MutableRefObject<MouseData>;
       onNodeValueChange: (id: string, value: any) => void;
       onMenuAdd: (type: string) => void;
+      onMenuClose: () => void;
       onNodeContextSelect: (nodeId: string, type: string) => void;
       onNodeContextHover: (nodeId: string, type: string) => void;
     } & Pick<
@@ -149,26 +150,37 @@ const nodeContextMenuItems = (node?: FlowNode<FlowNodeData>): MenuItems => {
   const isData = 'value' in node.data;
   return isData
     ? [
-        ['Edit Node Config', NodeContextActions.EDIT_SOURCE, 'Double Click'],
-        [
-          'Delete Node',
-          NodeContextActions.DELETE_NODE_ONLY,
-          isMacintosh() ? 'Delete' : 'Backspace',
-        ],
+        {
+          display: 'Edit Node Config',
+          value: NodeContextActions.EDIT_SOURCE,
+          key: 'Double Click',
+        },
+        {
+          display: 'Delete Node',
+          value: NodeContextActions.DELETE_NODE_ONLY,
+          key: isMacintosh() ? 'Delete' : 'Backspace',
+        },
       ]
     : [
-        ['Edit Source', NodeContextActions.EDIT_SOURCE, 'Double Click'],
-        [
-          'Delete Node & Data',
-          NodeContextActions.DELETE_NODE_AND_DEPENDENCIES,
-          isMacintosh() ? 'Delete' : 'Backspace',
-        ],
-        [
-          'Delete Node Only',
-          NodeContextActions.DELETE_NODE_ONLY,
-          isMacintosh() ? 'Option-Delete' : 'Ctrl-Backspace',
-        ],
-        ['Delete Node Tree', NodeContextActions.DELETE_FULL_NODE_TREE],
+        {
+          display: 'Edit Source',
+          value: NodeContextActions.EDIT_SOURCE,
+          key: 'Double Click',
+        },
+        {
+          display: 'Delete Node & Data',
+          value: NodeContextActions.DELETE_NODE_AND_DEPENDENCIES,
+          key: isMacintosh() ? 'Delete' : 'Backspace',
+        },
+        {
+          display: 'Delete Node Only',
+          value: NodeContextActions.DELETE_NODE_ONLY,
+          key: isMacintosh() ? 'Option-Delete' : 'Ctrl-Backspace',
+        },
+        {
+          display: 'Delete Node Tree',
+          value: NodeContextActions.DELETE_FULL_NODE_TREE,
+        },
       ];
 };
 
@@ -176,6 +188,7 @@ const FlowEditor = ({
   mouse,
   menuItems,
   onMenuAdd,
+  onMenuClose,
   onNodeContextSelect,
   onNodeContextHover,
   nodes,
@@ -246,34 +259,37 @@ const FlowEditor = ({
 
   // These are processed in useGraph() for the next time you need to figure this out
   const addNodeMenuItems: MenuItems = [
-    [
-      'Source Code',
-      [
-        ['Fragment and Vertex', 'fragmentandvertex'],
-        ['Fragment', 'fragment'],
-        ['Vertex', 'vertex'],
+    {
+      display: 'Source Code',
+      value: 'Source Code',
+      children: [
+        { display: 'Fragment and Vertex', value: 'fragmentandvertex' },
+        { display: 'Fragment', value: 'fragment' },
+        { display: 'Vertex', value: 'vertex' },
       ],
-    ],
-    [
-      'Data',
-      [
-        ['Number', 'number'],
-        ['Texture', 'texture'],
-        ['Sampler Cube', 'samplerCube'],
-        ['Vector2', 'vector2'],
-        ['Vector3', 'vector3'],
-        ['Vector4', 'vector4'],
-        ['Color (RGB)', 'rgb'],
-        ['Color (RGBA)', 'rgba'],
+    },
+    {
+      display: 'Data',
+      value: 'Data',
+      children: [
+        { display: 'Number', value: 'number' },
+        { display: 'Texture', value: 'texture' },
+        { display: 'Sampler Cube', value: 'samplerCube' },
+        { display: 'Vector2', value: 'vector2' },
+        { display: 'Vector3', value: 'vector3' },
+        { display: 'Vector4', value: 'vector4' },
+        { display: 'Color (RGB)', value: 'rgb' },
+        { display: 'Color (RGBA)', value: 'rgba' },
       ],
-    ],
-    [
-      'Math',
-      [
-        ['Add', 'add'],
-        ['Multiply', 'multiply'],
+    },
+    {
+      display: 'Math',
+      value: 'Math',
+      children: [
+        { display: 'Add', value: 'add' },
+        { display: 'Multiply', value: 'multiply' },
       ],
-    ],
+    },
     ...menuItems,
   ];
 
@@ -313,19 +329,21 @@ const FlowEditor = ({
         ref={setNodeRef}
       >
         {menu?.menu === ContextMenuType.CONTEXT ? (
-          <GraphContextMenu
+          <ContextMenu
             menu={addNodeMenuItems}
             position={menu.position}
             onItemHover={onContextItemHover}
             onSelect={onMenuAdd}
+            onClose={onMenuClose}
           />
         ) : menu?.menu === ContextMenuType.NODE_CONTEXT ? (
-          <GraphContextMenu
+          <ContextMenu
             title="Node Actions"
             menu={nodeContextMenu}
             position={menu.position}
             onItemHover={onContextItemHover}
             onSelect={onContextSelect}
+            onClose={onMenuClose}
           />
         ) : null}
         <FlowEventHack onChange={onNodeValueChange}>

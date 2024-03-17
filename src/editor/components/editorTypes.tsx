@@ -3,7 +3,7 @@ import { MutableRefObject, FunctionComponent } from 'react';
 import { Graph, GraphNode, Edge } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
-import { MenuItems } from './flow/GraphContextMenu';
+import { MenuItems } from './ContextMenu/ContextMenu';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 

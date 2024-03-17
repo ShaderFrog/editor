@@ -5,20 +5,15 @@
   color: #fff;
   border-radius: 8px;
   border: 1px solid #444;
-  padding: 0 0 4px 0;
   user-select: none;
-  min-width: 125px;
   font-size: 12px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
-.contextBg {
+.childContext {
   position: absolute;
-  z-index: 9;
+  left: 100%;
   top: 0;
-  border: 1px solid red;
-  min-width: 120px;
-  height: 100%;
 }
 
 .contextHeader {
@@ -29,29 +24,49 @@
   cursor: default;
 }
 
-.contextRow {
-  white-space: nowrap;
-  padding: 5px 6px 5px 12px;
-  margin: 3px 3px 1px 3px;
-  display: grid;
-  grid-column: span 2;
-  grid-template-columns: subgrid;
-}
-
 .contextRows {
   display: grid;
   grid-template-columns: 1fr auto;
+  column-gap: 10px;
+  row-gap: 2px;
+  margin: 2px;
+}
+.contextRows.growShrink {
+  grid-template-columns: auto min-content;
+}
+.contextRows.shrinkGrow {
+  grid-template-columns: min-content auto;
+}
+.contextRows.shrinkGrowShrink {
+  grid-template-columns: min-content auto min-content;
 }
 
-.contextRows.col2 {
-  grid-template-columns: 1fr auto;
-  column-gap: 15px;
+.contextRow {
+  white-space: nowrap;
+  padding: 5px 6px 5px 6px;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+.growShrink .contextRow {
+  grid-column: span 2;
+}
+.shrinkGrow .contextRow {
+  grid-column: span 2;
+}
+.shrinkGrowShrink .contextRow {
+  grid-column: span 3;
 }
 
+.contextRow svg {
+  color: #999;
+}
 .contextRow:hover {
   background: linear-gradient(#42982d, #265314);
   border-radius: 4px;
   cursor: pointer;
+}
+.contextRow:hover svg {
+  color: #fff;
 }
 
 .flowContainer {

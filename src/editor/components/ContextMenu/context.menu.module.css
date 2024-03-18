@@ -10,6 +10,10 @@
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
+.leftToRight {
+  right: 0;
+}
+
 .childContext {
   position: absolute;
   left: 100%;

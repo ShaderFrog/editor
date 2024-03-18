@@ -7,7 +7,7 @@ import { Asset, AssetSubtype } from '@/model/asset_model';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass, faTimes } from '@fortawesome/free-solid-svg-icons';
 
-const assetSortOrder: Record<AssetSubtype, number> = {
+export const assetSortOrder: Record<AssetSubtype, number> = {
   Diffuse: 0,
   Normal: 1,
   Displacement: 2,
@@ -15,7 +15,7 @@ const assetSortOrder: Record<AssetSubtype, number> = {
   Roughness: 4,
   ARM: 5,
 };
-const assetSort = (assets: Asset[]) =>
+export const assetSort = (assets: Asset[]) =>
   [...assets].sort(
     (a, b) => assetSortOrder[a.subtype] - assetSortOrder[b.subtype]
   );

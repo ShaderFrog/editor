@@ -29,6 +29,7 @@ const ContextMenu = ({
   title,
   onMouseEnter,
   onItemHover,
+  leftToRight,
 }: {
   onSelect: (name: string) => void;
   onClose?: () => void;
@@ -37,6 +38,7 @@ const ContextMenu = ({
   title?: string;
   onMouseEnter?: (e: ReactMouseEvent<any>) => void;
   onItemHover?: (name: string) => void;
+  leftToRight?: boolean;
 }) => {
   // The number is used to calculate the relative offset of the child menu
   const [childMenu, setChildMenu] = useState<[MenuItems, number]>();
@@ -78,7 +80,13 @@ const ContextMenu = ({
       }
     };
 
-    document.body.addEventListener('click', closeMenu);
+    // I'm too lazy to figure out how to fix this: When the parent component
+    // clicks on something, this component mounts, wires up the onclick, and
+    // when the user releases the left click, this handler fires, causing the
+    // menu to instantly hide. This hack fixes it for now.
+    setTimeout(() => {
+      document.body.addEventListener('click', closeMenu);
+    }, 1);
     return () => {
       document.body.removeEventListener('click', closeMenu);
     };
@@ -93,7 +101,9 @@ const ContextMenu = ({
     <>
       <div
         id="x-context-menu"
-        className={styles.contextMenu}
+        className={cx(styles.contextMenu, {
+          [styles.leftToRight]: leftToRight,
+        })}
         style={position ? { top: position.y, left: position.x } : {}}
         onMouseEnter={onMouseEnter}
       >
@@ -132,7 +142,10 @@ const ContextMenu = ({
               <div
                 key={value}
                 className={styles.contextRow}
-                onClick={() => onSelect(value)}
+                onClick={() => {
+                  onSelect(value);
+                  onClose && onClose();
+                }}
                 onMouseEnter={() => onItemMouseEnter(value)}
               >
                 {hasLeft ? <span>{icon}</span> : null}

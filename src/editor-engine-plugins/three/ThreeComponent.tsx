@@ -445,7 +445,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
               if (fromNode.type === 'texture') {
                 // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
                 const val = (fromNode as TextureNode).value;
-                newValue = loadTexture(val) || textures[val];
+                newValue = loadTexture(val as string) || textures[val];
               }
               // TODO RENDER TARGET
               if (fromNode.type === 'samplerCube') {
@@ -966,7 +966,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
               // THIS DUPLICATES OTHER LINE
               // This is instantiation of initial shader
               const val = (fromNode as TextureNode).value;
-              newValue = loadTexture(val) || textures[val];
+              newValue = loadTexture(val as string) || textures[val];
             } else if (fromNode.type === 'samplerCube') {
               newValue = textures[(fromNode as SamplerCubeNode).value];
             }

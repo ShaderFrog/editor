@@ -13,13 +13,16 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleChevronRight } from '@fortawesome/free-solid-svg-icons';
 const cx = classnames.bind(styles);
 
-export type MenuItems = {
+export type MenuItem = {
   icon?: ReactNode;
   display: ReactNode;
-  value: string;
   key?: string;
-  children?: MenuItems;
-}[];
+} & ({ children: MenuItem[] } | { value: string });
+
+type MenuItemHelper = MenuItem & { children: MenuItemHelper[]; value: string };
+
+// Aproximate height of a row to determine child menu offset height
+const ROW_HEIGHT = 26;
 
 const ContextMenu = ({
   position,
@@ -34,14 +37,14 @@ const ContextMenu = ({
   onSelect: (name: string) => void;
   onClose?: () => void;
   position?: { x: number | string; y: number };
-  menu: MenuItems;
+  menu: MenuItem[];
   title?: string;
   onMouseEnter?: (e: ReactMouseEvent<any>) => void;
   onItemHover?: (name: string) => void;
   leftToRight?: boolean;
 }) => {
   // The number is used to calculate the relative offset of the child menu
-  const [childMenu, setChildMenu] = useState<[MenuItems, number]>();
+  const [childMenu, setChildMenu] = useState<[MenuItem[], number]>();
 
   const timeout = useRef<NodeJS.Timeout>();
   const onItemMouseEnter = useCallback(
@@ -94,8 +97,9 @@ const ContextMenu = ({
 
   const hasLeft = !!menu.find(({ icon }) => !!icon);
   const hasShortcut = !!menu.find(({ key }) => !!key);
-  const hasChildren = !!menu.find(({ children }) => !!children);
+  const hasChildren = !!menu.find((item) => 'children' in item);
   const hasRight = hasChildren || hasShortcut;
+  const menuHelp = menu as MenuItemHelper[];
 
   return (
     <>
@@ -120,11 +124,11 @@ const ContextMenu = ({
               : null
           )}
         >
-          {menu.map(({ display, icon, value, key, children }, index) =>
+          {menuHelp.map(({ display, icon, key, children, value }, index) =>
             children ? (
               <div
-                key={value}
-                className={styles.contextRow}
+                key={index}
+                className={cx(styles.contextRow, { [styles.active]: childMenu?.[0] === children })}
                 onMouseEnter={() => {
                   if (timeout.current) {
                     clearTimeout(timeout.current);
@@ -163,7 +167,7 @@ const ContextMenu = ({
             <ContextMenu
               onSelect={onSelect}
               position={{
-                y: (position?.y || 0) + childMenu[1] * 24,
+                y: childMenu[1] * ROW_HEIGHT,
                 x: 'auto',
               }}
               menu={childMenu[0]}

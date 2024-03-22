@@ -29,8 +29,8 @@
 }
 
 .contextRows {
+  min-width: 120px;
   display: grid;
-  grid-template-columns: 1fr auto;
   column-gap: 10px;
   row-gap: 2px;
   margin: 2px;
@@ -47,6 +47,7 @@
 
 .contextRow {
   white-space: nowrap;
+  border-radius: 4px;
   padding: 5px 6px 5px 6px;
   display: grid;
   grid-template-columns: subgrid;
@@ -65,17 +66,14 @@
   color: #999;
 }
 .contextRow:hover {
-  background: linear-gradient(#42982d, #265314);
-  border-radius: 4px;
+  background: linear-gradient(#42982d, #265314) !important;
   cursor: pointer;
 }
 .contextRow:hover svg {
   color: #fff;
 }
-
-.flowContainer {
-  height: 100%;
-  width: 100%;
+.contextRow.active {
+  background: linear-gradient(#407334, #1f3417);
 }
 
 .shortcut {

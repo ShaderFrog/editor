@@ -1351,15 +1351,6 @@ const Editor = ({
     debouncedSetNeedsCompile(true);
   };
 
-  const onSelectAsset = (asset: Asset) => {
-    console.log({ asset });
-  };
-
-  const [isAssetBrowserOpen, setIsAssetBrowserOpen] = useState(false);
-  const onCloseAsset = () => {
-    setIsAssetBrowserOpen((i) => !i);
-  };
-
   const mouseRef = useRef<MouseData>({
     real: { x: 0, y: 0 },
     viewport: { x: 0, y: 0 },
@@ -1386,7 +1377,8 @@ const Editor = ({
     [screenToFlowPosition]
   );
 
-  const { hideMenu, menu } = useEditorStore();
+  const { hideMenu, menu, isTextureBrowserOpen, closeTextureBrowser } =
+    useEditorStore();
 
   const onMenuAdd = useCallback(
     (type: string) => {
@@ -1907,24 +1899,16 @@ const Editor = ({
                 />
               </div>
               <div className={styles.splitInner} ref={reactFlowWrapper}>
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* TODO TEXTURE BROWSER AUTO OPEN */}
-                {/* I'm committing with texture browser closed to test asset thumbnail generation */}
-                {/* <TextureBrowser
-                  onSelect={onSelectAsset}
-                  onClose={onCloseAsset}
-                /> */}
+                {isTextureBrowserOpen ? (
+                  <TextureBrowser
+                    onSelect={(asset) => {
+                      if (selectedNode?.type === 'texture') {
+                        onNodeValueChange(selectedNode.id, asset.id);
+                      }
+                    }}
+                    onClose={() => closeTextureBrowser()}
+                  />
+                ) : null}
                 <FlowEditor
                   menuItems={menuItems}
                   mouse={mouseRef}

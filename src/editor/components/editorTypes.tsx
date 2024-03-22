@@ -3,7 +3,7 @@ import { MutableRefObject, FunctionComponent } from 'react';
 import { Graph, GraphNode, Edge } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
-import { MenuItems } from './ContextMenu/ContextMenu';
+import { MenuItem } from './ContextMenu/ContextMenu';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -98,7 +98,7 @@ export type EngineProps = {
   example: string;
   examples: Record<string, string>;
   makeExampleGraph: (example: string) => [Graph, AnySceneConfig];
-  menuItems: MenuItems;
+  menuItems: MenuItem[];
   addEngineNode: (
     nodeDataType: string,
     name: string,

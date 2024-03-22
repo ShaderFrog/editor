@@ -11,7 +11,7 @@ import {
 import { makeId } from '../../editor-util/id';
 import { engine as playengine } from '@core/plugins/playcanvas';
 import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
-import { MenuItems } from '@editor/editor/components/flow/GraphContextMenu';
+import { MenuItem } from '@editor/editor/components/ContextMenu';
 import { AnySceneConfig } from '@/editor/editor/components/editorTypes';
 
 export enum Example {
@@ -78,8 +78,11 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
   return [newGraph, defaultSceneConfig];
 };
 
-export const menuItems: MenuItems = [
-  [`PlayCanvas Materials`, [['Physical', 'physical']]],
+export const menuItems: MenuItem[] = [
+  {
+    display: `PlayCanvas Materials`,
+    children: [{ display: 'Physical', value: 'physical' }],
+  },
 ];
 
 export const addEngineNode = (

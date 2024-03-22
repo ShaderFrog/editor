@@ -24,11 +24,11 @@ import {
 } from './FlowNode';
 import { FlowEventHack } from '../../flowEventHack';
 
-import ContextMenu, { MenuItems } from '../ContextMenu';
+import ContextMenu, { MenuItem } from '../ContextMenu';
 import { FlowEditorContext } from '@editor/editor/flowEditorContext';
 import { isMacintosh } from '@editor/editor-util/platform';
 
-import styles from './context.menu.module.css';
+import styles from './floweditor.module.css';
 
 /**
  * This file is an attempt to break up Editor.tsx by abstracting out the view
@@ -43,8 +43,11 @@ import styles from './context.menu.module.css';
 
 interface EditorStore {
   menu: ContextMenu | undefined;
+  isTextureBrowserOpen: boolean;
   setMenu: (menu: ContextMenuType, position: XYPosition) => void;
   hideMenu: () => void;
+  openTextureBrowser: () => void;
+  closeTextureBrowser: () => void;
 }
 
 export enum ContextMenuType {
@@ -56,8 +59,11 @@ export type ContextMenu = { menu: ContextMenuType; position: XYPosition };
 
 export const useEditorStore = create<EditorStore>((set) => ({
   menu: undefined,
+  isTextureBrowserOpen: false,
   setMenu: (menu, position) => set(() => ({ menu: { menu, position } })),
   hideMenu: () => set(() => ({ menu: undefined })),
+  openTextureBrowser: () => set(() => ({ isTextureBrowserOpen: true })),
+  closeTextureBrowser: () => set(() => ({ isTextureBrowserOpen: false })),
 }));
 
 // Terrible hack to make the flow graph full height minus the tab height - I
@@ -111,7 +117,7 @@ export type MouseData = {
 
 type FlowEditorProps =
   | {
-      menuItems: MenuItems;
+      menuItems: MenuItem[];
       mouse: React.MutableRefObject<MouseData>;
       onNodeValueChange: (id: string, value: any) => void;
       onMenuAdd: (type: string) => void;
@@ -143,7 +149,7 @@ export enum NodeContextActions {
   DELETE_NODE_ONLY = '3',
   DELETE_FULL_NODE_TREE = '4',
 }
-const nodeContextMenuItems = (node?: FlowNode<FlowNodeData>): MenuItems => {
+const nodeContextMenuItems = (node?: FlowNode<FlowNodeData>): MenuItem[] => {
   if (!node) {
     return [];
   }
@@ -258,7 +264,7 @@ const FlowEditor = ({
   );
 
   // These are processed in useGraph() for the next time you need to figure this out
-  const addNodeMenuItems: MenuItems = [
+  const addNodeMenuItems: MenuItem[] = [
     {
       display: 'Source Code',
       value: 'Source Code',

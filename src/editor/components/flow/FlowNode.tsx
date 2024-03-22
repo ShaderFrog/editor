@@ -27,6 +27,7 @@ import groupBy from 'lodash.groupby';
 import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
 import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
 import { useQueryAssets } from 'src/pages/api/asset/useQueryAssets';
+import { useEditorStore } from './FlowEditor';
 
 const headerHeight = 30;
 const labelHeight = 44;
@@ -354,8 +355,9 @@ const TextureEditor = ({
   onChange: ChangeHandler;
 }) => {
   const { assets, groups } = useQueryAssets();
+  const { openTextureBrowser } = useEditorStore();
   return (
-    <>
+    <div className={styles.textureSelect} onClick={openTextureBrowser}>
       {data.value in assets ? (
         // TODO: NEED TO PICK THE RIGHT VERSION HERE
         <img
@@ -364,7 +366,10 @@ const TextureEditor = ({
           style={{ height: '128px' }}
         />
       ) : null}
-      <select
+      <div className="flexcenter">Choose a texture</div>
+    </div>
+  );
+  /* <select
         className="nodrag select"
         style={{ width: '100%' }}
         onChange={(e) => onChange(id, e.currentTarget.value)}
@@ -382,9 +387,7 @@ const TextureEditor = ({
             {a.subtype ? ` (${a.subtype})` : null}
           </option>
         ))}
-      </select>
-    </>
-  );
+      </select> */
 };
 
 const SamplerEditor = ({

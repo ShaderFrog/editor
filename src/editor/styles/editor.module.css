@@ -460,7 +460,7 @@ textarea.error {
   box-shadow: 0 0 10px #000;
 }
 .modalContent {
-  height: calc(min(400px, 50vh));
+  height: calc(min(200px, 50vh));
   padding: 10px;
   overflow: scroll;
 }
@@ -506,14 +506,14 @@ textarea.error {
 .groupList {
   display: grid;
   gap: 4px;
-  grid-template-columns: 128px repeat(auto-fill, minmax(64px, 1fr));
+  grid-template-columns: 64px repeat(auto-fill, minmax(64px, 1fr));
   align-items: start;
   font-size: 12px;
 }
 .assetList {
   display: grid;
   gap: 4px;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   align-items: start;
   font-size: 12px;
 }

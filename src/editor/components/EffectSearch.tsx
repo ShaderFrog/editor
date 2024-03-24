@@ -1,6 +1,12 @@
 import debounce from 'lodash.debounce';
 import { useDraggable } from '@dnd-kit/core';
-import React, { useEffect, useMemo, useState, HTMLAttributes } from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  HTMLAttributes,
+  useCallback,
+} from 'react';
 
 import { SourceNode } from '@core/graph';
 
@@ -9,6 +15,7 @@ import { EditorShader } from './editorTypes';
 import { post } from '@/util/network';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
+import SearchBox from '@/site/components/SearchBox';
 
 const DraggableShaderPreview = ({
   shader,
@@ -42,15 +49,23 @@ const EffectSearch = ({
   onSelect: (shader: EditorShader) => void;
 }) => {
   const [search, setSearch] = useState<string>('');
+  const [isSearching, setIsSearching] = useState(false);
   const [effects, setEffects] = useState<{
     total: number;
     shaders: EditorShader[];
   }>({ total: 0, shaders: [] });
 
-  const doSearch = useMemo(() => {
-    return debounce(async (text: string) => {
+  const suggestions = ['Noise', 'Fractal', 'Glow', 'Liquid', 'Warp'];
+
+  const doSearch = useCallback(
+    async (text: string) => {
       try {
-        const { count, shaders } = await post(searchUrl, { text, engine });
+        setIsSearching(true);
+        const { count, shaders } = await post(searchUrl, {
+          text,
+          engine,
+          tags: ['composable'],
+        });
 
         // Remove shaders with engine nodes. There's probably a more important
         // criteria here that I don't know yet.
@@ -66,17 +81,22 @@ const EffectSearch = ({
       } catch (e) {
         console.error('Error searching', e);
       }
-    }, 500);
-  }, [engine, searchUrl]);
+      setIsSearching(false);
+    },
+    [engine, searchUrl]
+  );
+
+  const doSearchDebounced = useMemo(() => {
+    return debounce(doSearch, 500);
+  }, [doSearch]);
 
   useEffect(() => {
     doSearch('');
   }, [doSearch]);
 
-  const onChange = (event: React.FormEvent<HTMLInputElement>) => {
-    const search = event.currentTarget.value || '';
+  const onChange = (search: string) => {
     setSearch(search);
-    doSearch(search);
+    doSearchDebounced(search);
   };
 
   const count = effects.shaders.length;
@@ -84,30 +104,22 @@ const EffectSearch = ({
   return (
     <>
       <div>
-        <label className="label" htmlFor="efsrc">
-          Effect Search
-        </label>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            doSearch(search);
-          }}
-          className="searchwrap"
-        >
-          <FontAwesomeIcon icon={faMagnifyingGlass} />
-          <input
-            name="search"
-            id="efsrc"
-            className="textinput searchinput"
-            placeholder="Effect name"
-            onChange={onChange}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                doSearch(search);
-              }
+        <label className="label">Effect Search</label>
+        <div className="m-bottom-10">
+          <SearchBox value={search} onChange={onChange} />
+        </div>
+        {suggestions.map((s) => (
+          <div
+            key={s}
+            className="pill pillButton"
+            onClick={() => {
+              setSearch(s);
+              doSearch(s);
             }}
-          />
-        </form>
+          >
+            {s}
+          </div>
+        ))}
       </div>
       {count && activeNode ? (
         <div className="m-top-10 secondary px12" style={{ height: '28px' }}>
@@ -115,7 +127,12 @@ const EffectSearch = ({
           with&hellip;
         </div>
       ) : null}
-      <div className="m-top-10">
+      <div className="m-top-10 relative">
+        {isSearching ? (
+          <div className="searching flexCentered">
+            <span>Searching&hellip;</span>
+          </div>
+        ) : null}
         <div>
           <label className="label">Results{count ? ` (${count})` : null}</label>
         </div>

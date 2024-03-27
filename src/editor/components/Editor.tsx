@@ -2107,7 +2107,6 @@ const Editor = ({
                               });
                             }}
                           ></input>
-
                           <h2 className={cx(styles.uiHeader, 'm-top-25')}>
                             Description
                           </h2>
@@ -2121,7 +2120,6 @@ const Editor = ({
                               });
                             }}
                           ></textarea>
-
                           <h2 className={cx(styles.uiHeader, 'm-top-25')}>
                             Graph Integrity
                           </h2>
@@ -2153,7 +2151,7 @@ const Editor = ({
                             )}
                           </div>
 
-                          {shader?.id && onUpdateShader && onDeleteShader ? (
+                          {shader?.id && isOwnShader ? (
                             <div className="m-top-25">
                               <h2 className={cx(styles.uiHeader)}>Delete</h2>
                               <div className="m-top-15">

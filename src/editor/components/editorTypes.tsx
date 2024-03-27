@@ -81,10 +81,12 @@ export type EditorProps = {
   searchUrl: string;
   saveErrors?: string[];
   onCloseSaveErrors?: () => void;
-  isFork?: boolean;
+  isOwnShader?: boolean;
   isAuthenticated?: boolean;
   shader?: EditorShader;
   exampleShader?: EditorShader;
+  onDeleteShader?: (shaderId: string) => Promise<void>;
+  isDeleting?: boolean;
   onCreateShader?: (shader: ShaderCreateInput) => Promise<void>;
   onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
 };

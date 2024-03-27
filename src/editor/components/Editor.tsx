@@ -140,10 +140,12 @@ const Editor = ({
   saveErrors,
   onCloseSaveErrors,
   shader: initialShader,
-  isFork,
+  isOwnShader,
   isAuthenticated,
   onCreateShader,
   onUpdateShader,
+  isDeleting,
+  onDeleteShader,
   engine,
   exampleShader,
   example,
@@ -1779,7 +1781,7 @@ const Editor = ({
       },
     };
 
-    if (shader?.id && onUpdateShader && !isFork && !btnFork) {
+    if (shader?.id && onUpdateShader && isOwnShader && !btnFork) {
       await onUpdateShader({
         id: shader.id,
         ...payload,
@@ -1814,6 +1816,7 @@ const Editor = ({
   );
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [canDelete, setCanDelete] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
   const editorElements = (
     <>
@@ -1838,9 +1841,9 @@ const Editor = ({
             </div>
           ) : null}
           <div className="m-right-15">
-            {!shader.id || isFork ? null : (
+            {!shader.id || !isOwnShader ? null : (
               <button
-                disabled={isSaving}
+                disabled={isSaving || isDeleting}
                 className="buttonauto formbutton size2 secondary m-right-10"
                 onClick={(e) => {
                   e.preventDefault();
@@ -1851,7 +1854,7 @@ const Editor = ({
               </button>
             )}
             <button
-              disabled={isSaving}
+              disabled={isSaving || isDeleting}
               className="buttonauto formbutton size2"
               onClick={(e) => {
                 e.preventDefault();
@@ -1859,7 +1862,7 @@ const Editor = ({
               }}
               title={`${isMacintosh() ? `⌘-s` : `Ctrl-s`}`}
             >
-              {isFork ? 'Fork' : 'Save'}
+              {isOwnShader ? 'Save' : 'Fork'}
             </button>
           </div>
         </div>
@@ -2149,6 +2152,38 @@ const Editor = ({
                               <>✅ Integrity check passed</>
                             )}
                           </div>
+
+                          {shader?.id && onUpdateShader && onDeleteShader ? (
+                            <div className="m-top-25">
+                              <h2 className={cx(styles.uiHeader)}>Delete</h2>
+                              <div className="m-top-15">
+                                <form
+                                  onSubmit={(e) => {
+                                    e.preventDefault();
+                                    onDeleteShader &&
+                                      onDeleteShader(shader.id!);
+                                  }}
+                                >
+                                  <input
+                                    disabled={isDeleting}
+                                    className="textinput"
+                                    type="text"
+                                    onChange={(e) => {
+                                      setCanDelete(e.target.value === 'Delete');
+                                    }}
+                                    placeholder="Type 'Delete' to delete"
+                                  ></input>
+                                  <button
+                                    disabled={!canDelete || isDeleting}
+                                    className="buttonauto formbutton size2 m-top-10"
+                                    type="submit"
+                                  >
+                                    Delete Shader
+                                  </button>
+                                </form>
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>

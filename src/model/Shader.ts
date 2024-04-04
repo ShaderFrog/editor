@@ -55,3 +55,13 @@ export type UserShader = {
   description?: string | null;
   visibility: number;
 };
+
+export type ShaderUpdateInput = Omit<
+  Shader,
+  'createdAt' | 'updatedAt' | 'user' | 'tags'
+> & { tags: string[]; imageData?: string; id: string };
+
+export type ShaderCreateInput = Omit<
+  Shader,
+  'id' | 'createdAt' | 'updatedAt' | 'user' | 'tags'
+> & { tags: string[]; imageData: string };

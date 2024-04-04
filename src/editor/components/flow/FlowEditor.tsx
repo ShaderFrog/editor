@@ -26,7 +26,7 @@ import { FlowEventHack } from '../../flowEventHack';
 
 import ContextMenu, { MenuItem } from '../ContextMenu';
 import { FlowEditorContext } from '@editor/editor/flowEditorContext';
-import { isMacintosh } from '@/util/platform';
+import { isMacintosh } from '@editor/util/platform';
 
 import styles from './floweditor.module.css';
 

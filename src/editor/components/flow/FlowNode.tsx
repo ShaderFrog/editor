@@ -20,11 +20,11 @@ import {
 } from '@shaderfrog/core/graph';
 
 import { ChangeHandler, useFlowEventHack } from '../../flowEventHack';
-import { replaceAt } from '@util/replaceAt';
+import { replaceAt } from '@editor/util/replaceAt';
 import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
 import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
 import { useEditorStore } from './FlowEditor';
-import { useAssetsAndGroups } from '@/api/assets';
+import { useAssetsAndGroups } from '@editor/api';
 
 import styles from './flownode.module.css';
 const cx = classnames.bind(styles);

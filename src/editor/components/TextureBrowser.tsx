@@ -2,10 +2,10 @@ import styles from '../styles/editor.module.css';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import groupBy from 'lodash.groupby';
-import { Asset, AssetSubtype } from '@/model/Asset';
+import { Asset, AssetSubtype } from '@editor/model/Asset';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass, faTimes } from '@fortawesome/free-solid-svg-icons';
-import { useAssetsAndGroups } from '@api/assets';
+import { useAssetsAndGroups } from '@editor/api';
 
 export const assetSortOrder: Record<AssetSubtype, number> = {
   Diffuse: 0,

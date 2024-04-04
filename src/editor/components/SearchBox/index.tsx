@@ -4,7 +4,6 @@ import {
   faCircleXmark,
   faMagnifyingGlass,
 } from '@fortawesome/free-solid-svg-icons';
-import { Dispatch, SetStateAction } from 'react';
 
 const SearchBox = ({
   value,

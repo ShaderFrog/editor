@@ -5,13 +5,13 @@ import { ReactElement, SVGProps } from 'react';
 // All paths on these MUST have the attribute fill="currentColor" to be
 // colorizeable by css color property. Manually add it if not present.
 // Also requires @svgr/webpack and custom next.config.js
-import Github from '../../../../public/github-1.svg';
-import Twitter from '../../../../public/twitter-1.svg';
-import Check from '../../../../public/check-mark-1.svg';
-import Three from '../../../../public/three-icon.svg';
-import Babylon from '../../../../public/babylon-icon.svg';
-import Playcanvas from '../../../../public/playcanvas.svg';
-import Cloud from '../../../../public/cloud.svg';
+import Github from '@public/github-1.svg';
+import Twitter from '@public/twitter-1.svg';
+import Check from '@public/check-mark-1.svg';
+import Three from '@public/three-icon.svg';
+import Babylon from '@public/babylon-icon.svg';
+import Playcanvas from '@public/playcanvas.svg';
+import Cloud from '@public/cloud.svg';
 
 import styles from './icon.module.css';
 const cx = classnames.bind(styles);

@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import { API, useApi } from '@api/api';
+import { API, useApi } from './api';
 
 export const useAssetsAndGroups = () => {
   const api = useApi();

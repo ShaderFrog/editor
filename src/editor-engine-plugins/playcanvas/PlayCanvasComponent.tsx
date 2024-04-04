@@ -42,7 +42,7 @@ import {
   playengine,
 } from '@shaderfrog/core/plugins/playcanvas/playengine';
 import { usePlayCanvas } from './usePlayCanvas';
-import { SceneProps } from '@editor/editor/components/editorTypes';
+import { SceneProps } from '@editor-components/editorTypes';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 

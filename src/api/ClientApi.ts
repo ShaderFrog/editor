@@ -1,5 +1,5 @@
-import { AssetsAndGroups } from '@/model/Asset';
-import { Shader } from '@model/Shader';
+import { AssetsAndGroups } from '@editor/model/Asset';
+import { Shader } from '@editor/model/Shader';
 
 export interface ClientApi {
   getAssetsAndGroups: () => Promise<AssetsAndGroups>;

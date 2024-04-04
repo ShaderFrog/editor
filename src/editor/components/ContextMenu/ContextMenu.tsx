@@ -8,9 +8,10 @@ import {
 } from 'react';
 import classnames from 'classnames';
 
-import styles from './context.menu.module.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleChevronRight } from '@fortawesome/free-solid-svg-icons';
+
+import styles from './context.menu.module.css';
 const cx = classnames.bind(styles);
 
 export type MenuItem = {
@@ -128,7 +129,9 @@ const ContextMenu = ({
             children ? (
               <div
                 key={index}
-                className={cx(styles.contextRow, { [styles.active]: childMenu?.[0] === children })}
+                className={cx(styles.contextRow, {
+                  [styles.active]: childMenu?.[0] === children,
+                })}
                 onMouseEnter={() => {
                   if (timeout.current) {
                     clearTimeout(timeout.current);

@@ -7,8 +7,8 @@ import {
   addEngineNode,
 } from '.';
 
-import ShaderfrogEditor from '@editor/editor/components/Editor';
-import { EditorProps } from '@editor/editor/components/editorTypes';
+import ShaderfrogEditor from '@editor-components/Editor';
+import { EditorProps } from '@editor-components/editorTypes';
 
 const Editor = (props: EditorProps) => {
   const example = Example.DEFAULT;

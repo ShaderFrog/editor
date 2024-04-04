@@ -11,9 +11,9 @@ import {
 import { SourceNode } from '@shaderfrog/core/graph';
 
 import ShaderPreview from './ShaderPreview';
-import { Shader } from '@model/Shader';
-import SearchBox from '../SearchBox';
-import { useApi } from '@api/api';
+import { Shader } from '@editor/model/Shader';
+import SearchBox from './SearchBox';
+import { useApi } from '@editor/api';
 
 const DraggableShaderPreview = ({
   shader,

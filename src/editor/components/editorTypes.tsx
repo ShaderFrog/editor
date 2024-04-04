@@ -4,7 +4,11 @@ import { Graph, GraphNode, Edge } from '@shaderfrog/core/graph';
 import { Engine, EngineContext } from '@shaderfrog/core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
 import { MenuItem } from './ContextMenu/ContextMenu';
-import { Shader } from '@model/Shader';
+import {
+  Shader,
+  ShaderCreateInput,
+  ShaderUpdateInput,
+} from '@editor/model/Shader';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -14,16 +18,6 @@ export type BaseSceneConfig = {
   previewObject: string;
 };
 export type AnySceneConfig = BaseSceneConfig & Record<string, any>;
-
-export type ShaderUpdateInput = Omit<
-  Shader,
-  'createdAt' | 'updatedAt' | 'user' | 'tags'
-> & { tags: number[] };
-
-export type ShaderCreateInput = Omit<
-  Shader,
-  'id' | 'createdAt' | 'updatedAt' | 'user' | 'tags'
-> & { tags: string[] };
 
 type AnyFn = (...args: any) => any;
 

@@ -50,9 +50,9 @@ import starterVertex from '../../shaders/starterNode';
 import { juliaF, juliaV } from '@editor/shaders/juliaNode';
 import { makeId } from '../../util/id';
 import { threngine } from '@shaderfrog/core/plugins/three/threngine';
-import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
-import { MenuItem } from '@editor/editor/components/ContextMenu';
-import { AnySceneConfig } from '@editor/editor/components/editorTypes';
+import { expandUniformDataNodes } from '@editor-components/useGraph';
+import { MenuItem } from '@editor-components/ContextMenu';
+import { AnySceneConfig } from '@editor-components/editorTypes';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

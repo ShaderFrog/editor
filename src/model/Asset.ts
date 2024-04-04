@@ -1,4 +1,4 @@
-import { ValueOf } from '@/util/types';
+import { ValueOf } from '@editor/util/types';
 
 export const ASSET_TYPES = ['Image'] as const;
 export type AssetType = (typeof ASSET_TYPES)[number];

@@ -25,12 +25,9 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      // "@core/*": ["../core-shaderfrog/src/*"],
-      // For parity with site imports
-      "@model/*": ["./src/model/*"],
       "@editor/*": ["./src/*"],
-      "@api/*": ["./src/api/*"],
-      "@util/*": ["./src/util/*"],
+      "@editor-components/*": ["./src/editor/components/*"],
+      "@public/*": ["./public/*"],
     },
     "composite": true,
     "noEmit": false,

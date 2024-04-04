@@ -1,4 +1,4 @@
-import { Shader } from '@/model/Shader';
+import { Shader } from '@editor/model/Shader';
 import { HTMLAttributes, forwardRef } from 'react';
 
 const ShaderPreview = forwardRef<

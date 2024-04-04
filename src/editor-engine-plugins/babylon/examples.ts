@@ -28,9 +28,9 @@ import { checkerboardF, checkerboardV } from '../../shaders/checkboardNode';
 import normalMapify from '../../shaders/normalmapifyNode';
 import { convertNode } from '@shaderfrog/core/engine';
 import { babylengine } from '@shaderfrog/core/plugins/babylon/bablyengine';
-import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
-import { MenuItem } from '@editor/editor/components/ContextMenu';
-import { AnySceneConfig } from '@editor/editor/components/editorTypes';
+import { expandUniformDataNodes } from '@editor-components/useGraph';
+import { MenuItem } from '@editor-components/ContextMenu';
+import { AnySceneConfig } from '@editor-components/editorTypes';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

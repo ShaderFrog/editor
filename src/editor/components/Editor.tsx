@@ -115,14 +115,14 @@ import {
 import StrategyEditor from './StrategyEditor';
 import { FlowGraphContext } from '@editor/editor/flowGraphContext';
 import { findNodeAndData, findNodeTree } from './flow/graph-helpers';
-import { isMacintosh } from '@util/platform';
+import { isMacintosh } from '@editor/util/platform';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { AnySceneConfig, EditorProps, EngineProps } from './editorTypes';
 import EffectSearch from './EffectSearch';
 import ShaderPreview from './ShaderPreview';
 import TextureBrowser from './TextureBrowser';
-import randomShaderName from '@util/randomShaderName';
-import { Shader } from '@model/Shader';
+import randomShaderName from '@editor/util/randomShaderName';
+import { Shader } from '@editor/model/Shader';
 
 const SMALL_SCREEN_WIDTH = 500;
 

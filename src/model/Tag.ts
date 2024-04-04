@@ -1,5 +1,3 @@
-import { ValueOf } from '@util/types';
-
 export type Tag = {
   id: number;
   name: string;

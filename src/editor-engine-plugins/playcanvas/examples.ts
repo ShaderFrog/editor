@@ -10,9 +10,9 @@ import {
 } from '@shaderfrog/core/graph';
 import { makeId } from '../../util/id';
 import { engine as playengine } from '@shaderfrog/core/plugins/playcanvas';
-import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
-import { MenuItem } from '@editor/editor/components/ContextMenu';
-import { AnySceneConfig } from '@editor/editor/components/editorTypes';
+import { expandUniformDataNodes } from '@editor-components/useGraph';
+import { MenuItem } from '@editor-components/ContextMenu';
+import { AnySceneConfig } from '@editor-components/editorTypes';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

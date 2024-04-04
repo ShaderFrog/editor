@@ -7,10 +7,9 @@ import MonacoEditor, {
 import { editor } from 'monaco-editor';
 import { monacoGlsl } from '../monaco-glsl';
 
-import { Engine } from '@shaderfrog/core';
+import { Engine, NodeErrors } from '@shaderfrog/core';
 import { usePrevious } from '../hooks/usePrevious';
 import { useCallback, useEffect, useRef } from 'react';
-import { NodeErrors } from '@shaderfrog/core';
 import { GlslSyntaxError } from '@shaderfrog/glsl-parser';
 
 type AnyFn = (...args: any) => any;

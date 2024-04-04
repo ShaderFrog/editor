@@ -82,8 +82,8 @@ import { usePrevious } from '../../editor/hooks/usePrevious';
 import { ensure } from '../../util/ensure';
 import { useSize } from '../../editor/hooks/useSize';
 import { RoomEnvironment } from './RoomEnvironment';
-import { SceneProps } from '@editor/editor/components/editorTypes';
-import { useAssetsAndGroups } from '@api/assets';
+import { SceneProps } from '@editor-components/editorTypes';
+import { useAssetsAndGroups } from '@editor/api';
 
 import styles from '../../editor/styles/editor.module.css';
 

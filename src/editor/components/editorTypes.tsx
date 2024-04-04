@@ -1,9 +1,10 @@
 import { MutableRefObject, FunctionComponent } from 'react';
 
-import { Graph, GraphNode, Edge } from '@core/graph';
-import { Engine, EngineContext } from '@core/engine';
+import { Graph, GraphNode, Edge } from '@shaderfrog/core/graph';
+import { Engine, EngineContext } from '@shaderfrog/core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
 import { MenuItem } from './ContextMenu/ContextMenu';
+import { Shader } from '@model/Shader';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -14,41 +15,15 @@ export type BaseSceneConfig = {
 };
 export type AnySceneConfig = BaseSceneConfig & Record<string, any>;
 
-// This must be kept in sync with the site/ shader model. TODO: Should that be
-// moved into Core instead?
-export type EditorShader = {
-  id?: string;
-  engine: 'three' | 'babylon' | 'playcanvas';
-  createdAt?: Date;
-  updatedAt?: Date;
-  tags: { name: string; slug: string }[];
-  userId?: string;
-  image?: string | null;
-  name: string;
-  description?: string | null;
-  visibility: number;
-  config: {
-    graph: {
-      nodes: GraphNode[];
-      edges: Edge[];
-    };
-    scene: AnySceneConfig;
-  };
-};
-
-// Ditto. Maybe one day extract a @shaderfrog/types library or something
 export type ShaderUpdateInput = Omit<
-  EditorShader,
-  'createdAt' | 'updatedAt' | 'userId'
-> & {
-  id: string;
-  tags: string[];
-};
+  Shader,
+  'createdAt' | 'updatedAt' | 'user' | 'tags'
+> & { tags: number[] };
 
 export type ShaderCreateInput = Omit<
-  EditorShader,
-  'id' | 'createdAt' | 'updatedAt' | 'userId'
-> & { imageData: string; tags: string[] };
+  Shader,
+  'id' | 'createdAt' | 'updatedAt' | 'user' | 'tags'
+> & { tags: string[] };
 
 type AnyFn = (...args: any) => any;
 
@@ -78,13 +53,12 @@ export type SceneProps = {
  */
 export type EditorProps = {
   assetPrefix: string;
-  searchUrl: string;
   saveErrors?: string[];
   onCloseSaveErrors?: () => void;
   isOwnShader?: boolean;
   isAuthenticated?: boolean;
-  shader?: EditorShader;
-  exampleShader?: EditorShader;
+  shader?: Shader;
+  exampleShader?: Shader;
   onDeleteShader?: (shaderId: string) => Promise<void>;
   isDeleting?: boolean;
   onCreateShader?: (shader: ShaderCreateInput) => Promise<void>;

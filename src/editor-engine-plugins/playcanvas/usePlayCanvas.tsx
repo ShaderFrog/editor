@@ -19,7 +19,7 @@ import {
   OrbitCameraInputKeyboard,
 } from './OrbitCamera';
 import { useHoisty } from '../../editor/hoistedRefContext';
-import { physicalDefaultProperties } from '@core/plugins/playcanvas/playengine';
+import { physicalDefaultProperties } from '@shaderfrog/core/plugins/playcanvas/playengine';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(pc.usePc)\x1b[0m', ...args);

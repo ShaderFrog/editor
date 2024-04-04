@@ -1,11 +1,11 @@
 import styles from '../styles/editor.module.css';
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { useQueryAssets } from '@/pages/api/asset/useQueryAssets';
 import groupBy from 'lodash.groupby';
-import { Asset, AssetSubtype } from '@/model/asset_model';
+import { Asset, AssetSubtype } from '@/model/Asset';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { useAssetsAndGroups } from '@api/assets';
 
 export const assetSortOrder: Record<AssetSubtype, number> = {
   Diffuse: 0,
@@ -27,7 +27,7 @@ const TextureBrowser = ({
   onSelect: (a: Asset) => void;
   onClose: () => void;
 }) => {
-  const { assets, groups } = useQueryAssets();
+  const { assets, groups } = useAssetsAndGroups();
   const assetsByGroupId = useMemo(() => groupBy(assets, 'groupId'), [assets]);
 
   const [showGroups, setShowGroups] = useState(true);

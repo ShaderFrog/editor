@@ -12,8 +12,16 @@
   },
   "dependencies": {
     "@andrewray/react-multi-split-pane": "^0.3.5",
+    "@dnd-kit/core": "^6.1.0",
+    "@dnd-kit/modifiers": "^7.0.0",
+    "@fortawesome/fontawesome-svg-core": "^6.5.1",
+    "@fortawesome/free-solid-svg-icons": "^6.5.1",
+    "@fortawesome/react-fontawesome": "^0.2.0",
     "@monaco-editor/react": "^4.6.0",
     "@react-hook/resize-observer": "^1.2.6",
+    "@shaderfrog/core": "^1.3.7",
+    "@shaderfrog/glsl-parser": "^3.0.3",
+    "@svgr/webpack": "^8.1.0",
     "@types/lodash.groupby": "^4.6.7",
     "@types/three": "^0.131.0",
     "babylonjs": "^6.22.0",
@@ -25,6 +33,7 @@
     "playcanvas": "^1.65.3",
     "react-hotkeys-hook": "^4.4.4",
     "reactflow": "^11.10.1",
+    "swr": "^2.2.5",
     "three": ">=0.149.0"
   },
   "devDependencies": {
@@ -42,14 +51,5 @@
     "prettier": "^2.3.2",
     "typescript": "^4.5.4",
     "typescript-plugin-css-modules": "^3.4.0"
-  },
-  "peerDependencies": {
-    "@shaderfrog/core": ">=0.0.2",
-    "@shaderfrog/glsl-parser": "^2.1.5",
-    "classnames": ">=2.3.1",
-    "next": ">=13.4.2",
-    "react": ">=18.2.0",
-    "react-dom": ">=18.2.0",
-    "three": ">=0.149.0"
   }
 }

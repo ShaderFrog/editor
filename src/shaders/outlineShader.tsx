@@ -3,8 +3,8 @@ import {
   sourceNode,
   numberUniformData,
   colorUniformData,
-} from '@core/graph';
-import { uniformStrategy } from '@core/strategy';
+} from '@shaderfrog/core/graph';
+import { uniformStrategy } from '@shaderfrog/core/strategy';
 
 const outlineShaderF = (id: string, position: NodePosition) =>
   sourceNode(

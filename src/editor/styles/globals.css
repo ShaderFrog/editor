@@ -1,3 +1,7 @@
+/*******************************************************************************
+ * Global styles
+ ******************************************************************************/
+
 html,
 body {
   padding: 0;
@@ -6,30 +10,212 @@ body {
     Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
   height: 100%;
   background: #000;
+  color: #fff;
   /* stop mac left swipe gesture going back */
   overscroll-behavior-x: none;
 }
 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+}
+
+/* Required for editor to be full height */
+#__next {
+  height: 100%;
+}
+
 a {
-  color: inherit;
+  color: rgb(201, 255, 121);
   text-decoration: none;
+}
+a:hover {
+  color: rgb(202, 255, 122);
+  text-shadow: 0 0 20px #d8ffa270;
+  text-decoration: underline;
 }
 
 * {
   box-sizing: border-box;
 }
 
-.mTop1 {
-  margin-top: 20px !important;
+/*******************************************************************************
+ * Utility Classes
+ ******************************************************************************/
+
+.nowrap {
+  white-space: nowrap;
 }
 
 .noselect {
   user-select: none;
 }
 
-.m-right-15 {
-  margin-right: 15px;
+.relative {
+  position: relative;
 }
+
+.right {
+  text-align: right;
+}
+.center {
+  text-align: center;
+}
+.flexCentered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.hidden {
+  display: none;
+}
+
+.topDivide {
+  padding-top: 20px;
+  box-shadow: 0 -1px 0 #303930;
+}
+
+.wFull {
+  width: 100%;
+}
+
+.block {
+  display: block;
+}
+
+.fullScroll {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  overflow-y: scroll;
+}
+
+.auto {
+  width: auto !important;
+}
+
+.primary {
+  color: #fff;
+}
+.blerfiarie {
+  color: #ccc;
+}
+.secondary {
+  color: #aaa;
+}
+.px12 {
+  font-size: 12px;
+}
+
+.linkBtn {
+  cursor: pointer;
+}
+
+.linkSpan:hover {
+  text-decoration: none;
+}
+.linkSpan:hover span:not(.noHover) {
+  text-decoration: underline;
+}
+
+/*******************************************************************************
+ * Spacing Utility Classes
+ ******************************************************************************/
+
+.m0 {
+  margin: 0 !important;
+}
+.m-top-5 {
+  margin-top: 5px !important;
+}
+.m-top-10 {
+  margin-top: 10px !important;
+}
+.m-top-15 {
+  margin-top: 15px !important;
+}
+.m-top-20 {
+  margin-top: 20px !important;
+}
+.m-top-25 {
+  margin-top: 25px !important;
+}
+.m-top-50 {
+  margin-top: 50px !important;
+}
+.m-top-100 {
+  margin-top: 100px !important;
+}
+.m-top-200 {
+  margin-top: 200px !important;
+}
+
+.m-right-5 {
+  margin-right: 5px !important;
+}
+.m-right-10 {
+  margin-right: 10px !important;
+}
+.m-right-15 {
+  margin-right: 15px !important;
+}
+.m-right-20 {
+  margin-right: 20px !important;
+}
+.m-right-25 {
+  margin-right: 25px !important;
+}
+.m-right-50 {
+  margin-right: 50px !important;
+}
+
+.m-bottom-5 {
+  margin-bottom: 5px !important;
+}
+.m-bottom-10 {
+  margin-bottom: 10px !important;
+}
+.m-bottom-15 {
+  margin-bottom: 15px !important;
+}
+.m-bottom-20 {
+  margin-bottom: 20px !important;
+}
+.m-bottom-25 {
+  margin-bottom: 25px !important;
+}
+.m-bottom-50 {
+  margin-bottom: 50px !important;
+}
+
+.m-left-5 {
+  margin-left: 5px !important;
+}
+.m-left-10 {
+  margin-left: 10px !important;
+}
+.m-left-15 {
+  margin-left: 15px !important;
+}
+.m-left-20 {
+  margin-left: 20px !important;
+}
+.m-left-25 {
+  margin-left: 25px !important;
+}
+.m-left-50 {
+  margin-left: 50px !important;
+}
+
+/*******************************************************************************
+ * Grid Classes
+ ******************************************************************************/
 
 .grid {
   display: grid;
@@ -37,7 +223,55 @@ a {
   grid-template-columns: auto;
   grid-column-gap: 2px;
 }
+.col2 {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.shrinkGrow {
+  grid-auto-flow: row;
+  grid-template-columns: min-content 1fr;
+}
+.growShrink {
+  grid-auto-flow: row;
+  grid-template-columns: 1fr min-content;
+}
+.growShinkShrink {
+  grid-auto-flow: row;
+  grid-template-columns: 1fr min-content min-content;
+}
+.shrinkGrowShrink {
+  grid-auto-flow: row;
+  grid-template-columns: min-content 1fr min-content;
+}
+.gap25 {
+  grid-gap: 25px;
+}
+.gap50 {
+  grid-gap: 50px;
+}
+.cardGap {
+  grid-gap: 10px 15px;
+}
+.col3 {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-column-gap: 20px;
+}
 
 .span2 {
   grid-column: 1 / span 2;
+}
+
+@media (max-width: 600px) {
+  .col2 {
+    width: 100%;
+    grid-auto-flow: row;
+    grid-template-columns: auto;
+  }
+  .col3 {
+    width: 100%;
+    grid-row-gap: 10px;
+    grid-auto-flow: row;
+    grid-template-columns: auto;
+  }
 }

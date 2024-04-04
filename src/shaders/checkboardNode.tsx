@@ -1,5 +1,9 @@
-import { NodePosition, sourceNode, numberUniformData } from '@core/graph';
-import { uniformStrategy } from '@core/strategy';
+import {
+  NodePosition,
+  sourceNode,
+  numberUniformData,
+} from '@shaderfrog/core/graph';
+import { uniformStrategy } from '@shaderfrog/core/strategy';
 
 const checkerboardF = (id: string, position: NodePosition) =>
   sourceNode(

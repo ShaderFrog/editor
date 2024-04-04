@@ -1,6 +1,6 @@
 import debounce from 'lodash.debounce';
 import { useDraggable } from '@dnd-kit/core';
-import React, {
+import {
   useEffect,
   useMemo,
   useState,
@@ -8,19 +8,17 @@ import React, {
   useCallback,
 } from 'react';
 
-import { SourceNode } from '@core/graph';
+import { SourceNode } from '@shaderfrog/core/graph';
 
 import ShaderPreview from './ShaderPreview';
-import { EditorShader } from './editorTypes';
-import { post } from '@/util/network';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
-import SearchBox from '@/site/components/SearchBox';
+import { Shader } from '@model/Shader';
+import SearchBox from '../SearchBox';
+import { useApi } from '@api/api';
 
 const DraggableShaderPreview = ({
   shader,
   ...props
-}: { shader: EditorShader } & HTMLAttributes<HTMLDivElement>) => {
+}: { shader: Shader } & HTMLAttributes<HTMLDivElement>) => {
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: `draggable_${shader.id}`,
     data: { shader },
@@ -39,20 +37,19 @@ const DraggableShaderPreview = ({
 
 const EffectSearch = ({
   engine,
-  searchUrl,
   activeNode,
   onSelect,
 }: {
   engine: string;
-  searchUrl: string;
   activeNode: SourceNode;
-  onSelect: (shader: EditorShader) => void;
+  onSelect: (shader: Shader) => void;
 }) => {
+  const api = useApi();
   const [search, setSearch] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const [effects, setEffects] = useState<{
     total: number;
-    shaders: EditorShader[];
+    shaders: Shader[];
   }>({ total: 0, shaders: [] });
 
   const suggestions = ['Noise', 'Fractal', 'Glow', 'Liquid', 'Warp'];
@@ -61,7 +58,7 @@ const EffectSearch = ({
     async (text: string) => {
       try {
         setIsSearching(true);
-        const { count, shaders } = await post(searchUrl, {
+        const { count, shaders } = await api.searchShaders({
           text,
           engine,
           tags: ['composable'],
@@ -69,7 +66,7 @@ const EffectSearch = ({
 
         // Remove shaders with engine nodes. There's probably a more important
         // criteria here that I don't know yet.
-        const filtered = (shaders as EditorShader[]).filter((s) => {
+        const filtered = (shaders as Shader[]).filter((s) => {
           return (
             !s.config.graph.nodes.find((n) => (n as SourceNode).engine) &&
             // And make sure there's actually nodes in the graph
@@ -83,7 +80,7 @@ const EffectSearch = ({
       }
       setIsSearching(false);
     },
-    [engine, searchUrl]
+    [engine, api]
   );
 
   const doSearchDebounced = useMemo(() => {

@@ -1,5 +1,5 @@
-import { texture2DStrategy, uniformStrategy } from '@core/strategy';
-import { NodePosition, sourceNode } from '@core/graph';
+import { texture2DStrategy, uniformStrategy } from '@shaderfrog/core/strategy';
+import { NodePosition, sourceNode } from '@shaderfrog/core/graph';
 
 const solidColorNode = (id: string, position: NodePosition) =>
   sourceNode(

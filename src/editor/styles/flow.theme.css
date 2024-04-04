@@ -10,14 +10,23 @@
 }
 
 .flownode {
-  border-radius: 8px;
+  border-radius: 10px;
   background: #111;
   color: #fff;
-  border: 1px solid #666;
   box-shadow: 0 0 10px rgba(0, 0, 0, 1);
   position: relative;
   min-width: 240px;
   min-height: 80px;
+  height: calc(100% - 4px);
+}
+
+.flownode .contents {
+  height: calc(100% - 4px);
+  width: calc(100% - 4px);
+  border-radius: 8px;
+  position: relative;
+  top: 2px;
+  left: 2px;
 }
 
 .react-flow__node-output.selectable:hover,
@@ -26,15 +35,27 @@
   box-shadow: inherit !important;
 }
 
+.react-flow__attribution {
+  background: #000 !important;
+}
+
 .flowlabel {
+  white-space: nowrap;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  column-gap: 5px;
   border-radius: 8px 8px 0 0;
-  padding: 3px 4px 4px 8px;
+  padding: 3px 11px 3px 13px;
   border-bottom: 1px solid #666;
   text-shadow: 0 0 2px #000;
+  font-size: 18px;
+}
+.flowlabel.three {
+  grid-template-columns: 1fr auto auto;
 }
 
 .selected .flownode {
-  border: 1px solid #ccc;
+  outline: 3px solid #ccccccdd;
 }
 
 .selected .flowlabel {
@@ -44,11 +65,12 @@
 
 .flowlabel .stage,
 .flowlabel .dataType {
+  box-shadow: 0 0 4px rgba(50, 0, 0, 0.1);
   text-transform: uppercase;
   font-size: 12px;
+  line-height: 17px;
   float: right;
   padding: 2px 8px;
-  margin: 1px 0 0;
   border-radius: 6px;
 }
 .inactive .flowlabel .stage {
@@ -116,6 +138,20 @@
   height: 14px;
   transition: 0.1s all ease-out;
 }
+.flownode .react-flow__handle.target {
+  left: -8px;
+}
+.flownode .react-flow__handle.source {
+  right: -8px;
+}
+
+.flownode .react-flow__handle.linkHandle {
+  top: 50%;
+  left: 50%;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
 
 .flownode .react-flow__handle .react-flow__handle-left {
   left: -7px;
@@ -151,37 +187,133 @@
 
 .flownode .switch {
   pointer-events: all;
+  width: 2.1em;
   display: inline-block;
   cursor: pointer;
   margin: 0 6px 0 0;
-}
-.flownode .switch:hover {
-  opacity: 0.5;
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 2px 6px;
+  position: relative;
+  top: 0px;
 }
 .flownode .switch:active {
   opacity: 0.25;
 }
 
+.flownode.vertex .switch {
+  color: #deeeef;
+  background: rgb(83, 48, 48);
+  box-shadow: inset 0 0 5px #fe7070a6, inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 1px rgba(255, 115, 1, 0.5);
+}
+.flownode.vertex .switch:hover {
+  background: rgb(97, 8, 8);
+  box-shadow: inset 0 0 5px #f9743fc7, inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 1px rgb(255, 124, 124);
+  color: #fff;
+}
+
+.flownode.fragment .switch {
+  color: #deeeef;
+  background: rgb(51, 83, 48);
+  box-shadow: inset 0 0 5px #91fe70a6, inset 0 1px 0 rgba(175, 144, 144, 0.9),
+    inset 0 0 1px rgba(9, 255, 1, 0.5);
+}
+.flownode.fragment .switch:hover {
+  background: rgb(29, 97, 8);
+  box-shadow: inset 0 0 5px #6af93fc7, inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 1px rgb(146, 255, 124);
+  color: #fff;
+}
+
+.flownode .switch.baked {
+  color: #efdeed;
+  background: rgb(68, 6, 99);
+  box-shadow: inset 0 0 5px #ee72aea6, inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 1px rgba(255, 175, 1, 0.5);
+}
+.flownode .switch.baked:hover {
+  background: rgb(124, 7, 126);
+  box-shadow: inset 0 0 5px #f93ff6c7, inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 1px rgb(248, 124, 255);
+  color: #fff;
+}
+
+/* -------------- */
+/* Edge Links     */
+/* -------------- */
+.react-flow__edge.next_stage .react-flow__edge-path {
+  fill: #fff;
+  opacity: 0.4;
+  stroke-dasharray: 10;
+  stroke-linecap: round;
+  stroke-width: 4;
+}
+
 /* -------------- */
 /* Data theme     */
 /* -------------- */
+.flow-node_data .react-flow_handle_label {
+  color: #d3f7ff;
+}
+
 .flow-node_data .flowlabel .dataType {
   color: #fff;
   background: #3c627c;
 }
+.selected .flow-node_data .flowlabel .dataType {
+  background: #08568a;
+}
 
-.flownode.flow-node_data {
-  background: rgb(6, 16, 68);
-  min-height: 80px;
+.flow-node_data.flownode {
+  min-height: 84px;
+  background: linear-gradient(
+    -22deg,
+    rgb(0, 162, 255) 25%,
+    rgb(6, 253, 216) 50%,
+    rgb(7, 96, 213) 100%
+  );
+}
+.flow-node_data.flownode .contents {
+  background: radial-gradient(
+    ellipse 85% 50px at center calc(100% + 20px),
+    #185760,
+    #061044
+  );
+  box-shadow: inset 0 -4px 10px #2683b2aa;
+}
+
+.selected .flow-node_data.flownode {
+  outline: 4px solid #b1feff;
+  background: #0cceffdd;
+}
+.selected .flow-node_data.flownode .contents {
+  background: radial-gradient(
+    ellipse 85% 50px at center calc(100% + 20px),
+    #148ca7,
+    rgb(15, 20, 22)
+  );
 }
 
 .flow-node_data .flowlabel {
   background: linear-gradient(to right, rgb(19, 40, 144), rgb(9, 23, 91));
+  border-bottom: 1px solid #00a5c6;
+}
+.selected .flow-node_data .flowlabel {
+  background: rgb(36, 105, 224);
+  border-bottom: 1px solid #00d5ff;
+  box-shadow: inset 0 -5px 10px #c1f8ff55;
 }
 
 .flownode.texture {
-  min-height: 40px;
+  min-height: 100px !important;
 }
+/* push the full width dropdown below the output */
+/* .flownode.texture select {
+  position: relative;
+  top: 2px;
+} */
 
 .flownode.vector2,
 .flownode.vector3,
@@ -193,23 +325,6 @@
 
 .flownode.number input {
   width: 50%;
-}
-
-.flow-node_data.flownode .flowlabel {
-  border-bottom: 1px solid #00a5c6;
-}
-
-.flow-node_data.flownode {
-  border: 1px solid #00a5c6;
-}
-
-.selected .flow-node_data.flownode {
-  border: 1px solid #00d5ff;
-}
-
-.selected .flow-node_data .flowlabel {
-  background: linear-gradient(to right, rgb(9, 22, 84), rgb(13, 29, 108));
-  border-bottom: 1px solid #00d5ff;
 }
 
 .react-flow__edge.texture .react-flow__edge-path,
@@ -277,29 +392,55 @@
   color: rgb(176, 228, 156);
 }
 
-.fragment.flownode .flowlabel {
-  border-bottom: 1px solid #8ca800;
-}
-
 .fragment.flownode {
-  border: 1px solid #8ca800;
+  background: linear-gradient(
+    -22deg,
+    rgb(56, 255, 30) 25%,
+    rgb(255, 244, 85) 50%,
+    rgb(65, 208, 18) 100%
+  );
+}
+.react-flow__node-output .fragment.flownode {
+  background: linear-gradient(-22deg, rgb(255, 145, 0), rgb(64, 255, 0) 100%);
+}
+.react-flow__node-output .fragment .flowlabel {
+  background: linear-gradient(to right, #2d792d, #b8c709);
+}
+.fragment.flownode .contents {
+  background: radial-gradient(
+    ellipse 85% 50px at center calc(100% + 20px),
+    #60861b,
+    rgb(15, 22, 16)
+  );
 }
 
 .selected .fragment.flownode {
-  border: 1px solid #d4ff00;
+  outline: 4px solid #e6ffb1;
+}
+.selected .fragment.flownode .contents {
+  background: radial-gradient(
+    ellipse 85% 50px at center calc(100% + 20px),
+    #93de09,
+    rgb(15, 22, 16)
+  );
 }
 
 .fragment .flowlabel {
-  background: linear-gradient(to right, #326d29, #2d792d);
+  background: linear-gradient(to right, #1e4c17, #2d792d);
+  border-bottom: 1px solid rgb(31, 235, 41);
 }
 .fragment .flowlabel .stage {
   background: #37b037;
   color: rgb(255, 255, 255);
 }
+.selected .fragment .flowlabel .stage {
+  background: #0a8006;
+}
 
 .selected .fragment .flowlabel {
-  background: linear-gradient(to right, #3c7534, #3d833d);
-  border-bottom: 1px solid #d4ff0080;
+  background: #0a9a0a;
+  border-bottom: 1px solid #f2ffaf;
+  box-shadow: inset 0 -5px 10px #ebffc155;
 }
 
 .inactive.fragment .flowlabel {
@@ -344,14 +485,17 @@
   color: #fff;
 }
 
+.fragment .react-flow__handle.connected {
+  background: #8df65c;
+}
+
 .fragment .react-flow__handle.validTarget {
-  box-shadow: 0 0 20px 5px #0f0;
-  border-color: #fefff7;
-  background: #d4ff00;
+  box-shadow: 0 0 5px 2px #0f0;
+  outline: 2px solid #0f0;
 }
 
 .fragment .react-flow__handle.validTarget.react-flow__handle-connecting {
-  box-shadow: 0 0 20px 5px #efe;
+  box-shadow: 0 0 5px 2px #efe;
   border-color: #efe;
   background: #efe;
 }
@@ -364,31 +508,58 @@
   color: #f86464;
 }
 
-.vertex.flownode .flowlabel {
-  border-bottom: 1px solid #b84242;
+.vertex.flownode {
+  background: linear-gradient(
+    -22deg,
+    rgb(251, 0, 0) 25%,
+    rgb(253 192 6) 50%,
+    rgb(213, 7, 7) 100%
+  );
+}
+.react-flow__node-output .vertex.flownode {
+  background: linear-gradient(-22deg, rgb(208, 0, 255), rgb(251, 0, 0));
+}
+.react-flow__node-output .vertex .flowlabel {
+  background: linear-gradient(to right, #5b0b0b, #c709ae);
 }
 
-.vertex.flownode {
-  border: 1px solid #b84242;
+.vertex.flownode .contents {
+  background: radial-gradient(
+    ellipse 85% 50px at center calc(100% + 20px),
+    #601818,
+    rgb(15, 22, 16)
+  );
+  box-shadow: inset 0 -4px 10px #b22626aa;
 }
 
 .selected .vertex.flownode {
-  border: 1px solid #ff0c0c;
+  outline: 4px solid #ffbdb1;
+  background: #ff0c0cdd;
+}
+.selected .vertex.flownode .contents {
+  background: radial-gradient(
+    ellipse 85% 50px at center calc(100% + 20px),
+    #a71414,
+    rgb(15, 22, 16)
+  );
 }
 
 .vertex .flowlabel {
-  background-color: #ffe53b;
-  background-image: linear-gradient(147deg, #770921 0%, #8a0808 74%);
+  border-bottom: 1px solid #b84242;
+  background-image: linear-gradient(147deg, #5b0404 0%, #8a0808 74%);
+}
+.selected .vertex .flowlabel {
+  background: #a60528;
+  border-bottom: 1px solid #f57f99;
+  box-shadow: inset 0 -5px 10px #ffd17c55;
 }
 
 .vertex .flowlabel .stage {
   background: #be0404;
   color: rgb(255, 255, 255);
 }
-
-.selected .vertex .flowlabel {
-  background-image: linear-gradient(147deg, #810b25 0%, #940d0d 74%);
-  border-bottom: 1px solid #da1842;
+.selected .vertex .flowlabel .stage {
+  background: #880505;
 }
 
 .inactive.vertex .flowlabel {
@@ -436,12 +607,69 @@
 
 .vertex .react-flow__handle.validTarget {
   box-shadow: 0 0 10px #f00;
-  border-color: #ffd3d3;
-  background: #fa5b5b;
+  outline: 2px solid rgb(255, 0, 0);
+}
+.vertex .react-flow__handle.connected {
+  background: #ff2525;
 }
 
 .vertex .react-flow__handle.validTarget.react-flow__handle-connecting {
-  box-shadow: 0 0 20px 5px #fee;
+  box-shadow: 0 0 5px 2px #fee;
   border-color: #fee;
   background: #fee;
+}
+
+/**
+ * Node actions dropdown (gear / hambuger / whatever)
+ */
+.nodeConfig {
+  /* Without setting the width, the gear disappears on hot reload. No idea why! */
+  width: 18px;
+  background: none;
+  border: none;
+  color: #fff;
+  padding: 0;
+  margin: 0;
+  font-size: 18px;
+  cursor: pointer;
+}
+.nodeConfig:hover {
+  color: #fff !important;
+}
+.fragment .nodeConfig {
+  color: rgba(225, 255, 200, 0.95);
+  filter: drop-shadow(0px 0px 2px rgba(0, 50, 0, 0.9));
+}
+.fragment .nodeConfig svg {
+  fill: linear-gradient(to right, #3c627c, #2d5f7c);
+}
+.vertex .nodeConfig {
+  color: rgba(255, 200, 200, 0.95);
+  filter: drop-shadow(0px 0px 2px rgba(50, 0, 0, 0.9));
+}
+.flow-node_data .nodeConfig {
+  color: rgba(200, 200, 255, 0.95);
+  filter: drop-shadow(0px 0px 2px rgba(0, 0, 50, 0.9));
+}
+
+.ghost {
+  opacity: 0.3;
+}
+
+.glslError {
+  z-index: 2;
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  background: rgba(105, 0, 0, 0.8);
+  border-radius: 6px;
+  padding: 4px 8px;
+  text-shadow: 0 0 2px #000;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  box-shadow: 0 0 10px rgba(54, 0, 0, 0.703),
+    inset 0 0.5px rgba(255, 52, 52, 0.557);
+}
+.glslError:hover {
+  background: rgba(184, 6, 6, 0.729);
 }

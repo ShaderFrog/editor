@@ -1,4 +1,4 @@
-import { engine } from '@core/plugins/three';
+import { engine } from '@shaderfrog/core/plugins/three';
 import {
   Editor as ThreeComponent,
   makeExampleGraph,
@@ -8,7 +8,7 @@ import {
 } from '.';
 
 import ShaderfrogEditor from '@editor/editor/components/Editor';
-import { EditorProps } from '@/editor/editor/components/editorTypes';
+import { EditorProps } from '@editor/editor/components/editorTypes';
 
 const Editor = (props: EditorProps) => {
   const example = Example.DEFAULT;

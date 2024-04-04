@@ -24,19 +24,18 @@
       }
     ],
     "paths": {
-      "@core/*": [
-        "../core-shaderfrog/src/*"
-      ]
+      "@/*": ["./src/*"],
+      // "@core/*": ["../core-shaderfrog/src/*"],
+      // For parity with site imports
+      "@model/*": ["./src/model/*"],
+      "@editor/*": ["./src/*"],
+      "@api/*": ["./src/api/*"],
+      "@util/*": ["./src/util/*"],
     },
     "composite": true,
     "noEmit": false,
     "incremental": true
   },
-  "references": [
-    {
-      "path": "../core-shaderfrog"
-    }
-  ],
   "composite": true,
   "include": [
     "next-env.d.ts",

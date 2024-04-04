@@ -1,10 +1,10 @@
+import { Shader } from '@/model/Shader';
 import { HTMLAttributes, forwardRef } from 'react';
-import { EditorShader } from './editorTypes';
 
 const ShaderPreview = forwardRef<
   HTMLDivElement,
   {
-    shader: EditorShader;
+    shader: Shader;
   } & HTMLAttributes<HTMLDivElement>
 >(function ShaderWithRef({ shader, ...props }, ref) {
   return (

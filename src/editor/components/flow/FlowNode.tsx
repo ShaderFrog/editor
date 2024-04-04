@@ -1,5 +1,6 @@
 import React, { memo, MouseEventHandler, useMemo } from 'react';
 import classnames from 'classnames/bind';
+import groupBy from 'lodash.groupby';
 import { Handle, Position } from 'reactflow';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -7,9 +8,6 @@ import {
   faRightLong,
   faTerminal,
 } from '@fortawesome/free-solid-svg-icons';
-
-import styles from './flownode.module.css';
-const cx = classnames.bind(styles);
 
 import {
   ShaderStage,
@@ -19,15 +17,17 @@ import {
   Vector4,
   InputCategory,
   LinkHandle,
-} from '@core/graph';
+} from '@shaderfrog/core/graph';
 
 import { ChangeHandler, useFlowEventHack } from '../../flowEventHack';
-import { replaceAt } from '../../../editor-util/replaceAt';
-import groupBy from 'lodash.groupby';
+import { replaceAt } from '@util/replaceAt';
 import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
 import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
-import { useQueryAssets } from 'src/pages/api/asset/useQueryAssets';
 import { useEditorStore } from './FlowEditor';
+import { useAssetsAndGroups } from '@/api/assets';
+
+import styles from './flownode.module.css';
+const cx = classnames.bind(styles);
 
 const headerHeight = 30;
 const labelHeight = 44;
@@ -354,7 +354,7 @@ const TextureEditor = ({
   data: FlowNodeDataData;
   onChange: ChangeHandler;
 }) => {
-  const { assets, groups } = useQueryAssets();
+  const { assets, groups } = useAssetsAndGroups();
   const { openTextureBrowser } = useEditorStore();
   return (
     <div className={styles.textureSelect} onClick={openTextureBrowser}>

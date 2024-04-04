@@ -7,12 +7,12 @@ import {
   Edge,
   GraphNode,
   linkFromVertToFrag,
-} from '@core/graph';
-import { makeId } from '../../editor-util/id';
-import { engine as playengine } from '@core/plugins/playcanvas';
+} from '@shaderfrog/core/graph';
+import { makeId } from '../../util/id';
+import { engine as playengine } from '@shaderfrog/core/plugins/playcanvas';
 import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
 import { MenuItem } from '@editor/editor/components/ContextMenu';
-import { AnySceneConfig } from '@/editor/editor/components/editorTypes';
+import { AnySceneConfig } from '@editor/editor/components/editorTypes';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

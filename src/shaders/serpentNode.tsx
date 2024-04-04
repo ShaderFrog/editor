@@ -3,8 +3,8 @@ import {
   sourceNode,
   numberUniformData,
   textureUniformData,
-} from '@core/graph';
-import { texture2DStrategy, uniformStrategy } from '@core/strategy';
+} from '@shaderfrog/core/graph';
+import { texture2DStrategy, uniformStrategy } from '@shaderfrog/core/strategy';
 
 const serpentF = (id: string, position: NodePosition) =>
   sourceNode(

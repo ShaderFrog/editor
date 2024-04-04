@@ -12,8 +12,8 @@ import ReactFlow, {
   ReactFlowInstance,
 } from 'reactflow';
 
-import { NodeType, GraphDataType } from '@core/graph';
-import { EngineNodeType } from '@core/engine';
+import { NodeType, GraphDataType } from '@shaderfrog/core/graph';
+import { EngineNodeType } from '@shaderfrog/core/engine';
 
 import ConnectionLine from './ConnectionLine';
 import FlowEdgeComponent from './FlowEdge';
@@ -26,7 +26,7 @@ import { FlowEventHack } from '../../flowEventHack';
 
 import ContextMenu, { MenuItem } from '../ContextMenu';
 import { FlowEditorContext } from '@editor/editor/flowEditorContext';
-import { isMacintosh } from '@editor/editor-util/platform';
+import { isMacintosh } from '@/util/platform';
 
 import styles from './floweditor.module.css';
 

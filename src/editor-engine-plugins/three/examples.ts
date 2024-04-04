@@ -16,7 +16,7 @@ import {
   Edge,
   samplerCubeNode,
   linkFromVertToFrag,
-} from '@core/graph';
+} from '@shaderfrog/core/graph';
 import fluidCirclesNode from '../../shaders/fluidCirclesNode';
 
 import perlinCloudsFNode from '../../shaders/perlinClouds';
@@ -48,11 +48,11 @@ import sinCosVertWarp from '../../shaders/sinCosVertWarp';
 import starterVertex from '../../shaders/starterNode';
 
 import { juliaF, juliaV } from '@editor/shaders/juliaNode';
-import { makeId } from '../../editor-util/id';
-import { threngine } from '@core/plugins/three/threngine';
+import { makeId } from '../../util/id';
+import { threngine } from '@shaderfrog/core/plugins/three/threngine';
 import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
 import { MenuItem } from '@editor/editor/components/ContextMenu';
-import { AnySceneConfig } from '@/editor/editor/components/editorTypes';
+import { AnySceneConfig } from '@editor/editor/components/editorTypes';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

@@ -11,7 +11,7 @@ import {
   alphabet,
   Edge as GraphEdge,
   EdgeLink,
-} from '@core/graph';
+} from '@shaderfrog/core/graph';
 import { Node as ReactFlowNode, Edge as FlowEdge, XYPosition } from 'reactflow';
 import { FlowEdgeData } from './FlowEdge';
 import {

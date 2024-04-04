@@ -56,7 +56,7 @@ import {
   resetGraphIds,
   isError,
   NodeErrors,
-} from '@core/graph';
+} from '@shaderfrog/core/graph';
 
 import FlowEditor, {
   MouseData,
@@ -65,7 +65,7 @@ import FlowEditor, {
   useEditorStore,
 } from './flow/FlowEditor';
 
-import { Engine, EngineContext } from '@core/engine';
+import { Engine, EngineContext } from '@shaderfrog/core/engine';
 
 import useThrottle from '../hooks/useThrottle';
 
@@ -79,10 +79,10 @@ import CodeEditor from './CodeEditor';
 import { Hoisty } from '../hoistedRefContext';
 import { UICompileGraphResult } from '../uICompileGraphResult';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { ensure } from '../../editor-util/ensure';
+import { ensure } from '../../util/ensure';
 
-import { makeId } from '../../editor-util/id';
-import { hasParent } from '../../editor-util/hasParent';
+import { makeId } from '../../util/id';
+import { hasParent } from '../../util/hasParent';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 import {
@@ -113,21 +113,16 @@ import {
   expandUniformDataNodes,
 } from './useGraph';
 import StrategyEditor from './StrategyEditor';
-import randomShaderName from '@api/randomShaderName';
 import { FlowGraphContext } from '@editor/editor/flowGraphContext';
 import { findNodeAndData, findNodeTree } from './flow/graph-helpers';
-import { isMacintosh } from '@editor/editor-util/platform';
+import { isMacintosh } from '@util/platform';
 import { useHotkeys } from 'react-hotkeys-hook';
-import {
-  AnySceneConfig,
-  EditorProps,
-  EditorShader,
-  EngineProps,
-} from './editorTypes';
+import { AnySceneConfig, EditorProps, EngineProps } from './editorTypes';
 import EffectSearch from './EffectSearch';
 import ShaderPreview from './ShaderPreview';
-import { Asset } from '@/model/asset_model';
 import TextureBrowser from './TextureBrowser';
+import randomShaderName from '@util/randomShaderName';
+import { Shader } from '@model/Shader';
 
 const SMALL_SCREEN_WIDTH = 500;
 
@@ -136,7 +131,6 @@ const log = (...args: any[]) =>
 
 const Editor = ({
   assetPrefix,
-  searchUrl,
   saveErrors,
   onCloseSaveErrors,
   shader: initialShader,
@@ -159,10 +153,16 @@ const Editor = ({
   const { addSelectedNodes } = reactFlowStore.getState();
   const { screenToFlowPosition, getNode } = useReactFlow();
 
-  const [shader, setShader] = useState<EditorShader>(() => {
+  const [shader, setShader] = useState<Shader>(() => {
     return (
       initialShader || {
-        engine: engine.name,
+        user: {
+          name: 'Fake User',
+          isPro: false,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        engine: engine.name as 'three',
         name: randomShaderName(),
         visibility: 0,
         imageData: '',
@@ -1157,7 +1157,7 @@ const Editor = ({
    */
   const onSelectGroup = (
     nodeToReplace: GraphNode | undefined,
-    shader: EditorShader
+    shader: Shader
   ) => {
     // For now can only replace the currently selected node
     if (!nodeToReplace || nodeToReplace.type === 'output') {
@@ -1648,10 +1648,10 @@ const Editor = ({
     [store]
   );
 
-  const [activeShader, setActiveShader] = useState<EditorShader | null>(null);
+  const [activeShader, setActiveShader] = useState<Shader | null>(null);
 
   const onDragStart = (event: DragStartEvent) => {
-    const shader = event.active.data.current!.shader as EditorShader;
+    const shader = event.active.data.current!.shader as Shader;
     setActiveShader(shader);
   };
 
@@ -1766,7 +1766,8 @@ const Editor = ({
     // TODO: These values like engine and bg all have their own state, vs
     // setShader() copies all those values
     const payload = {
-      engine: engine.name,
+      // TODO CONVERT OR THROW
+      engine: engine.name as 'three',
       name: shader?.name,
       tags: [],
       description: shader?.description,
@@ -1893,7 +1894,6 @@ const Editor = ({
                 className={cx(styles.splitInner, styles.vSplit, styles.vScroll)}
               >
                 <EffectSearch
-                  searchUrl={searchUrl}
                   engine={engine.name}
                   activeNode={selectedNode as SourceNode}
                   onSelect={(selection) =>

@@ -14,7 +14,7 @@ import {
   Edge,
   GraphNode,
   linkFromVertToFrag,
-} from '@core/graph';
+} from '@shaderfrog/core/graph';
 import { fireFrag, fireVert } from '../../shaders/fireNode';
 import {
   heatShaderFragmentNode,
@@ -23,14 +23,14 @@ import {
 } from '../../shaders/heatmapShaderNode';
 import purpleNoiseNode from '../../shaders/purpleNoiseNode';
 import staticShaderNode, { variation1 } from '../../shaders/staticShaderNode';
-import { makeId } from '../../editor-util/id';
+import { makeId } from '../../util/id';
 import { checkerboardF, checkerboardV } from '../../shaders/checkboardNode';
 import normalMapify from '../../shaders/normalmapifyNode';
-import { convertNode } from '@core/engine';
-import { babylengine } from '@core/plugins/babylon/bablyengine';
+import { convertNode } from '@shaderfrog/core/engine';
+import { babylengine } from '@shaderfrog/core/plugins/babylon/bablyengine';
 import { expandUniformDataNodes } from '@editor/editor/components/useGraph';
 import { MenuItem } from '@editor/editor/components/ContextMenu';
-import { AnySceneConfig } from '@/editor/editor/components/editorTypes';
+import { AnySceneConfig } from '@editor/editor/components/editorTypes';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

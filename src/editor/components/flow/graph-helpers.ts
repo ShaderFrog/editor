@@ -8,8 +8,8 @@ import {
   consSearchResult,
   mergeSearchResults,
   isDataNode,
-} from '@core/graph';
-import { ensure } from '@core/util/ensure';
+} from '@shaderfrog/core/graph';
+import { ensure } from '@shaderfrog/core/util/ensure';
 
 /**
  * Find this node and all its data inputs and edges
@@ -154,7 +154,7 @@ export const findNodeTree = (graph: Graph, startNode: GraphNode) => {
     'No output node found in graph!'
   );
   const edgeToVertexOutput = elements.edges.find(
-    (edge) => edge.to === outputVertexNode.id
+    (edge) => edge.to === outputVertexNode?.id
   );
 
   return {

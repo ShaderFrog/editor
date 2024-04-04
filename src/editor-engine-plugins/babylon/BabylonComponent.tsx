@@ -19,6 +19,7 @@ import {
   Texture,
   Tools,
   Vector3,
+  Nullable,
 } from 'babylonjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -29,20 +30,19 @@ import {
   TextureNode,
   findLinkedNode,
   SourceNode,
-} from '@core/graph';
-import { EngineContext, EngineNodeType } from '@core/engine';
+} from '@shaderfrog/core/graph';
+import { EngineContext, EngineNodeType } from '@shaderfrog/core/engine';
 import {
   babylengine,
   physicalDefaultProperties,
-} from '@core/plugins/babylon/bablyengine';
+} from '@shaderfrog/core/plugins/babylon/bablyengine';
 
 import styles from '../../editor/styles/editor.module.css';
 
 import { useBabylon } from './useBabylon';
 import { usePrevious } from '../../editor/hooks/usePrevious';
 import { useSize } from '../../editor/hooks/useSize';
-import { Nullable } from 'babylonjs';
-import { SceneProps } from '@/editor/editor/components/editorTypes';
+import { SceneProps } from '@editor/editor/components/editorTypes';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 

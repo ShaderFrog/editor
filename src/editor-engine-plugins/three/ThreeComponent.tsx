@@ -5,8 +5,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import classnames from 'classnames';
 import {
   ACESFilmicToneMapping,
+  PMREMGenerator,
   BoxGeometry,
   BufferGeometry,
   CineonToneMapping,
@@ -55,9 +57,14 @@ import {
   Graph,
   findLinkedNode,
   SourceNode,
-} from '@core/graph';
+} from '@shaderfrog/core/graph';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
-import { EngineContext } from '@core/engine';
+import { EngineContext } from '@shaderfrog/core/engine';
+import {
+  threngine,
+  ThreeRuntime,
+  createMaterial,
+} from '@shaderfrog/core/plugins/three/threngine';
 
 import {
   Tabs,
@@ -66,28 +73,21 @@ import {
   TabPanel,
   TabPanels,
 } from '../../editor/components/tabs/Tabs';
-import styles from '../../editor/styles/editor.module.css';
-
-const cx = classnames.bind(styles);
-
-import {
-  threngine,
-  ThreeRuntime,
-  createMaterial,
-} from '@core/plugins/three/threngine';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPause, faPlay } from '@fortawesome/free-solid-svg-icons';
 
 import { useThree } from './useThree';
 import { usePrevious } from '../../editor/hooks/usePrevious';
-import { ensure } from '../../editor-util/ensure';
+import { ensure } from '../../util/ensure';
 import { useSize } from '../../editor/hooks/useSize';
-import { PMREMGenerator } from 'three';
 import { RoomEnvironment } from './RoomEnvironment';
-import classnames from 'classnames';
-import { useQueryAssets } from 'src/pages/api/asset/useQueryAssets';
-import { SceneProps } from '@/editor/editor/components/editorTypes';
+import { SceneProps } from '@editor/editor/components/editorTypes';
+import { useAssetsAndGroups } from '@api/assets';
+
+import styles from '../../editor/styles/editor.module.css';
+
+const cx = classnames.bind(styles);
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
@@ -495,7 +495,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     isPaused
   );
 
-  const { assets } = useQueryAssets();
+  const { assets } = useAssetsAndGroups();
   const textureCache = useRef<Record<string, Texture>>({});
   const loadTexture = useCallback(
     (id: string) => {
@@ -1015,6 +1015,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     // re-created. I did it here because there's not currently a way to pass the
     // scene config into the core graph for compiling.
     material.wireframe = sceneConfig.wireframe;
+    // @ts-ignore wtf is this "side" type error that's only in public client?
     material.side = sceneConfig.doubleSide ? DoubleSide : FrontSide;
     material.transparent = sceneConfig.transparent;
 

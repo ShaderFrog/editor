@@ -2,15 +2,21 @@ const path = require('path');
 
 /** @type {import('next').NextConfig} */
 module.exports = {
-  experimental: {
-    externalDir: true,
-  },
-  reactStrictMode: true,
+  // Disable double rendering which causes issues with editor mounting / unmounting
+  reactStrictMode: false,
+
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    // Allow SVG imports
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: ['@svgr/webpack'],
+    });
+
     config.resolve = {
       ...config.resolve,
       alias: {
         ...config.resolve.alias,
+
         babylonjs: path.resolve(
           __dirname,
           'node_modules/babylonjs/babylon.max.js'

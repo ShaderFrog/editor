@@ -1,34 +1,17 @@
-import dynamic from 'next/dynamic';
-import { threngine } from '@core/plugins/three/threngine';
-import {
-  makeExampleGraph,
-  menuItems,
-  addEngineNode,
-  Editor as SceneComponent,
-} from '../editor-engine-plugins/three';
-
-const DynamicComponentWithNoSSR = dynamic(
-  () => import('../editor/components/Editor'),
-  {
-    ssr: false,
-    loading: () => <div style={{ color: '#fff' }}>Loarfing&hellip;</div>,
-  }
-);
-
-function Editor() {
+function Home() {
   return (
-    <DynamicComponentWithNoSSR
-      assetPrefix=""
-      searchUrl=""
-      engine={threngine}
-      example="DEFAULT"
-      examples={{}}
-      makeExampleGraph={makeExampleGraph}
-      menuItems={menuItems}
-      addEngineNode={addEngineNode}
-      sceneComponent={SceneComponent}
-    />
+    <ul>
+      <li>
+        <a href="/three">Three.js editor</a>
+      </li>
+      <li>
+        <a href="/babylon">Babylon editor</a>
+      </li>
+      <li>
+        <a href="/playcanvas">PlayCanvas editor</a>
+      </li>
+    </ul>
   );
 }
 
-export default Editor;
+export default Home;

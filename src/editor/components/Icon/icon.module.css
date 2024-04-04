@@ -1,0 +1,32 @@
+.icon {
+  position: relative;
+  top: 2px;
+  margin-right: 3px;
+  width: 24px;
+  height: 24px;
+}
+
+.blue {
+  filter: invert(42%) sepia(93%) saturate(3256%) hue-rotate(168deg)
+    brightness(105%) contrast(101%);
+}
+
+.brown {
+  color: #59361f;
+}
+
+.yellowish {
+  color: #f1f1b6;
+}
+
+.success {
+  color: #04ff00;
+}
+
+.greenish {
+  color: #4e690f;
+}
+
+.white {
+  color: #fff;
+}

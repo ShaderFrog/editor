@@ -1863,7 +1863,7 @@ const Editor = ({
               }}
               title={`${isMacintosh() ? `⌘-s` : `Ctrl-s`}`}
             >
-              {isOwnShader ? 'Save' : 'Fork'}
+              {shader.id && !isOwnShader ? 'Fork' : 'Save'}
             </button>
           </div>
         </div>

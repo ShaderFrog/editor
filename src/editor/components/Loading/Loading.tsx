@@ -1,5 +1,5 @@
-import frogLogo from '../../../public/frog-logo.jpg';
-import Icon, { IconName } from '@/editor/components/Icon/Icon';
+import frogLogo from '@public/frog-logo.jpg';
+import Icon, { IconName } from '@editor-components/Icon';
 
 const Loading = ({ name, icon }: { name: string; icon: IconName }) => (
   <div

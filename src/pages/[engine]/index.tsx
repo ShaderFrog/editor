@@ -2,7 +2,7 @@ import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 
 import { stubApi, ClientApiContext, withSWR } from '@editor/api';
-import Loading from '@editor-components/Loading/Loading';
+import Loading from '@editor-components/Loading';
 
 export const Babylon = dynamic(
   () => import('@editor/editor-engine-plugins/babylon/BabylonEditor'),

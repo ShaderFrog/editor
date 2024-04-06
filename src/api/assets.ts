@@ -1,8 +1,8 @@
 import useSWR from 'swr';
-import { API, useApi } from './api';
+import { API } from './api';
+import { AssetsAndGroups } from '@editor/model/Asset';
 
 export const useAssetsAndGroups = () => {
-  const api = useApi();
-  const { data } = useSWR(API.assets, api.getAssetsAndGroups);
-  return data!;
+  const { data } = useSWR(API.assets);
+  return data as AssetsAndGroups;
 };

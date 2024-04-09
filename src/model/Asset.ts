@@ -16,6 +16,10 @@ export const ASSET_SUBTYPES = [
   'AO',
   'ARM',
   'Roughness',
+  'Bump',
+  'Metal',
+  'Mask',
+  'Specular',
 ] as const;
 export type AssetSubtype = (typeof ASSET_SUBTYPES)[number];
 

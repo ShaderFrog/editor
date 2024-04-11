@@ -113,7 +113,7 @@ const showPosition = (id: any, xPos: number, yPos: number) =>
 
 // const computeIOKey = (arr: NodeHandle[]) => arr.map((a) => a.name).join(',');
 
-const InputHande = ({
+const InputHandle = ({
   input,
   top,
   onClick,
@@ -452,7 +452,7 @@ const DataNodeComponent = memo(
         </div>
         <div className="flowInputs">
           {data.inputs.map((input, index) => (
-            <InputHande
+            <InputHandle
               key={input.id}
               input={input}
               top={outputHandleTopWithLabel + index * inputHeight}
@@ -609,7 +609,7 @@ const SourceNodeComponent = memo(
                 {group.name}
               </div>
               {group.inputs.map((input, index) => (
-                <InputHande
+                <InputHandle
                   key={input.id}
                   input={input}
                   top={group.offset + labelHeight + index * inputHeight}

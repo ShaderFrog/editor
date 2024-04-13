@@ -7,7 +7,7 @@ import MonacoEditor, {
 import { editor } from 'monaco-editor';
 import { monacoGlsl } from '../monaco-glsl';
 
-import { Engine, NodeErrors } from '@shaderfrog/core';
+import { Engine, NodeErrors } from '@core';
 import { usePrevious } from '../hooks/usePrevious';
 import { useCallback, useEffect, useRef } from 'react';
 import { GlslSyntaxError } from '@shaderfrog/glsl-parser';

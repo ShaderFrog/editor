@@ -57,14 +57,14 @@ import {
   Graph,
   findLinkedNode,
   SourceNode,
-} from '@shaderfrog/core/graph';
+} from '@core/graph';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
-import { EngineContext } from '@shaderfrog/core/engine';
+import { EngineContext } from '@core/engine';
 import {
   threngine,
   ThreeRuntime,
   createMaterial,
-} from '@shaderfrog/core/plugins/three/threngine';
+} from '@core/plugins/three/threngine';
 
 import {
   Tabs,

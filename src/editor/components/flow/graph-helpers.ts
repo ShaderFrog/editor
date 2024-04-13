@@ -8,8 +8,8 @@ import {
   consSearchResult,
   mergeSearchResults,
   isDataNode,
-} from '@shaderfrog/core/graph';
-import { ensure } from '@shaderfrog/core/util/ensure';
+} from '@core/graph';
+import { ensure } from '@core/util/ensure';
 
 /**
  * Find this node and all its data inputs and edges

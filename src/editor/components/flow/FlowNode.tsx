@@ -17,7 +17,7 @@ import {
   Vector4,
   InputCategory,
   LinkHandle,
-} from '@shaderfrog/core/graph';
+} from '@core/graph';
 
 import { ChangeHandler, useFlowEventHack } from '../../flowEventHack';
 import { replaceAt } from '@editor/util/replaceAt';
@@ -354,7 +354,8 @@ const TextureEditor = ({
   data: FlowNodeDataData;
   onChange: ChangeHandler;
 }) => {
-  const { assets, groups } = useAssetsAndGroups();
+  const { assets } = useAssetsAndGroups();
+  console.log('assets', assets);
   const { openTextureBrowser } = useEditorStore();
   return (
     <div className={styles.textureSelect} onClick={openTextureBrowser}>
@@ -366,7 +367,9 @@ const TextureEditor = ({
           style={{ height: '128px' }}
         />
       ) : null}
-      <div className="flexcenter">Choose a texture</div>
+      <div className={cx('flexcenter', styles.textureBtn)}>
+        Choose a texture
+      </div>
     </div>
   );
   /* <select

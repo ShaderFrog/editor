@@ -1,7 +1,7 @@
 import { MutableRefObject, FunctionComponent } from 'react';
 
-import { Graph, GraphNode, Edge } from '@shaderfrog/core/graph';
-import { Engine, EngineContext } from '@shaderfrog/core/engine';
+import { Graph, GraphNode, Edge } from '@core/graph';
+import { Engine, EngineContext } from '@core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
 import { MenuItem } from './ContextMenu/ContextMenu';
 import {

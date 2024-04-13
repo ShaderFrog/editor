@@ -30,12 +30,12 @@ import {
   TextureNode,
   findLinkedNode,
   SourceNode,
-} from '@shaderfrog/core/graph';
-import { EngineContext, EngineNodeType } from '@shaderfrog/core/engine';
+} from '@core/graph';
+import { EngineContext, EngineNodeType } from '@core/engine';
 import {
   babylengine,
   physicalDefaultProperties,
-} from '@shaderfrog/core/plugins/babylon/bablyengine';
+} from '@core/plugins/babylon/bablyengine';
 
 import styles from '../../editor/styles/editor.module.css';
 

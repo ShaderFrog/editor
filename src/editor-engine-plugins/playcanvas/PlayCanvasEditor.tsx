@@ -1,4 +1,4 @@
-import { engine } from '@shaderfrog/core/plugins/playcanvas';
+import { engine } from '@core/plugins/playcanvas';
 import {
   Editor as PlayCanvasComponent,
   makeExampleGraph,

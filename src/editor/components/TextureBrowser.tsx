@@ -14,6 +14,10 @@ export const assetSortOrder: Record<AssetSubtype, number> = {
   AO: 3,
   Roughness: 4,
   ARM: 5,
+  Bump: 5,
+  Metal: 6,
+  Mask: 7,
+  Specular: 8,
 };
 export const assetSort = (assets: Asset[]) =>
   [...assets].sort(

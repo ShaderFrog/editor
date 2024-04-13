@@ -1,12 +1,5 @@
-import {
-  NodePosition,
-  sourceNode,
-  numberUniformData,
-} from '@shaderfrog/core/graph';
-import {
-  namedAttributeStrategy,
-  uniformStrategy,
-} from '@shaderfrog/core/strategy';
+import { NodePosition, sourceNode, numberUniformData } from '@core/graph';
+import { namedAttributeStrategy, uniformStrategy } from '@core/strategy';
 
 const sinCosVertWarp = (id: string, position: NodePosition) =>
   sourceNode(

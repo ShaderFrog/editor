@@ -56,7 +56,7 @@ import {
   resetGraphIds,
   isError,
   NodeErrors,
-} from '@shaderfrog/core/graph';
+} from '@core/graph';
 
 import FlowEditor, {
   MouseData,
@@ -65,7 +65,7 @@ import FlowEditor, {
   useEditorStore,
 } from './flow/FlowEditor';
 
-import { Engine, EngineContext } from '@shaderfrog/core/engine';
+import { Engine, EngineContext } from '@core/engine';
 
 import useThrottle from '../hooks/useThrottle';
 

@@ -1,5 +1,5 @@
-import { NodePosition, sourceNode } from '@shaderfrog/core/graph';
-import { uniformStrategy } from '@shaderfrog/core/strategy';
+import { NodePosition, sourceNode } from '@core/graph';
+import { uniformStrategy } from '@core/strategy';
 
 const hellOnEarthFrag = (id: string, position: NodePosition) =>
   sourceNode(

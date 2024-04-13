@@ -3,8 +3,8 @@ import {
   sourceNode,
   numberUniformData,
   vectorUniformData,
-} from '@shaderfrog/core/graph';
-import { uniformStrategy } from '@shaderfrog/core/strategy';
+} from '@core/graph';
+import { uniformStrategy } from '@core/strategy';
 
 const juliaF = (id: string, position: NodePosition) =>
   sourceNode(

@@ -7,9 +7,9 @@ import {
   Edge,
   GraphNode,
   linkFromVertToFrag,
-} from '@shaderfrog/core/graph';
+} from '@core/graph';
 import { makeId } from '../../util/id';
-import { engine as playengine } from '@shaderfrog/core/plugins/playcanvas';
+import { engine as playengine } from '@core/plugins/playcanvas';
 import { expandUniformDataNodes } from '@editor-components/useGraph';
 import { MenuItem } from '@editor-components/ContextMenu';
 import { AnySceneConfig } from '@editor-components/editorTypes';

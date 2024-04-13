@@ -26,11 +26,11 @@ import {
   evaluateNode,
   findLinkedNode,
   SourceNode,
-} from '@shaderfrog/core/graph';
+} from '@core/graph';
 import {
   EngineContext,
   collectInitialEvaluatedGraphProperties,
-} from '@shaderfrog/core/engine';
+} from '@core/engine';
 import styles from '../../editor/styles/editor.module.css';
 
 import { usePrevious } from '../../editor/hooks/usePrevious';
@@ -40,7 +40,7 @@ import {
   defaultPropertySetting,
   physicalDefaultProperties,
   playengine,
-} from '@shaderfrog/core/plugins/playcanvas/playengine';
+} from '@core/plugins/playcanvas/playengine';
 import { usePlayCanvas } from './usePlayCanvas';
 import { SceneProps } from '@editor-components/editorTypes';
 

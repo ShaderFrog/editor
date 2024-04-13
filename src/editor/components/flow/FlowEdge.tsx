@@ -6,7 +6,7 @@ import {
   // getEdgeCenter,
   // getMarkerEnd,
 } from 'reactflow';
-import { EdgeLink, EdgeType } from '@shaderfrog/core/graph';
+import { EdgeLink, EdgeType } from '@core/graph';
 
 export type LinkEdgeData = {
   type: 'link';

@@ -6,8 +6,8 @@ import {
   colorUniformData,
   UniformDataType,
   vectorUniformData,
-} from '@shaderfrog/core/graph';
-import { texture2DStrategy, uniformStrategy } from '@shaderfrog/core/strategy';
+} from '@core/graph';
+import { texture2DStrategy, uniformStrategy } from '@core/strategy';
 
 const perlinCloudsF = (
   id: string,

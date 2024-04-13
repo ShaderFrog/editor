@@ -17,13 +17,13 @@ import {
   linkFromVertToFrag,
   isError,
   NodeErrors,
-} from '@shaderfrog/core/graph';
-import { Engine, EngineContext } from '@shaderfrog/core/engine';
+} from '@core/graph';
+import { Engine, EngineContext } from '@core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
 
 import { makeId } from '../../util/id';
-import { addNode, multiplyNode, sourceNode } from '@shaderfrog/core/graph';
-import { texture2DStrategy, uniformStrategy } from '@shaderfrog/core/strategy';
+import { addNode, multiplyNode, sourceNode } from '@core/graph';
+import { texture2DStrategy, uniformStrategy } from '@core/strategy';
 
 const compileGraphAsync = async (
   graph: Graph,

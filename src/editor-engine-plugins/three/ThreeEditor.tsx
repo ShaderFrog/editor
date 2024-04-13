@@ -1,4 +1,4 @@
-import { engine } from '@shaderfrog/core/plugins/three';
+import { engine } from '@core/plugins/three';
 import {
   Editor as ThreeComponent,
   makeExampleGraph,

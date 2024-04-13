@@ -8,7 +8,7 @@ import {
   useCallback,
 } from 'react';
 
-import { SourceNode } from '@shaderfrog/core/graph';
+import { SourceNode } from '@core/graph';
 
 import ShaderPreview from './ShaderPreview';
 import { Shader } from '@editor/model/Shader';

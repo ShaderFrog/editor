@@ -4,8 +4,8 @@ import {
   numberUniformData,
   UniformDataType,
   vectorUniformData,
-} from '@shaderfrog/core/graph';
-import { uniformStrategy } from '@shaderfrog/core/strategy';
+} from '@core/graph';
+import { uniformStrategy } from '@core/strategy';
 
 const purpleNoiseNode = (
   id: string,

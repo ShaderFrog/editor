@@ -1,4 +1,4 @@
-import { Edge, GraphNode } from '@shaderfrog/core';
+import { Edge, GraphNode } from '@core';
 import { Tag } from './Tag';
 
 export const SHADER_VISIBILITY = {

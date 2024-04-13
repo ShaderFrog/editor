@@ -3,8 +3,8 @@ import {
   sourceNode,
   numberUniformData,
   textureUniformData,
-} from '@shaderfrog/core/graph';
-import { texture2DStrategy, uniformStrategy } from '@shaderfrog/core/strategy';
+} from '@core/graph';
+import { texture2DStrategy, uniformStrategy } from '@core/strategy';
 
 const badTvFrag = (id: string, position: NodePosition) =>
   sourceNode(

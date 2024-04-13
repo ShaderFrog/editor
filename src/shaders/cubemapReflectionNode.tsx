@@ -1,9 +1,5 @@
-import {
-  NodePosition,
-  sourceNode,
-  samplerCubeUniformData,
-} from '@shaderfrog/core/graph';
-import { uniformStrategy } from '@shaderfrog/core/strategy';
+import { NodePosition, sourceNode, samplerCubeUniformData } from '@core/graph';
+import { uniformStrategy } from '@core/strategy';
 
 const cubemapReflectionF = (id: string, position: NodePosition) =>
   sourceNode(

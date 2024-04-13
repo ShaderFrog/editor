@@ -28,6 +28,9 @@
       "@editor/*": ["./src/*"],
       "@editor-components/*": ["./src/editor/components/*"],
       "@public/*": ["./public/*"],
+      // This enables the core site to use the symlinked version for dev
+      "@core/*": ["./node_modules/@shaderfrog/core/*"],
+      "@core": ["./node_modules/@shaderfrog/core"],
     },
     "composite": true,
     "noEmit": false,

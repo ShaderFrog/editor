@@ -1,9 +1,5 @@
-import {
-  NodePosition,
-  sourceNode,
-  numberUniformData,
-} from '@shaderfrog/core/graph';
-import { texture2DStrategy, uniformStrategy } from '@shaderfrog/core/strategy';
+import { NodePosition, sourceNode, numberUniformData } from '@core/graph';
+import { texture2DStrategy, uniformStrategy } from '@core/strategy';
 
 const normalMapify = (id: string, position: NodePosition) =>
   sourceNode(

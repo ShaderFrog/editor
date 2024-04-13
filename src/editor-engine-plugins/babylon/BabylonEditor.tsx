@@ -1,4 +1,4 @@
-import { engine } from '@shaderfrog/core/plugins/babylon';
+import { engine } from '@core/plugins/babylon';
 import {
   Editor as BabylonComponent,
   makeExampleGraph,

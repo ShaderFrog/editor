@@ -1,14 +1,9 @@
 import cx from 'classnames';
 import React from 'react';
 
-import { EngineContext } from '@shaderfrog/core/engine';
-import { Strategy, StrategyType } from '@shaderfrog/core/strategy';
-import {
-  SourceNode,
-  SourceType,
-  Graph,
-  findLinkedNode,
-} from '@shaderfrog/core/graph';
+import { EngineContext } from '@core/engine';
+import { Strategy, StrategyType } from '@core/strategy';
+import { SourceNode, SourceType, Graph, findLinkedNode } from '@core/graph';
 
 import styles from '../styles/editor.module.css';
 

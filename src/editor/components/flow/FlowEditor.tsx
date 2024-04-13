@@ -12,8 +12,8 @@ import ReactFlow, {
   ReactFlowInstance,
 } from 'reactflow';
 
-import { NodeType, GraphDataType } from '@shaderfrog/core/graph';
-import { EngineNodeType } from '@shaderfrog/core/engine';
+import { NodeType, GraphDataType } from '@core/graph';
+import { EngineNodeType } from '@core/engine';
 
 import ConnectionLine from './ConnectionLine';
 import FlowEdgeComponent from './FlowEdge';

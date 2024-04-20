@@ -560,3 +560,7 @@ textarea.error {
   position: relative;
   top: 2px;
 }
+
+.textureSearch {
+  min-width: 200px;
+}

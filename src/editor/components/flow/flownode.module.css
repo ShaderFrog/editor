@@ -50,3 +50,46 @@
   margin-left: 4px;
   color: #888;
 }
+
+.textureSelect {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  border: 1px solid #666;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.textureImg {
+  position: relative;
+  z-index: 2;
+  background-size: cover;
+  width: 100%;
+  height: 100%;
+}
+.textureBtn {
+  transition: 0.2s all ease;
+  box-shadow: inset 0 0 20px #222;
+  background: #333;
+  padding: 12px;
+  color: #ddd;
+  cursor: pointer;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
+.hasImg .textureBtn {
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: none;
+}
+.textureSelect:hover .textureBtn {
+  z-index: 2;
+}
+.textureSelect:not(.hasImg):hover .textureBtn {
+  background: #555;
+}
+
+.versionSelector {
+  width: 128px;
+}

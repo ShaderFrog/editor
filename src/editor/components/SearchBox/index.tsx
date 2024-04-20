@@ -8,9 +8,11 @@ import {
 const SearchBox = ({
   value,
   onChange,
+  placeholder,
 }: {
   value: string;
   onChange: (newValue: string) => void;
+  placeholder?: string;
 }) => {
   return (
     <div className="searchwrap">
@@ -18,7 +20,7 @@ const SearchBox = ({
       <input
         type="text"
         className="textinput searchinput"
-        placeholder="Filter Assets"
+        placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyUp={(e) => {

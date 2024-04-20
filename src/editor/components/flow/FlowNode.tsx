@@ -27,6 +27,7 @@ import { useEditorStore } from './FlowEditor';
 import { useAssetsAndGroups } from '@editor/api';
 
 import styles from './flownode.module.css';
+import { AssetVersionNodeData } from '@core/graph';
 const cx = classnames.bind(styles);
 
 const headerHeight = 30;
@@ -113,7 +114,7 @@ const showPosition = (id: any, xPos: number, yPos: number) =>
 
 // const computeIOKey = (arr: NodeHandle[]) => arr.map((a) => a.name).join(',');
 
-const InputHandle = ({
+const InputHande = ({
   input,
   top,
   onClick,
@@ -354,43 +355,55 @@ const TextureEditor = ({
   data: FlowNodeDataData;
   onChange: ChangeHandler;
 }) => {
+  const { currentUser } = useFlowGraphContext();
+  const hasHighRes = currentUser?.isPro;
   const { assets } = useAssetsAndGroups();
-  console.log('assets', assets);
   const { openTextureBrowser } = useEditorStore();
+  const tData = data.value as AssetVersionNodeData;
+
+  const asset = assets[tData?.assetId];
+  const versions = asset?.versions || [];
+  const version = versions.find((v) => v.id === tData?.versionId);
   return (
-    <div className={styles.textureSelect} onClick={openTextureBrowser}>
-      {data.value in assets ? (
-        // TODO: NEED TO PICK THE RIGHT VERSION HERE
-        <img
-          src={assets[data.value].versions[0].thumbnail}
-          alt={assets[data.value].name}
-          style={{ height: '128px' }}
-        />
-      ) : null}
-      <div className={cx('flexcenter', styles.textureBtn)}>
-        Choose a texture
-      </div>
-    </div>
-  );
-  /* <select
-        className="nodrag select"
-        style={{ width: '100%' }}
-        onChange={(e) => onChange(id, e.currentTarget.value)}
-        value={data.value}
+    <>
+      <div
+        className={cx(styles.textureSelect, { [styles.hasImg]: !!asset })}
+        onClick={openTextureBrowser}
       >
-        <option>Choose a texture</option>
-        {textures.texture.map((t) => (
-          <option key={t[0]} value={t[0]}>
-            {t[1]}
-          </option>
-        ))}
-        {Object.values(assets).map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-            {a.subtype ? ` (${a.subtype})` : null}
-          </option>
-        ))}
-      </select> */
+        {version ? (
+          <div
+            className={styles.textureImg}
+            style={{
+              backgroundImage: `url(${version.thumbnail})`,
+            }}
+          />
+        ) : null}
+        <div className={cx('flexCentered center', styles.textureBtn)}>
+          {asset ? 'Replace' : 'Choose a texture'}
+        </div>
+      </div>
+
+      {versions.length > 1 ? (
+        <select
+          className={cx('nodrag select m-top-5', styles.versionSelector)}
+          onChange={(e) =>
+            onChange(id, {
+              ...tData!,
+              versionId: parseFloat(e.currentTarget.value),
+            })
+          }
+          value={version?.id}
+        >
+          {asset.versions.map((v, i) => (
+            <option key={v.id} value={v.id} disabled={!hasHighRes && i > 0}>
+              {v.resolution}
+              {i > 0 ? ' (PRO)' : ''}
+            </option>
+          ))}
+        </select>
+      ) : null}
+    </>
+  );
 };
 
 const SamplerEditor = ({
@@ -455,7 +468,7 @@ const DataNodeComponent = memo(
         </div>
         <div className="flowInputs">
           {data.inputs.map((input, index) => (
-            <InputHandle
+            <InputHande
               key={input.id}
               input={input}
               top={outputHandleTopWithLabel + index * inputHeight}
@@ -612,7 +625,7 @@ const SourceNodeComponent = memo(
                 {group.name}
               </div>
               {group.inputs.map((input, index) => (
-                <InputHandle
+                <InputHande
                   key={input.id}
                   input={input}
                   top={group.offset + labelHeight + index * inputHeight}

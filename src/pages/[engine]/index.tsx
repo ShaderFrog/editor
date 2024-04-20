@@ -1,7 +1,7 @@
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 
-import { stubApi, ClientApiContext, withSWR } from '@editor/api';
+import { stubApi, ClientApiContext, withSWR, STUB_USER } from '@editor/api';
 import Loading from '@editor-components/Loading';
 
 export const Babylon = dynamic(
@@ -42,6 +42,7 @@ function Editor() {
         isDeleting={false}
         isAuthenticated={false}
         isOwnShader={false}
+        currentUser={STUB_USER}
         onCreateShader={async () => {}}
         onUpdateShader={async () => {}}
       />

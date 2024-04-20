@@ -7,6 +7,11 @@ export const SHADER_VISIBILITY = {
   PRIVTE: 3,
 } as const;
 
+export type ShaderUser = {
+  name: string;
+  isPro: boolean;
+};
+
 export type Shader = {
   // Not persisted
   id?: string;
@@ -15,10 +20,7 @@ export type Shader = {
   updatedAt: Date;
   image?: string | null;
   tags: Tag[];
-  user: {
-    name: string;
-    isPro: boolean;
-  };
+  user: ShaderUser;
   name: string;
   // Description is not an optional key, but there's a bug in Zod, see note in
   // src/pages/api/shader/index.ts

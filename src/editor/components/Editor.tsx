@@ -148,6 +148,7 @@ const Editor = ({
   menuItems,
   sceneComponent: SceneComponent,
   addEngineNode,
+  currentUser,
 }: EditorProps & EngineProps) => {
   const reactFlowStore = useStoreApi();
   const { addSelectedNodes } = reactFlowStore.getState();
@@ -1904,9 +1905,9 @@ const Editor = ({
               <div className={styles.splitInner} ref={reactFlowWrapper}>
                 {isTextureBrowserOpen ? (
                   <TextureBrowser
-                    onSelect={(asset) => {
+                    onSelect={(av) => {
                       if (selectedNode?.type === 'texture') {
-                        onNodeValueChange(selectedNode.id, asset.id);
+                        onNodeValueChange(selectedNode.id, av);
                       }
                     }}
                     onClose={() => closeTextureBrowser()}
@@ -2259,7 +2260,11 @@ const Editor = ({
 
   return (
     <FlowGraphContext.Provider
-      value={{ onInputBakedToggle, jumpToError: openNodeEditor }}
+      value={{
+        onInputBakedToggle,
+        jumpToError: openNodeEditor,
+        currentUser,
+      }}
     >
       <div
         className={cx(styles.editorContainer, {

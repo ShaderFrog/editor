@@ -1,3 +1,4 @@
+import { CurrentUser } from '../model';
 import { ClientApi } from './ClientApi';
 import { API } from './api';
 
@@ -14,4 +15,15 @@ export const stubApi: ClientApi = {
 // Stub data injected at page load time for SWR
 export const stubApiData = {
   [API.assets]: [],
+};
+
+export const STUB_USER: CurrentUser = {
+  id: '1',
+  isPro: false,
+  name: 'Test User',
+  image: null,
+  email: null,
+  roles: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };

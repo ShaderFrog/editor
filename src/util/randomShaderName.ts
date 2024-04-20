@@ -1,6 +1,7 @@
 const randomArr = <T extends unknown>(arr: Array<T>): T =>
   arr[Math.floor(Math.random() * arr.length)];
 const words1 = [
+  'Fuzzy',
   'Screaming',
   'Happy',
   'Ecstatic',
@@ -17,6 +18,7 @@ const words1 = [
   'Visible',
   'Lucky',
   'Bright',
+  'Dancing',
   'Abundant',
   'Melodic',
   'Flagrant',
@@ -54,6 +56,7 @@ const words1 = [
   'Significant',
   'Common',
   'Fortunate',
+  'Portable',
 ];
 const words2 = [
   'Frog',
@@ -86,6 +89,7 @@ const words2 = [
   'Dog',
   'Flea',
   'Adventure',
+  'Club',
 ];
 const randomShaderName = () => `${randomArr(words1)} ${randomArr(words2)}`;
 

@@ -184,14 +184,7 @@ const createGraphNode = (
       ),
     ];
   } else if (nodeDataType === 'texture') {
-    newGns = [
-      textureNode(
-        id,
-        makeName('texture'),
-        position,
-        defaultValue || 'grayscale-noise'
-      ),
-    ];
+    newGns = [textureNode(id, makeName('texture'), position, defaultValue)];
   } else if (nodeDataType === 'vector2') {
     newGns = [
       vectorNode(id, makeName('vec2'), position, defaultValue || ['1', '1']),

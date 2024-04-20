@@ -17,7 +17,7 @@ import {
   Texture,
   Vec3,
 } from 'playcanvas';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   mangleVar,
@@ -26,6 +26,7 @@ import {
   evaluateNode,
   findLinkedNode,
   SourceNode,
+  AssetVersionNodeData,
 } from '@core/graph';
 import {
   EngineContext,
@@ -43,6 +44,7 @@ import {
 } from '@core/plugins/playcanvas/playengine';
 import { usePlayCanvas } from './usePlayCanvas';
 import { SceneProps } from '@editor-components/editorTypes';
+import { useAssetsAndGroups } from '@editor/api';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -166,39 +168,22 @@ let hackShaderDefinition: (event: {
   definition: any;
 }) => void;
 
-const loadAsset = (
-  app: Application,
-  name: string,
-  url: string
-): Promise<Asset> =>
-  new Promise((resolve) => {
-    const cubemapAsset = new Asset(
-      name,
-      'cubemap',
-      {
-        url,
-      },
-      {}
-    );
+const useTextureLoader = (app: Application) =>
+  useCallback(
+    (path: string): Texture => {
+      const texture = new Texture(app.graphicsDevice, { name: path });
 
-    app.assets.add(cubemapAsset);
-    app.assets.load(cubemapAsset);
-    cubemapAsset.ready(() => resolve(cubemapAsset));
-  });
-
-const buildTextureLoader =
-  (app: Application) =>
-  async (path: string): Promise<Texture> =>
-    new Promise((resolve) => {
       const image = new Image();
       image.crossOrigin = 'anonymous';
-      const texture = new Texture(app.graphicsDevice, { name: path });
       image.onload = () => {
         texture.setSource(image);
-        resolve(texture);
       };
       image.src = path;
-    });
+
+      return texture;
+    },
+    [app]
+  );
 
 const PlayCanvasComponent: React.FC<SceneProps> = ({
   compile,
@@ -280,9 +265,15 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
               }
               let newValue = value;
               if (fromNode.type === 'texture') {
-                // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
-                newValue = textures[(fromNode as TextureNode).value];
-                // console.log('setting texture', newValue, 'from', fromNode);
+                const value = (fromNode as TextureNode).value;
+                // If you assign undefined to a material property it causes
+                // playcanvas to crash. New graph nodes don't have textures until
+                // the user picks one. This causes a problem though: The object
+                // is black until the user chooses a texture. TODO?
+                if (value) {
+                  // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
+                  newValue = loadTexture(value as AssetVersionNodeData);
+                }
               }
               if (fromNode.type === 'samplerCube') {
                 newValue = textures[(fromNode as SamplerCubeNode).value];
@@ -331,49 +322,42 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
       }
     });
 
+  const textureLoader = useTextureLoader(app);
+
+  const { assets } = useAssetsAndGroups();
+  const textureCacheKey = (value: AssetVersionNodeData) =>
+    `${value.assetId}-${value.versionId}`;
+  const textureCache = useRef<Record<string, Texture>>({});
+  const loadTexture = useCallback(
+    (value: AssetVersionNodeData) => {
+      if (!textureCache.current) {
+        return;
+      }
+      if (typeof value !== 'object') {
+        return;
+      }
+      const key = textureCacheKey(value);
+      if (textureCache.current[key]) {
+        return textureCache.current[key];
+      }
+      const { assetId, versionId } = value;
+      if (value.assetId in assets) {
+        const { versions } = assets[assetId];
+        const { url } = versions.find((v) => v.id === versionId) || {};
+        if (!url) {
+          return;
+        }
+        const tex = textureLoader(url);
+        textureCache.current[key] = tex;
+        return tex;
+      }
+    },
+    [assets, textureCache, textureLoader]
+  );
+
   const [textures, setTextures] = useState<
     Record<string, Texture | Asset | null> | undefined
   >();
-  useEffect(() => {
-    const load = async () => {
-      const textureLoader = buildTextureLoader(app);
-      setTextures({
-        explosion: await textureLoader(path('/explosion.png')),
-        'grayscale-noise': await textureLoader(path('/grayscale-noise.png')),
-        threeTone: await textureLoader(path('/3tone.jpg')),
-        patternedBrickDiff: await textureLoader(
-          path('/patterned_brick_floor_02_diff.jpg')
-        ),
-        patternedBrickDisplacement: await textureLoader(
-          path('/patterned_brick_floor_02_disp.jpg')
-        ),
-        patternedBrickNormal: await textureLoader(
-          path('/patterned_brick_floor_02_normal.jpg')
-        ),
-        brick: await textureLoader(path('/bricks.jpeg')),
-        brickNormal: await textureLoader(path('/bricknormal.jpeg')),
-        pebbles: await textureLoader(path('/Big_pebbles_pxr128.jpeg')),
-        pebblesNormal: await textureLoader(
-          path('/Big_pebbles_pxr128_normal.jpeg')
-        ),
-        pebblesBump: await textureLoader(path('/Big_pebbles_pxr128_bmp.jpeg')),
-        testNormal: await textureLoader(path('/testNormalMap.png')),
-        testBump: await textureLoader(path('/testBumpMap.png')),
-        pondCubeMap: null,
-        cityCourtYard: await loadAsset(
-          app,
-          'city',
-          path('/envmaps/citycourtyard.dds')
-        ),
-        warehouseEnvTexture: await loadAsset(
-          app,
-          'city',
-          path('/envmaps/room.hdr')
-        ),
-      });
-    };
-    load();
-  }, [path, app]);
 
   useEffect(() => {
     app.graphicsDevice.on('shader:generate', (info) => {

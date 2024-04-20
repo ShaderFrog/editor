@@ -57,6 +57,7 @@ import {
   Graph,
   findLinkedNode,
   SourceNode,
+  AssetVersionNodeData,
 } from '@core/graph';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import { EngineContext } from '@core/engine';
@@ -445,7 +446,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
               if (fromNode.type === 'texture') {
                 // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
                 const val = (fromNode as TextureNode).value;
-                newValue = loadTexture(val as string) || textures[val];
+                newValue = loadTexture(val as AssetVersionNodeData);
               }
               // TODO RENDER TARGET
               if (fromNode.type === 'samplerCube') {
@@ -496,26 +497,35 @@ const ThreeComponent: React.FC<SceneProps> = ({
   );
 
   const { assets } = useAssetsAndGroups();
+  const textureCacheKey = (value: AssetVersionNodeData) =>
+    `${value.assetId}-${value.versionId}`;
   const textureCache = useRef<Record<string, Texture>>({});
   const loadTexture = useCallback(
-    (id: string) => {
+    (value: AssetVersionNodeData) => {
       if (!textureCache.current) {
         return;
       }
-      if (textureCache.current[id]) {
-        return textureCache.current[id];
+      if (typeof value !== 'object') {
+        return;
       }
-      if (id in assets) {
-        const { subtype } = assets[id];
-        // TODO: Need to load the right version here!
-        const { url } = assets[id].versions[0];
+      const key = textureCacheKey(value);
+      if (textureCache.current[key]) {
+        return textureCache.current[key];
+      }
+      const { assetId, versionId } = value;
+      if (value.assetId in assets) {
+        const { subtype, versions } = assets[assetId];
+        const { url } = versions.find((v) => v.id === versionId) || {};
+        if (!url) {
+          return;
+        }
         const tl = new TextureLoader();
         const texture = repeat(tl.load(url), 3, 3);
         if (subtype === 'Diffuse') {
           texture.encoding = sRGBEncoding;
         }
         texture.anisotropy = 16;
-        textureCache.current[id] = texture;
+        textureCache.current[key] = texture;
         return texture;
       }
     },
@@ -966,7 +976,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
               // THIS DUPLICATES OTHER LINE
               // This is instantiation of initial shader
               const val = (fromNode as TextureNode).value;
-              newValue = loadTexture(val as string) || textures[val];
+              newValue = loadTexture(val as AssetVersionNodeData);
             } else if (fromNode.type === 'samplerCube') {
               newValue = textures[(fromNode as SamplerCubeNode).value];
             }

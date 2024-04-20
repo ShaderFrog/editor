@@ -4,8 +4,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import groupBy from 'lodash.groupby';
 import { Asset, AssetSubtype } from '@editor/model/Asset';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faMagnifyingGlass, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import { useAssetsAndGroups } from '@editor/api';
+import { AssetVersionNodeData } from '@core/graph';
+import SearchBox from './SearchBox';
 
 export const assetSortOrder: Record<AssetSubtype, number> = {
   Diffuse: 0,
@@ -28,7 +30,7 @@ const TextureBrowser = ({
   onSelect,
   onClose,
 }: {
-  onSelect: (a: Asset) => void;
+  onSelect: (a: AssetVersionNodeData) => void;
   onClose: () => void;
 }) => {
   const { assets, groups } = useAssetsAndGroups();
@@ -43,6 +45,7 @@ const TextureBrowser = ({
   );
 
   const doSearch = (search: string) => {
+    setSearch(search);
     if (showGroups) {
       setFilteredGroups(
         Object.values(groups).filter(
@@ -62,17 +65,10 @@ const TextureBrowser = ({
     }
   };
 
-  const onChange = (event: React.FormEvent<HTMLInputElement>) => {
-    const search = event.currentTarget.value || '';
-    setSearch(search);
-    doSearch(search);
-  };
-
   const handleChange = (event: React.FormEvent<HTMLInputElement>) => {
     setShowGroups(event.currentTarget.value === 'true');
   };
   useEffect(() => {
-    setSearch('');
     doSearch('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showGroups]);
@@ -89,45 +85,16 @@ const TextureBrowser = ({
         <FontAwesomeIcon icon={faTimes} />
       </button>
       <div className={styles.modalContent}>
-        <div className="grid col2 shrinkGrow">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              doSearch(search);
-            }}
-            className="searchwrap m-bottom-10"
-            style={{ width: '200px' }}
-          >
-            <FontAwesomeIcon icon={faMagnifyingGlass} />
-            <input
-              name="search"
-              className="textinput searchinput"
-              placeholder="Search textures"
+        <div className="grid col2 shrinkGrow m-bottom-10">
+          <div className={styles.textureSearch}>
+            <SearchBox
               value={search}
-              onChange={onChange}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  doSearch(search);
-                }
-                if (event.key === 'Escape') {
-                  setSearch('');
-                  doSearch('');
-                }
-              }}
+              onChange={doSearch}
+              placeholder="Search textures"
             />
-          </form>
+          </div>
           <div>
             <div className="grid col2 m-left-10 shrinkGrow gap25">
-              <label className={styles.radioLabel}>
-                <input
-                  type="radio"
-                  name="showGroups"
-                  value="false"
-                  checked={!showGroups}
-                  onChange={handleChange}
-                />
-                Browse Asset Groups
-              </label>
               <label className={styles.radioLabel}>
                 <input
                   type="radio"
@@ -136,28 +103,22 @@ const TextureBrowser = ({
                   checked={showGroups}
                   onChange={handleChange}
                 />
+                Browse Asset Groups
+              </label>
+              <label className={styles.radioLabel}>
+                <input
+                  type="radio"
+                  name="showGroups"
+                  value="false"
+                  checked={!showGroups}
+                  onChange={handleChange}
+                />
                 Browse Textures
               </label>
             </div>
           </div>
         </div>
         {showGroups ? (
-          <div className={styles.assetList}>
-            {filteredAssets.map((asset) => (
-              <div
-                key={`${asset.name}${asset.subtype}`}
-                className={styles.assetCard}
-                onClick={() => onSelect(asset)}
-              >
-                <div className={styles.assetThumbnail}>
-                  {/* TODO: NEED TO PICK RIGHT ASSET VERSION HERE */}
-                  <img src={asset.versions[0].thumbnail} alt={asset.name} />
-                </div>
-                <div className={styles.assetSubtype}>{asset.name}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
           filteredGroups.map((group) => (
             <div key={group.id} className={styles.assetGroup}>
               <div title={group.description} className={styles.groupTitle}>
@@ -166,12 +127,16 @@ const TextureBrowser = ({
               <div className={styles.groupList}>
                 {assetSort(assetsByGroupId[group.id]).map((asset) => (
                   <div
-                    key={`${asset.name}${asset.subtype}`}
+                    key={asset.id}
                     className={styles.assetCard}
-                    onClick={() => onSelect(asset)}
+                    onClick={() =>
+                      onSelect({
+                        assetId: asset.id,
+                        versionId: asset.versions[0].id,
+                      })
+                    }
                   >
                     <div className={styles.assetThumbnail}>
-                      {/* TODO: NEED TO PICK RIGHT ASSET VERSION HERE */}
                       <img src={asset.versions[0].thumbnail} alt={asset.name} />
                     </div>
                     <div className={styles.assetSubtype}>{asset.subtype}</div>
@@ -180,6 +145,26 @@ const TextureBrowser = ({
               </div>
             </div>
           ))
+        ) : (
+          <div className={styles.assetList}>
+            {filteredAssets.map((asset) => (
+              <div
+                key={asset.id}
+                className={styles.assetCard}
+                onClick={() =>
+                  onSelect({
+                    assetId: asset.id,
+                    versionId: asset.versions[0].id,
+                  })
+                }
+              >
+                <div className={styles.assetThumbnail}>
+                  <img src={asset.versions[0].thumbnail} alt={asset.name} />
+                </div>
+                <div className={styles.assetSubtype}>{asset.name}</div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

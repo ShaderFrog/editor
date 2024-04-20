@@ -9,6 +9,7 @@ import {
   ShaderCreateInput,
   ShaderUpdateInput,
 } from '@editor/model/Shader';
+import { CurrentUser } from '@/model';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -57,6 +58,7 @@ export type EditorProps = {
   isDeleting?: boolean;
   onCreateShader?: (shader: ShaderCreateInput) => Promise<void>;
   onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
+  currentUser: CurrentUser;
 };
 
 /**

@@ -30,6 +30,7 @@ import {
   TextureNode,
   findLinkedNode,
   SourceNode,
+  AssetVersionNodeData,
 } from '@core/graph';
 import { EngineContext, EngineNodeType } from '@core/engine';
 import {
@@ -43,6 +44,7 @@ import { useBabylon } from './useBabylon';
 import { usePrevious } from '../../editor/hooks/usePrevious';
 import { useSize } from '../../editor/hooks/useSize';
 import { SceneProps } from '@editor-components/editorTypes';
+import { useAssetsAndGroups } from '@editor/api';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -224,6 +226,37 @@ const BabylonComponent: React.FC<SceneProps> = ({
     engine.endFrame();
   });
 
+  const { assets } = useAssetsAndGroups();
+  const textureCacheKey = (value: AssetVersionNodeData) =>
+    `${value.assetId}-${value.versionId}`;
+  const textureCache = useRef<Record<string, Texture>>({});
+  const loadTexture = useCallback(
+    (value: AssetVersionNodeData) => {
+      if (!textureCache.current) {
+        return;
+      }
+      if (typeof value !== 'object') {
+        return;
+      }
+      const key = textureCacheKey(value);
+      if (textureCache.current[key]) {
+        return textureCache.current[key];
+      }
+      const { assetId, versionId } = value;
+      if (value.assetId in assets) {
+        const { versions } = assets[assetId];
+        const { url } = versions.find((v) => v.id === versionId) || {};
+        if (!url) {
+          return;
+        }
+        const tex = new Texture(url, scene);
+        textureCache.current[key] = tex;
+        return tex;
+      }
+    },
+    [assets, textureCache, scene]
+  );
+
   const textures = useMemo<
     Record<string, Texture | HDRCubeTexture | CubeTexture | null>
   >(
@@ -373,7 +406,9 @@ const BabylonComponent: React.FC<SceneProps> = ({
                   let newValue = value;
                   if (fromNode.type === 'texture') {
                     // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
-                    newValue = textures[(fromNode as TextureNode).value];
+                    newValue = loadTexture(
+                      (fromNode as TextureNode).value as AssetVersionNodeData
+                    );
                     // console.log('setting texture', newValue, 'from', fromNode);
                   }
                   if (fromNode.type === 'samplerCube') {
@@ -382,8 +417,8 @@ const BabylonComponent: React.FC<SceneProps> = ({
 
                   if (input.type === 'property' && input.property) {
                     if (
-                      !newValue.url ||
-                      material[input.property]?.url !== newValue.url
+                      !newValue?.url ||
+                      material[input.property]?.url !== newValue?.url
                     ) {
                       material[input.property] = newValue;
                     }
@@ -427,7 +462,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
         }
       }
     },
-    [compileResult?.dataInputs, sceneData.mesh, graph, textures]
+    [compileResult?.dataInputs, sceneData.mesh, graph, textures, loadTexture]
   );
 
   useOnMeshDraw(sceneData.mesh, meshUpdater);

@@ -103,7 +103,11 @@ const EffectSearch = ({
       <div>
         <label className="label">Effect Search</label>
         <div className="m-bottom-10">
-          <SearchBox value={search} onChange={onChange} />
+          <SearchBox
+            value={search}
+            onChange={onChange}
+            placeholder="Search effects"
+          />
         </div>
         {suggestions.map((s) => (
           <div

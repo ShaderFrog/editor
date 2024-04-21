@@ -323,28 +323,11 @@ const NumberEditor = ({
   </>
 );
 
-const textures: Record<'texture' | 'samplerCube', [string, string][]> = {
-  texture: [
-    ['grayscale-noise', 'Grayscale Noise'],
-    ['patternedBrickDiff', 'Brown Bricks'],
-    ['patternedBrickNormal', 'Brown Bricks Normal'],
-    ['patternedBrickDisplacement', 'Brown Bricks Displacement'],
-    ['brick', 'Red Bricks'],
-    ['brickNormal', 'Red Brick Normal Map'],
-    ['pebbles', 'Pebbbles'],
-    ['pebblesNormal', 'Pebbbles Normal Map'],
-    ['pebblesBump', 'Pebbbles Bump Map'],
-    ['testNormal', 'Test Normal Map'],
-    ['testBump', 'Test Bump Map'],
-    ['threeTone', 'Three Tone'],
-    ['explosion', 'Yellow Gradient'],
-  ],
-  samplerCube: [
-    ['warehouseEnvTexture', 'Warehouse Env Map'],
-    ['pondCubeMap', 'Pond Cube Map'],
-    ['cubeCamera', 'Cube Camera'],
-  ],
-};
+const samplerCubes: [string, string][] = [
+  ['warehouseEnvTexture', 'Warehouse Env Map'],
+  ['pondCubeMap', 'Pond Cube Map'],
+  ['cubeCamera', 'Cube Camera'],
+];
 
 const TextureEditor = ({
   id,
@@ -413,7 +396,7 @@ const SamplerEditor = ({
   onChange,
 }: {
   id: string;
-  tex: (typeof textures)['samplerCube'];
+  tex: typeof samplerCubes;
   data: FlowNodeDataData;
   onChange: ChangeHandler;
 }) => (
@@ -493,7 +476,7 @@ const DataNodeComponent = memo(
               id={id}
               data={data}
               onChange={onChange}
-              tex={textures.samplerCube}
+              tex={samplerCubes}
             />
           ) : (
             <div>NOOOOOO FlowNode for {data.type}</div>

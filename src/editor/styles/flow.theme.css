@@ -108,7 +108,6 @@
 }
 .react-flow__edge-path-selector:hover + .react-flow__edge-path,
 .react-flow__edge-path:hover {
-  stroke: #555;
   cursor: pointer;
 }
 

@@ -261,32 +261,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
     Record<string, Texture | HDRCubeTexture | CubeTexture | null>
   >(
     () => ({
-      explosion: new Texture(path('/explosion.png'), scene),
-      'grayscale-noise': new Texture(path('/grayscale-noise.png'), scene),
-      threeTone: new Texture(path('/3tone.jpg'), scene),
-      patternedBrickDiff: new Texture(
-        path('/patterned_brick_floor_02_diff.jpg'),
-        scene
-      ),
-      patternedBrickDisplacement: new Texture(
-        path('/patterned_brick_floor_02_disp.jpg'),
-        scene
-      ),
-      patternedBrickNormal: new Texture(
-        path('/patterned_brick_floor_02_normal.jpg'),
-        scene
-      ),
-      brick: new Texture(path('/bricks.jpeg'), scene),
-      brickNormal: new Texture(path('/bricknormal.jpeg'), scene),
-      pebbles: new Texture(path('/Big_pebbles_pxr128.jpeg'), scene),
-      pebblesNormal: new Texture(
-        path('/Big_pebbles_pxr128_normal.jpeg'),
-        scene
-      ),
-      testBump: new Texture(path('/testBumpMap.png'), scene),
-      testNormal: new Texture(path('/testNormalMap.png'), scene),
-      pebblesBump: new Texture(path('/Big_pebbles_pxr128_bmp.jpeg'), scene),
-      pondCubeMap: null,
+      empty: new Texture(path('/1x1px.png'), scene),
       warehouseEnvTexture: new HDRCubeTexture(
         path('/envmaps/room.hdr'),
         scene,
@@ -550,7 +525,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
         // @ts-ignore
         if (edge) {
           if (input?.dataType === 'texture' && input.property) {
-            graphProperties[input.property] = textures.brickNormal as Texture;
+            graphProperties[input.property] = textures.empty as Texture;
           }
         }
       });
@@ -712,7 +687,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
       console.warn('No mesh to assign the material to!');
     }
     // sceneRef.current.shadersUpdated = true;
-  }, [scene, compileResult, textures.brickNormal, sceneData.mesh]);
+  }, [scene, compileResult, textures.empty, sceneData.mesh]);
 
   const prevLights = usePrevious(sceneConfig.lights);
   const previousShowHelpers = usePrevious(sceneConfig.showHelpers);
@@ -968,8 +943,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
             >
               <option value="none">None</option>
               <option value="warehouseEnvTexture">Warehouse</option>
-              <option value="pondCubeMap">Pond Cube Map</option>
-              <option value="modelviewer">Model Viewer</option>
+              <option value="cityCourtYard">City Court Yard</option>
             </select>
           </div>
         </div>

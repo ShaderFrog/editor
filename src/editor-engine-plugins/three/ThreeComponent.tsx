@@ -532,71 +532,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     [assets, textureCache]
   );
 
-  const textures = useMemo<Record<string, any>>(() => {
-    return {
-      explosion: new TextureLoader().load(path('/explosion.png')),
-      'grayscale-noise': repeat(
-        new TextureLoader().load(path('/grayscale-noise.png')),
-        1,
-        1
-      ),
-      threeTone: (() => {
-        const image = new TextureLoader().load(path('/3tone.jpg'));
-        image.minFilter = NearestFilter;
-        image.magFilter = NearestFilter;
-        return image;
-      })(),
-      brick: srgb(repeat(new TextureLoader().load(path('/bricks.jpeg')), 3, 3)),
-      brickNormal: repeat(
-        new TextureLoader().load(path('/bricknormal.jpeg')),
-        3,
-        3
-      ),
-      patternedBrickDiff: repeat(
-        new TextureLoader().load(path('/patterned_brick_floor_02_diff.jpg')),
-        1,
-        1
-      ),
-      patternedBrickDisplacement: repeat(
-        new TextureLoader().load(path('/patterned_brick_floor_02_disp.jpg')),
-        3,
-        3
-      ),
-      patternedBrickNormal: unflipY(
-        repeat(
-          new TextureLoader().load(
-            path('/patterned_brick_floor_02_normal.jpg')
-          ),
-          3,
-          3
-        )
-      ),
-      pebbles: srgb(
-        repeat(new TextureLoader().load(path('/Big_pebbles_pxr128.jpeg')), 3, 3)
-      ),
-      pebblesNormal: repeat(
-        new TextureLoader().load(path('/Big_pebbles_pxr128_normal.jpeg')),
-        3,
-        3
-      ),
-      pebblesBump: repeat(
-        new TextureLoader().load(path('/Big_pebbles_pxr128_bmp.jpeg')),
-        3,
-        3
-      ),
-      testNormal: repeat(
-        new TextureLoader().load(path('/testNormalMap.png')),
-        3,
-        3
-      ),
-      testBump: repeat(
-        new TextureLoader().load(path('/testBumpMap.png')),
-        3,
-        3
-      ),
-    };
-  }, [path]);
-
+  const [textures] = useState<Record<string, any>>({});
   const pondCubeMap = useCubeMap(path('/envmaps/pond/'));
   textures.pondCubeMap = pondCubeMap;
 
@@ -659,41 +595,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
         1,
         ...(sceneConfig.boxResolution || defaultResolution.boxResolution)
       );
-
-      // const positions = geometry.attributes.position.array;
-      // const nVertices = positions.length / 3;
-
-      // const a = [-1, 0, 0];
-      // const b = [1, 0, 0];
-      // const c = [0, 0, -1];
-      // const d = [0, 0, 1];
-      // const e = [1, 0, 0];
-      // const f = [1, 0, 0];
-
-      // // const test = new Array(nVertices).fill(e).flat();
-
-      // // prettier-ignore
-      // const tangents =  new Float32Array([
-      //   -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, // Back
-      //   1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, // Front
-      //   1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, // Top
-      //   1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, // Bottom
-      //   0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, // Right
-      //   0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, // Left
-      // ]);
-      // geometry.setAttribute(
-      //   'tangent_16965730118305',
-      //   new Float32BufferAttribute(tangents, 3)
-      // );
-      // geometry.setAttribute(
-      //   'tangent',
-      //   new BufferAttribute(new Float32Array(3 * nVertices), 3)
-      // );
-      // const ts = geometry.getAttribute('tangent').array;
-      // for (let i = 0; i < ts.length; i++) {
-      //   // @ts-ignore
-      //   ts[i] = a[i % a.length];
-      // }
     } else if (sceneConfig.previewObject === 'plane') {
       geometry = new PlaneGeometry(
         1,
@@ -717,7 +618,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
       );
     }
     geometry.computeTangents();
-    // log('Generated tangents', geometry.getAttribute('tangent'));
     mesh = new Mesh(geometry);
     if (sceneData.mesh) {
       mesh.material = sceneData.mesh.material;
@@ -857,7 +757,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
   takeScreenshotRef.current = useCallback(async () => {
     const viewAngle = SceneDefaultAngles[sceneConfig.previewObject];
-    // this.props.shader.scene.angle ||
 
     const screenshotCanvas = document.createElement('canvas');
     const context2d = screenshotCanvas.getContext('2d');

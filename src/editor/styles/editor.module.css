@@ -506,7 +506,7 @@ textarea.error {
 .groupList {
   display: grid;
   gap: 4px;
-  grid-template-columns: 64px repeat(auto-fill, minmax(64px, 1fr));
+  grid-template-columns: 128px repeat(auto-fill, minmax(64px, 1fr));
   align-items: start;
   font-size: 12px;
 }

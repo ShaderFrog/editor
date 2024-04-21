@@ -205,8 +205,21 @@ const Editor = ({
   // to children to update the engine context, which has more side effects
   const [ctx, setCtxState] = useState<EngineContext>();
 
-  const [flowNodes, setNodes, applyNodesChange] = useNodesState([]);
-  const [flowEdges, setEdges, applyEdgesChange] = useEdgesState([]);
+  /**
+   * React-Flow to Graph data flow
+   *
+   * 1. We use the useNodes/EdgesState hooks to manually control the flow graph
+   * 2. We use the onNodesChange to filter undeletable nodes
+   * 3. Other flow node events fire, like onNodesDelete/onEdgesDelete to copy
+   *    react-flow changes to the core graph
+   * 4. For adding new connections, react-flow creates the connection, and
+   *    the callback calls our addConnection() function, which updates the core
+   *    graph, and then updates the flow graph. I'm pretty sure this undoes what
+   *    react-flow does internally, because it calls setEdges()
+   */
+  const [flowNodes, setNodes, applyNodeChanges] = useNodesState([]);
+  const [flowEdges, setEdges, applyEdgeChanges] = useEdgesState([]);
+  const flowStore = useStoreApi();
 
   const [initialGraph, initialSceneConfig, initialExample] = useMemo(() => {
     if (exampleShader) {
@@ -230,6 +243,10 @@ const Editor = ({
   const [graph, setGraph] = useLocalStorage<Graph>('graph', initialGraph);
   const [nodeErrors, setNodeErrors] = useState<Record<string, NodeErrors>>({});
 
+  /**
+   * Compare the react-flow graph to the core graph, look for discrepancies.
+   * Could be expanded to include any kind of invariant checking.
+   */
   const graphIntegrity = useMemo(() => {
     const flowNodesById = new Set<string>(flowNodes.map((node) => node.id));
     const graphNodesById = new Set<string>(graph.nodes.map((node) => node.id));
@@ -323,6 +340,12 @@ const Editor = ({
 
   const [compileResult, setCompileResult] = useState<UICompileGraphResult>();
 
+  /**
+   * Auto-screenshot logic
+   *
+   * This may need to change with screenshot logic like being able to set the
+   * time and angle of screenshots. Also could bail here if there's an error?
+   */
   useEffect(() => {
     const t = setTimeout(takeScreenshot, 500);
     return () => {
@@ -569,8 +592,11 @@ const Editor = ({
             });
         setCtxState(newCtx);
         let newGraph = graph;
-        // if (lastEngine) {
-        //   newGraph = convertToEngine(lastEngine, engine, graph);
+        // Previous logic of switching between engines. Maybe will revisit
+        // someday...
+        
+        // if (lastEngine) { newGraph = convertToEngine(lastEngine,
+        // engine, graph);
 
         //   if (ctx?.engine) {
         //     const currentScene = getRefData(ctx.engine);
@@ -621,6 +647,8 @@ const Editor = ({
     [setGraph, setNodes, debouncedSetNeedsCompile]
   );
 
+  // TODO: Might be able to get rid of all of this, need to test running the
+  // editor standalone to see how examples are used, if at all
   const previousExample = usePrevious(currentExample);
   useEffect(() => {
     if (currentExample !== previousExample && previousExample !== undefined) {
@@ -741,10 +769,10 @@ const Editor = ({
         );
       });
 
-      // Duplicates above branch. Another option is to map the result of these
-      // operations into the core graph, but that would require making both
-      // graphs dependencies of this usecallback hook, which could be a lot of
-      // extra renders
+      // Duplicates above core graph logic. Another option is to map the result
+      // of these operations into the core graph, but that would require making
+      // both graphs dependencies of this usecallback hook, which could be a lot
+      // of extra renders
       const targetFlowNode = ensure(getNode(newEdge.target!)) as FlowNode;
 
       const input = ensure(
@@ -783,6 +811,13 @@ const Editor = ({
             }
           : {}
       );
+
+      // React-flow updates the edges, calls the onEdgeUpdate callback, which
+      // calls this function, which then again updates the edges. I *think* this
+      // will override what react-flow is doing, maye causing double work. It
+      // might be better to move this logic into onEdgesChange, like how
+      // onNodesChange blocks the output nodes from being deleted, since this is
+      // specific interception logic on top of adding a new graph edge.
       setNodes(nodesWithInput);
       setEdges(edges);
 
@@ -828,9 +863,9 @@ const Editor = ({
         return [...acc, change];
       }, []);
 
-      applyNodesChange(nextChanges);
+      applyNodeChanges(nextChanges);
     },
-    [getNode, applyNodesChange]
+    [getNode, applyNodeChanges]
   );
 
   const openNodeEditor = useCallback(
@@ -1567,15 +1602,14 @@ const Editor = ({
     [hideMenu]
   );
 
+  // Callback to inform of which edges were deleted. This does NOT need to
+  // modify react flow nodes
   const onEdgesDelete = useCallback(
     (edges: ReactFlowEdge[]) => {
-      const ids = edges.reduce<Record<string, boolean>>(
-        (acc, e) => ({ ...acc, [e.id]: true }),
-        {}
-      );
+      const ids = new Set(edges.map((e) => e.id));
       setGraph((graph) => ({
         ...graph,
-        edges: graph.edges.filter((edge) => !(edge.id in ids)),
+        edges: graph.edges.filter((edge) => !ids.has(edge.id)),
       }));
       setNeedsCompile(true);
     },
@@ -1583,43 +1617,31 @@ const Editor = ({
   );
 
   // Note if an edge is connected to this node, onEdgesDelete fires to update
-  // edges in the flow and core graph
+  // edges in the flow and core graph. This does NOT need to modify flow nodes,
+  // this
   const onNodesDelete = useCallback(
     (nodes: FlowNode[]) => {
       const graphNode = graph.nodes.find(
         (node) => node.id === nodes[0].id
       ) as GraphNode;
-      console.log('onNodesDelete');
-
-      // This does NOT prevent the
-      // if (graphNode.type === 'output') {
-      //   return;
-      // }
 
       const { edgesById: edgesToRemoveById, nodesById: nodesToRemoveById } =
         findNodeTree(graph, graphNode);
 
-      setNodes((nodes) =>
-        nodes.filter((node) => !nodesToRemoveById.has(node.id))
-      );
-      setEdges((edges) =>
-        edges.filter((edge) => !edgesToRemoveById.has(edge.id))
-      );
       setGraph((graph) => ({
         ...graph,
         nodes: graph.nodes.filter((node) => !nodesToRemoveById.has(node.id)),
         edges: graph.edges.filter((edge) => !edgesToRemoveById.has(edge.id)),
       }));
     },
-    [graph, setNodes, setEdges, setGraph]
+    [graph, setGraph]
   );
 
-  const store = useStoreApi();
   const getClosestNodeToPosition = useCallback(
     (xy: XYPosition) => {
       const MIN_DISTANCE = 150;
 
-      const { nodeInternals } = store.getState();
+      const { nodeInternals } = flowStore.getState();
       const storeNodes = Array.from(nodeInternals.values());
 
       const closestNode = storeNodes.reduce<{
@@ -1646,7 +1668,7 @@ const Editor = ({
 
       return closestNode.node;
     },
-    [store]
+    [flowStore]
   );
 
   const [activeShader, setActiveShader] = useState<Shader | null>(null);
@@ -1926,6 +1948,7 @@ const Editor = ({
                   onConnect={onConnect}
                   onEdgeUpdate={onEdgeUpdate}
                   onNodesChange={onNodesChange}
+                  onEdgesChange={applyEdgeChanges}
                   onNodesDelete={onNodesDelete}
                   onNodeDoubleClick={onNodeDoubleClick}
                   onSelectionChange={onSelectionChange}

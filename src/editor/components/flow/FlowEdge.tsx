@@ -17,6 +17,14 @@ export type FlowEdgeData = {
   ghost?: boolean;
 };
 
+const isDataEdge = (data: any): data is FlowEdgeData => {
+  return (
+    data?.type !== 'next_stage' &&
+    data?.type !== 'vertex' &&
+    data?.type !== 'fragment'
+  );
+};
+
 export default function FlowEdge({
   id,
   sourceX,
@@ -28,7 +36,7 @@ export default function FlowEdge({
   data,
   style = {},
   markerEnd,
-}: EdgeProps<any>) {
+}: EdgeProps<FlowEdgeData>) {
   const isLink = data?.type === EdgeLink.NEXT_STAGE;
   const [edgePath] = (isLink ? getStraightPath : getBezierPath)({
     sourceX,
@@ -38,22 +46,16 @@ export default function FlowEdge({
     targetY,
     targetPosition,
   });
-  // const [edgeCenterX, edgeCenterY] = getEdgeCenter({
-  //   sourceX,
-  //   sourceY,
-  //   targetX,
-  //   targetY,
-  // });
 
+  const klass =
+    (data?.ghost ? ' ghost' : '') + (isDataEdge(data) ? ' data' : '');
   // Note that className is an edge prop, not explicitly set here
   return (
     <>
       {isLink ? null : (
         <path
           style={style}
-          className={
-            'react-flow__edge-path-selector' + (data.ghost ? ' ghost' : '')
-          }
+          className={`react-flow__edge-path-selector${klass}`}
           d={edgePath}
           markerEnd={markerEnd}
           fillRule="evenodd"
@@ -61,7 +63,7 @@ export default function FlowEdge({
       )}
       <path
         style={style}
-        className={'react-flow__edge-path' + (data.ghost ? ' ghost' : '')}
+        className={`react-flow__edge-path${klass}`}
         d={edgePath}
         markerEnd={markerEnd}
         fillRule="evenodd"

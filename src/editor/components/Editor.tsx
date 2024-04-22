@@ -594,7 +594,7 @@ const Editor = ({
         let newGraph = graph;
         // Previous logic of switching between engines. Maybe will revisit
         // someday...
-        
+
         // if (lastEngine) { newGraph = convertToEngine(lastEngine,
         // engine, graph);
 

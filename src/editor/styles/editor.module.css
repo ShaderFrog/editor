@@ -510,6 +510,18 @@ textarea.error {
   align-items: start;
   font-size: 12px;
 }
+.diffuseList {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  align-items: start;
+  font-size: 12px;
+}
+.assetName {
+  color: #ccc;
+  text-align: center;
+  margin: 3px 0 0;
+}
 .assetList {
   display: grid;
   gap: 4px;
@@ -530,9 +542,20 @@ textarea.error {
   overflow: hidden;
   aspect-ratio: 1 / 1;
   border-radius: 6px;
+  position: relative;
 }
 .assetThumbnail img {
   width: 100%;
+}
+.hiRes {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 6px;
 }
 .assetCard:hover img {
   box-shadow: inset 0 0 1px solid rgba(255, 255, 255, 1);

@@ -26,6 +26,9 @@ export const assetSort = (assets: Asset[]) =>
     (a, b) => assetSortOrder[a.subtype] - assetSortOrder[b.subtype]
   );
 
+const hasMultiDiffuse = (assets: Asset[]) =>
+  assets.filter((a) => a.subtype === 'Diffuse').length > 1;
+
 const TextureBrowser = ({
   onSelect,
   onClose,
@@ -43,6 +46,17 @@ const TextureBrowser = ({
   const [filteredAssets, setFilteredAssets] = useState(
     Object.values(assets).filter((a) => a.subtype === 'Diffuse')
   );
+
+  const multiGroups = useMemo(() => {
+    return new Set(
+      Object.entries(assetsByGroupId).reduce<number[]>((acc, [id, group]) => {
+        if (hasMultiDiffuse(group)) {
+          acc.push(parseFloat(id));
+        }
+        return acc;
+      }, [])
+    );
+  }, [assetsByGroupId]);
 
   const doSearch = (search: string) => {
     setSearch(search);
@@ -124,7 +138,13 @@ const TextureBrowser = ({
               <div title={group.description} className={styles.groupTitle}>
                 {group.name}
               </div>
-              <div className={styles.groupList}>
+              <div
+                className={
+                  multiGroups.has(group.id)
+                    ? styles.diffuseList
+                    : styles.groupList
+                }
+              >
                 {assetSort(assetsByGroupId[group.id]).map((asset) => (
                   <div
                     key={asset.id}
@@ -138,8 +158,22 @@ const TextureBrowser = ({
                   >
                     <div className={styles.assetThumbnail}>
                       <img src={asset.versions[0].thumbnail} alt={asset.name} />
+                      {asset.versions.length > 1 ? (
+                        <div className={styles.hiRes}>High res</div>
+                      ) : null}
                     </div>
-                    <div className={styles.assetSubtype}>{asset.subtype}</div>
+                    {multiGroups.has(group.id) ? (
+                      <div className={styles.assetName} title={asset.name}>
+                        {asset.name}
+                      </div>
+                    ) : (
+                      <div
+                        className={styles.assetSubtype}
+                        title={asset.subtype}
+                      >
+                        {asset.subtype}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

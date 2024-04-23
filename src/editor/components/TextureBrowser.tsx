@@ -12,14 +12,15 @@ import SearchBox from './SearchBox';
 export const assetSortOrder: Record<AssetSubtype, number> = {
   Diffuse: 0,
   Normal: 1,
-  Displacement: 2,
-  AO: 3,
-  Roughness: 4,
-  ARM: 5,
-  Bump: 5,
-  Metal: 6,
-  Mask: 7,
-  Specular: 8,
+  'Normal DX': 3,
+  Displacement: 4,
+  AO: 5,
+  Roughness: 6,
+  ARM: 7,
+  Bump: 8,
+  Metal: 9,
+  Mask: 10,
+  Specular: 11,
 };
 export const assetSort = (assets: Asset[]) =>
   [...assets].sort(

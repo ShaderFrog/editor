@@ -13,6 +13,7 @@ export const ASSET_SUBTYPES = [
   'Diffuse',
   'Displacement',
   'Normal',
+  'Normal DX',
   'AO',
   'ARM',
   'Roughness',

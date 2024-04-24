@@ -16,7 +16,7 @@ const badTvFrag = (id: string, position: NodePosition) =>
       preprocess: true,
       strategies: [uniformStrategy(), texture2DStrategy()],
       uniforms: [
-        textureUniformData('image', 'bricks'),
+        textureUniformData('image', { assetId: 1, versionId: 1 }),
         numberUniformData('distortion', '3.0', [0, 10]),
         numberUniformData('distortion2', '5.0', [0, 10]),
         numberUniformData('speed', '0.2', [-1, 1]),

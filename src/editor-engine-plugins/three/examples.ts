@@ -238,12 +238,17 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
           makeId(),
           'Gradient Map',
           { x: -153, y: -160 },
-          'threeTone'
+          { assetId: 1, versionId: 1 }
         ),
       ],
       [
         'normalMap',
-        textureNode(makeId(), 'Normal Map', { x: -153, y: -50 }, 'brickNormal'),
+        textureNode(
+          makeId(),
+          'Normal Map',
+          { x: -153, y: -50 },
+          { assetId: 1, versionId: 1 }
+        ),
       ],
     ];
 
@@ -454,7 +459,7 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     const clouds = perlinCloudsF(makeId(), { x: -512, y: 434 }, [
       colorUniformData('color', ['1', '1', '1']),
       numberUniformData('scale', '0.1'),
-      textureUniformData('noiseImage', 'grayscale-noise'),
+      textureUniformData('noiseImage', { assetId: 1, versionId: 1 }),
       vectorUniformData('speed', ['-0.001', '-0.001']),
       numberUniformData('cloudBrightness', '0.2'),
       numberUniformData('cloudMorphSpeed', '0.2'),

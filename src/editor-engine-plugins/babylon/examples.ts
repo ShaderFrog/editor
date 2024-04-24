@@ -217,7 +217,7 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
           makeId(),
           'Bump Texture',
           { x: -153, y: -50 },
-          'brickNormal'
+          { assetId: 1, versionId: 1 }
         ),
       ],
     ];

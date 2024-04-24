@@ -16,7 +16,9 @@ const fireFrag = (id: string, position: NodePosition) =>
       version: 2,
       preprocess: true,
       strategies: [uniformStrategy()],
-      uniforms: [textureUniformData('tExplosion', 'explosion')],
+      uniforms: [
+        textureUniformData('tExplosion', { assetId: 1, versionId: 1 }),
+      ],
     },
     `
     // Indstiller presisionen, hvor meget plads denne type variabel må bruge (high betyder meget plads)

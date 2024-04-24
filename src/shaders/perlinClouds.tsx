@@ -25,7 +25,7 @@ const perlinCloudsF = (
       uniforms: uniforms || [
         colorUniformData('color', ['1', '1', '1']),
         numberUniformData('scale', '0.05'),
-        textureUniformData('noiseImage', 'grayscale-noise'),
+        textureUniformData('noiseImage', { assetId: 1, versionId: 1 }),
         vectorUniformData('speed', ['-0.002', '-0.002']),
         numberUniformData('cloudBrightness', '0.2'),
         numberUniformData('cloudMorphSpeed', '0.2'),

@@ -19,8 +19,8 @@ const serpentF = (id: string, position: NodePosition) =>
         numberUniformData('lineWidth', '0.5'),
         numberUniformData('tiling', '4.9'),
         numberUniformData('rotationSpeed', '0.23'),
-        textureUniformData('image1', 'brick'),
-        textureUniformData('image2', 'pebbles'),
+        textureUniformData('image1', { assetId: 1, versionId: 1 }),
+        textureUniformData('image2', { assetId: 1, versionId: 1 }),
       ],
     },
     `precision highp float;

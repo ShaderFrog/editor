@@ -210,12 +210,15 @@ const Editor = ({
    *
    * 1. We use the useNodes/EdgesState hooks to manually control the flow graph
    * 2. We use the onNodesChange to filter undeletable nodes
-   * 3. Other flow node events fire, like onNodesDelete/onEdgesDelete to copy
-   *    react-flow changes to the core graph
+   * 3. Other flow node events fire, like onEdgesDelete to copy react-flow
+   *    changes to the core graph
    * 4. For adding new connections, react-flow creates the connection, and
    *    the callback calls our addConnection() function, which updates the core
    *    graph, and then updates the flow graph. I'm pretty sure this undoes what
    *    react-flow does internally, because it calls setEdges()
+   * 5. Some callbacks, like onNodesDelete, need additional side effects, like
+   *    deleting all the upstream nodes and edges. In those callbacks, the
+   *    changes are calculated, and applied to both core and react-flow graph.
    */
   const [flowNodes, setNodes, applyNodeChanges] = useNodesState([]);
   const [flowEdges, setEdges, applyEdgeChanges] = useEdgesState([]);
@@ -1628,13 +1631,22 @@ const Editor = ({
       const { edgesById: edgesToRemoveById, nodesById: nodesToRemoveById } =
         findNodeTree(graph, graphNode);
 
+      // Update the flow graph to delete extra nodes and edges, since this
+      // callback is only for a single node.
+      setNodes((nodes) =>
+        nodes.filter((node) => !nodesToRemoveById.has(node.id))
+      );
+      setEdges((edges) =>
+        edges.filter((edge) => !edgesToRemoveById.has(edge.id))
+      );
+
       setGraph((graph) => ({
         ...graph,
         nodes: graph.nodes.filter((node) => !nodesToRemoveById.has(node.id)),
         edges: graph.edges.filter((edge) => !edgesToRemoveById.has(edge.id)),
       }));
     },
-    [graph, setGraph]
+    [graph, setGraph, setEdges, setNodes]
   );
 
   const getClosestNodeToPosition = useCallback(

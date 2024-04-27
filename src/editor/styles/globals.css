@@ -243,6 +243,9 @@ a:hover {
   grid-auto-flow: row;
   grid-template-columns: min-content 1fr min-content;
 }
+.gap-s {
+  grid-gap: 5px 10px;
+}
 .gap25 {
   grid-gap: 25px;
 }

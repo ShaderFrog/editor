@@ -1,7 +1,7 @@
+import { AnyFn } from '@/editor/util/types';
 import throttle from 'lodash.throttle';
 import { useCallback, useEffect, useRef } from 'react';
 
-type AnyFn = (...args: any) => any;
 function useThrottle(callback: AnyFn, delay: number) {
   const cbRef = useRef<AnyFn>(callback);
 

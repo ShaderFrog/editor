@@ -9,10 +9,20 @@ import { monacoGlsl } from '../monaco-glsl';
 
 import { Engine, NodeErrors } from '@core';
 import { usePrevious } from '../hooks/usePrevious';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { GlslSyntaxError } from '@shaderfrog/glsl-parser';
+import { AnyFn } from '@/editor/util/types';
 
-type AnyFn = (...args: any) => any;
+import styles from '../styles/editor.module.css';
+
+const consoleError = console.error;
+let callback: Function;
+console.error = (...args: any[]) => {
+  if (callback) {
+    callback(...args);
+  }
+  return consoleError.apply(console, args);
+};
 
 type CodeEditorProps = {
   engine: Engine;
@@ -38,6 +48,20 @@ const CodeEditor = ({
 }: CodeEditorProps) => {
   const lastErrors = usePrevious(errors);
   const lastIdentity = usePrevious(identity);
+  const [errored, setErrored] = useState(false);
+
+  useEffect(() => {
+    callback = (...args: any[]) => {
+      const arg = args?.[0];
+      if (
+        typeof arg === 'string' &&
+        arg.startsWith('Monaco initialization: error')
+      ) {
+        setErrored(true);
+      }
+    };
+  }, []);
+
   const beforeMount: BeforeMount = (monaco) => {
     monacoGlsl(monaco);
 
@@ -175,7 +199,18 @@ const CodeEditor = ({
     checkErrors();
   }, [identity, lastIdentity, defaultValue, checkErrors]);
 
-  return (
+  return errored ? (
+    <textarea
+      spellCheck={false}
+      className={styles.fallbackEditor}
+      {...(value !== undefined ? { value } : {})}
+      defaultValue={defaultValue}
+      onChange={(e) => {
+        onChange?.(e.target.value);
+      }}
+      style={{ width: '100%', height: '100%' }}
+    ></textarea>
+  ) : (
     <MonacoEditor
       height="100%"
       language="glsl"

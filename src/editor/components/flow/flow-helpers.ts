@@ -16,6 +16,7 @@ import { Node as ReactFlowNode, Edge as FlowEdge, XYPosition } from 'reactflow';
 import { FlowEdgeData } from './FlowEdge';
 import {
   FlowNodeData,
+  FlowNodeDataData,
   FlowNodeSourceData,
   flowOutput,
   InputNodeHandle,
@@ -167,7 +168,6 @@ export const graphNodeToFlowNode = (
   return {
     id: node.id,
     data,
-    // type: isSourceNode(node) ? 'source' : 'data',
     type: node.type,
     position,
   };
@@ -269,6 +269,31 @@ export const updateFlowNodesData = (
 ): FlowNode[] =>
   nodes.map((node) =>
     node.id === nodeId ? updateFlowNodeData(node, data) : node
+  );
+
+export const updateFlowNodeConfig = (
+  node: ReactFlowNode<FlowNodeDataData>,
+  config: Record<string, any>
+): FlowNode => ({
+  ...node,
+  data: {
+    ...node.data,
+    config: {
+      ...node.data.config,
+      ...config,
+    },
+  },
+});
+
+export const updateFlowNodesConfig = (
+  nodes: FlowNode[],
+  nodeId: string,
+  config: Record<string, any>
+): FlowNode[] =>
+  nodes.map((node) =>
+    node.id === nodeId
+      ? updateFlowNodeConfig(node as ReactFlowNode<FlowNodeDataData>, config)
+      : node
   );
 
 export const updateFlowInput = (

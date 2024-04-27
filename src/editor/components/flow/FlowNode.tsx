@@ -28,6 +28,7 @@ import { useAssetsAndGroups } from '@editor/api';
 
 import styles from './flownode.module.css';
 import { AssetVersionNodeData } from '@core/graph';
+import { randomBetween } from '@/editor/util/math';
 const cx = classnames.bind(styles);
 
 const headerHeight = 30;
@@ -311,15 +312,33 @@ const NumberEditor = ({
       onChange={(e) => onChange(id, e.currentTarget.value)}
       value={data.value}
     />
-    <input
-      className="nodrag"
-      type="range"
-      min={data.config.range?.[0] || '0'}
-      max={data.config.range?.[1] || '1'}
-      step={data.config.stepper || '0.001'}
-      onChange={(e) => onChange(id, e.currentTarget.value)}
-      value={data.value}
-    ></input>
+    {data.config.isRandom ? (
+      <button
+        className="buttonauto formbutton nodeButton size2 m-left-5"
+        onClick={(e) => {
+          e.preventDefault();
+          onChange(
+            id,
+            data.config.range
+              ? randomBetween(data.config.range[0], data.config.range[1])
+              : Math.random()
+          );
+        }}
+      >
+        Rand
+      </button>
+    ) : null}
+    {data.config.range ? (
+      <input
+        className="nodrag"
+        type="range"
+        min={data.config.range[0] || '0'}
+        max={data.config.range[1] || '1'}
+        step={data.config.stepper || '0.001'}
+        onChange={(e) => onChange(id, e.currentTarget.value)}
+        value={data.value}
+      ></input>
+    ) : null}
   </>
 );
 

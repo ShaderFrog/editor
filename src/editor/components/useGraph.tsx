@@ -180,7 +180,12 @@ const createGraphNode = (
         id,
         makeName('number'),
         position,
-        defaultValue === undefined || defaultValue === null ? '1' : defaultValue
+        defaultValue === undefined || defaultValue === null
+          ? '1'
+          : defaultValue,
+        {
+          range: ['0', '1'],
+        }
       ),
     ];
   } else if (nodeDataType === 'texture') {

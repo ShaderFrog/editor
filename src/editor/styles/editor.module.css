@@ -450,18 +450,18 @@ textarea.error {
 
 .bottomModal {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
+  left: 4px;
+  right: 5px;
+  bottom: 5px;
   z-index: 10;
-  background: #000;
+  background: linear-gradient(0deg, #1a1a1a, rgb(41, 41, 41));
   border: 1px solid #444;
-  border-radius: 12px;
+  border-radius: 6px;
   box-shadow: 0 0 10px #000;
 }
 .modalContent {
   height: calc(min(200px, 50vh));
-  padding: 10px;
+  padding: 6px 14px;
   overflow: scroll;
 }
 .closeModal {
@@ -470,26 +470,31 @@ textarea.error {
   right: -8px;
   cursor: pointer;
   color: #ddd;
-  font-size: 20px;
+  font-size: 15px;
   border: 0 none;
   background: transparent;
   z-index: 2;
 }
 .closeModal::after {
+  transition: all ease 0.2s;
   content: '';
   display: block;
   position: absolute;
-  top: -2px;
-  left: -1px;
+  top: -1px;
+  left: 1px;
   border-radius: 100%;
   background: rgb(16 16 16);
-  width: 26px;
+  height: 18px;
+  width: 18px;
   border: 1px solid #8a8a8a;
-  height: 26px;
   z-index: -1;
 }
 .closeModal:hover {
   color: #fff;
+}
+.closeModal:hover::after {
+  background: rgb(77 77 77);
+  border: 1px solid #bbb;
 }
 
 .assetGroup {
@@ -586,4 +591,9 @@ textarea.error {
 
 .textureSearch {
   min-width: 200px;
+}
+
+.fallbackEditor {
+  background: #000;
+  color: #fff;
 }

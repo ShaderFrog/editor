@@ -44,10 +44,13 @@ import styles from './floweditor.module.css';
 interface EditorStore {
   menu: ContextMenu | undefined;
   isTextureBrowserOpen: boolean;
+  isNodeConfigEditorOpen: boolean;
   setMenu: (menu: ContextMenuType, position: XYPosition) => void;
   hideMenu: () => void;
   openTextureBrowser: () => void;
   closeTextureBrowser: () => void;
+  openNodeConfigEditor: () => void;
+  closeNodeConfigEditor: () => void;
 }
 
 export enum ContextMenuType {
@@ -60,10 +63,13 @@ export type ContextMenu = { menu: ContextMenuType; position: XYPosition };
 export const useEditorStore = create<EditorStore>((set) => ({
   menu: undefined,
   isTextureBrowserOpen: false,
+  isNodeConfigEditorOpen: false,
   setMenu: (menu, position) => set(() => ({ menu: { menu, position } })),
   hideMenu: () => set(() => ({ menu: undefined })),
   openTextureBrowser: () => set(() => ({ isTextureBrowserOpen: true })),
   closeTextureBrowser: () => set(() => ({ isTextureBrowserOpen: false })),
+  openNodeConfigEditor: () => set(() => ({ isNodeConfigEditorOpen: true })),
+  closeNodeConfigEditor: () => set(() => ({ isNodeConfigEditorOpen: false })),
 }));
 
 // Terrible hack to make the flow graph full height minus the tab height - I
@@ -159,7 +165,6 @@ const nodeContextMenuItems = (node?: FlowNode<FlowNodeData>): MenuItem[] => {
         {
           display: 'Edit Node Config',
           value: NodeContextActions.EDIT_SOURCE,
-          key: 'Double Click',
         },
         {
           display: 'Delete Node',

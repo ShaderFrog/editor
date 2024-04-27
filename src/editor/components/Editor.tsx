@@ -71,10 +71,15 @@ import useThrottle from '../hooks/useThrottle';
 
 import { useAsyncExtendedState } from '../hooks/useAsyncExtendedState';
 
-import { FlowNodeSourceData, FlowNodeDataData } from './flow/FlowNode';
+import {
+  FlowNodeSourceData,
+  FlowNodeDataData,
+  FlowNodeData,
+} from './flow/FlowNode';
 
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import CodeEditor from './CodeEditor';
+import ConfigEditor from './ConfigEditor';
 
 import { Hoisty } from '../hoistedRefContext';
 import { UICompileGraphResult } from '../uICompileGraphResult';
@@ -98,12 +103,13 @@ import {
   updateGraphInput,
   updateFlowNodeData,
   updateFlowNodesData,
-  updateGraphNode,
+  updateGraphNode as updateGraphNodeInternal,
   addFlowEdge,
   addGraphEdge,
   updateGraphFromFlowGraph,
   updateFlowEdgeData,
   markInputsConnected,
+  updateFlowNodesConfig,
 } from './flow/flow-helpers';
 
 import { usePrevious } from '../hooks/usePrevious';
@@ -123,6 +129,7 @@ import ShaderPreview from './ShaderPreview';
 import TextureBrowser from './TextureBrowser';
 import randomShaderName from '@editor/util/randomShaderName';
 import { Shader } from '@editor/model/Shader';
+import BottomModal from './BottomModal';
 
 const SMALL_SCREEN_WIDTH = 500;
 
@@ -153,6 +160,16 @@ const Editor = ({
   const reactFlowStore = useStoreApi();
   const { addSelectedNodes } = reactFlowStore.getState();
   const { screenToFlowPosition, getNode } = useReactFlow();
+
+  const {
+    hideMenu,
+    menu,
+    isTextureBrowserOpen,
+    closeTextureBrowser,
+    isNodeConfigEditorOpen,
+    openNodeConfigEditor,
+    closeNodeConfigEditor,
+  } = useEditorStore();
 
   const [shader, setShader] = useState<Shader>(() => {
     return (
@@ -329,13 +346,16 @@ const Editor = ({
   const [compiling, setCompiling] = useState<boolean>(false);
   const [guiError, setGuiError] = useState<string>('');
 
-  // Node in the editor
+  // Which node is active in the GLSL editor tab
   const [activeEditingNode, setActiveEditingNode] = useState<SourceNode>(
     (graph.nodes.find((n) => n.type === 'source') ||
       graph.nodes[0]) as SourceNode
   );
 
-  // Selected node (different from editor node because you can't edit data nodes, for now)
+  // Which node has the primary focus in the graph editor. Used for replacing
+  // the current selected node with another graph, used for the texture browser
+  // to replace the seleted node's texture value. This is different than the
+  // react-flow selection, which can select multiple nodes.
   const [selectedNode, setSelectedNode] = useState<GraphNode | undefined>(
     activeEditingNode
   );
@@ -424,6 +444,25 @@ const Editor = ({
     sceneHeight: 0,
   });
 
+  const updateFlowNode = useCallback(
+    (nodeId: string, data: Partial<FlowNodeData>) => {
+      setNodes((nodes) => updateFlowNodesData(nodes, nodeId, data));
+    },
+    [setNodes]
+  );
+  const updateFlowNodeConfig = useCallback(
+    (nodeId: string, config: Record<string, any>) => {
+      setNodes((nodes) => updateFlowNodesConfig(nodes, nodeId, config));
+    },
+    [setNodes]
+  );
+  const updateGraphNode = useCallback(
+    (nodeId: string, data) => {
+      setGraph((graph) => updateGraphNodeInternal(graph, nodeId, data));
+    },
+    [setGraph]
+  );
+
   // Compile function, meant to be called manually in places where we want to
   // trigger a compile. I tried making this a useEffect, however this function
   // needs to update "flowElements" at the end, which leads to an infinite loop
@@ -445,9 +484,7 @@ const Editor = ({
               ...nodeErrors,
               [result.nodeId]: result,
             }));
-            setNodes((nodes) =>
-              updateFlowNodesData(nodes, result.nodeId, { glslError: true })
-            );
+            updateFlowNode(result.nodeId, { glslError: true });
             return;
           }
 
@@ -502,7 +539,7 @@ const Editor = ({
           setContexting(false);
         });
     },
-    [updateNodeInternals, setEdges, setNodes]
+    [updateNodeInternals, setEdges, setNodes, updateFlowNode]
   );
 
   // Let child components call compile after, say, their lighting has finished
@@ -628,8 +665,8 @@ const Editor = ({
         return;
       }
 
-      setNodes((nodes) => updateFlowNodesData(nodes, nodeId, { value }));
-      setGraph((graph) => updateGraphNode(graph, nodeId, { value }));
+      updateFlowNode(nodeId, { value });
+      updateGraphNode(nodeId, { value });
 
       // Only recompile if a non-data-node value changes
       const { dataNodes } = compileResult;
@@ -637,7 +674,7 @@ const Editor = ({
         debouncedSetNeedsCompile(true);
       }
     },
-    [compileResult, debouncedSetNeedsCompile, setNodes, setGraph]
+    [compileResult, debouncedSetNeedsCompile, updateGraphNode, updateFlowNode]
   );
 
   const onInputBakedToggle = useCallback(
@@ -1418,9 +1455,6 @@ const Editor = ({
     [screenToFlowPosition]
   );
 
-  const { hideMenu, menu, isTextureBrowserOpen, closeTextureBrowser } =
-    useEditorStore();
-
   const onMenuAdd = useCallback(
     (type: string) => {
       const pos = screenToFlowPosition(menu?.position as XYPosition);
@@ -1452,7 +1486,11 @@ const Editor = ({
         addSelectedNodes([currentNode.id]);
         setSelectedNode(currentNode);
 
-        setEditorTabIndex(1);
+        if (isDataNode(currentNode)) {
+          openNodeConfigEditor();
+        } else {
+          setEditorTabIndex(1);
+        }
       } else if (type === NodeContextActions.DELETE_NODE_ONLY) {
         setNodes((nodes) => nodes.filter((node) => node.id !== nodeId));
         setEdges((edges) =>
@@ -1502,6 +1540,7 @@ const Editor = ({
       setEditorTabIndex,
       hideMenu,
       debouncedSetNeedsCompile,
+      openNodeConfigEditor,
     ]
   );
 
@@ -1938,14 +1977,31 @@ const Editor = ({
               </div>
               <div className={styles.splitInner} ref={reactFlowWrapper}>
                 {isTextureBrowserOpen ? (
-                  <TextureBrowser
-                    onSelect={(av) => {
-                      if (selectedNode?.type === 'texture') {
-                        onNodeValueChange(selectedNode.id, av);
-                      }
-                    }}
-                    onClose={() => closeTextureBrowser()}
-                  />
+                  <BottomModal onClose={() => closeTextureBrowser()}>
+                    <TextureBrowser
+                      onSelect={(av) => {
+                        if (selectedNode?.type === 'texture') {
+                          onNodeValueChange(selectedNode.id, av);
+                        }
+                      }}
+                    />
+                  </BottomModal>
+                ) : isNodeConfigEditorOpen && selectedNode ? (
+                  <BottomModal onClose={() => closeNodeConfigEditor()}>
+                    <ConfigEditor
+                      node={selectedNode}
+                      onChange={(change) => {
+                        updateGraphNode(selectedNode.id, change);
+                        if ('name' in change) {
+                          updateFlowNode(selectedNode.id, {
+                            label: change.name,
+                          });
+                        } else {
+                          updateFlowNodeConfig(selectedNode.id, change);
+                        }
+                      }}
+                    />
+                  </BottomModal>
                 ) : null}
                 <FlowEditor
                   menuItems={menuItems}

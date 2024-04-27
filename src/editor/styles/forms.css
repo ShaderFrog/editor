@@ -23,27 +23,91 @@
   box-sizing: border-box;
   color: #eee;
   font-size: 14px;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
   border: 0 none;
+  white-space: nowrap;
+  outline: none;
+}
+
+/* For windows, this styles the native open dropdown element background, since
+   the linear-gradient background of the select is not applied to the bg of
+   the open dropdown, even though the text color is. Without this, it's white
+   text on a white background on windows */
+.select option {
+  background: rgb(46, 46, 46);
+}
+
+.checkbox {
+  padding: 4px;
+}
+
+.size2 {
+  line-height: 16px;
+  font-size: 13px;
+  padding: 3px 16px !important;
+  border-radius: 4px;
+}
+.size3 {
+  line-height: 16px;
+  font-size: 13px;
+  padding: 3px !important;
+  border-radius: 4px;
 }
 
 /* "button" is a default css class of monaco/vscode editor and causes conflicts,
    which is why this is instead 'formbutton' */
 .formbutton {
+  transition: all 0.2 ease;
   cursor: pointer;
   width: 100%;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.9), inset 0 1px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.9), inset 0 1px rgba(255, 255, 255, 0.15),
+    inset 0 0 4px #cdffb122;
   text-shadow: -1px -1px 0 #000;
-  background: linear-gradient(rgba(60, 70, 60, 1), rgba(42, 50, 42, 1));
+  background: linear-gradient(rgb(83 117 76), rgb(27 59 18));
+  /* for links styled as button */
+  text-decoration: none;
+}
+.formbutton[disabled] {
+  user-select: none;
+  color: #999;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.9), inset 0 0 4px #cdffb122;
+  background: linear-gradient(rgb(56, 83, 51), rgb(37, 71, 28));
+}
+.formbutton[disabled]:hover {
+  cursor: auto;
 }
 .formbutton:hover {
-  background: linear-gradient(rgba(40, 80, 40, 1), rgba(45, 60, 45, 1));
+  text-decoration: none;
+}
+.formbutton:not([disabled]):hover {
+  background: linear-gradient(rgb(100, 159, 88), rgb(26, 70, 14));
+}
+.formbutton:active {
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 1px 5px inset #000000aa;
+  padding-top: 7px;
+  padding-bottom: 5px;
 }
 .buttonauto {
   width: auto;
   padding-left: 24px;
   padding-right: 24px;
+}
+
+.formbutton.secondary {
+  color: #ddd;
+  background: linear-gradient(rgb(101, 115, 99), rgb(49, 55, 47));
+}
+.formbutton.secondary:not([disabled]):hover {
+  background: linear-gradient(rgb(140, 161, 136), rgb(60, 77, 55));
+}
+
+.nodeButton {
+  padding: 3px 10px !important;
+  background: linear-gradient(rgb(60, 70, 69), rgb(42, 47, 50));
+}
+.nodeButton:not([disabled]):hover {
+  background: linear-gradient(rgb(76, 95, 93), rgb(55, 65, 71));
 }
 
 .select {
@@ -64,14 +128,25 @@
 }
 
 .textinput {
-  background: linear-gradient(rgba(46, 46, 46, 1), rgba(68, 68, 68, 1));
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.9), inset 0 1px rgba(255, 255, 255, 0.15);
+  background: linear-gradient(rgb(51 53 50), rgb(47 46 46));
+  box-shadow: 0 0 2px rgb(0 0 0 / 90%), inset 0 -1px rgb(255 255 255 / 4%),
+    0 1px 6px inset #00000033;
   appearance: none;
+}
+.textinput:focus {
+  background: linear-gradient(rgb(52, 61, 49), rgb(46, 47, 46));
+  box-shadow: 0 0 2px rgb(0 0 0 / 90%), inset 0 -1px rgb(255 255 255 / 4%),
+    0 1px 6px inset #00000033, inset 0 0px 6px #b7f3b688,
+    inset 0 0 1px #ffffffff;
+  outline: 0 none;
 }
 .textinput[readonly] {
   color: #ccc;
-  background: linear-gradient(rgba(60, 60, 60, 1), rgba(62, 62, 62, 1));
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.9), inset 0 1px rgba(255, 255, 255, 0.15);
+  background: linear-gradient(rgb(96, 96, 96), rgba(90, 90, 90, 1));
+}
+.textinput[readonly]:focus {
+  box-shadow: 0 0 2px rgb(0 0 0 / 90%), inset 0 -1px rgb(255 255 255 / 10%),
+    inset 0 0 7px #a5ffaf11;
 }
 
 .checkbox {
@@ -134,4 +209,132 @@
 
   color: var(--form-control-disabled);
   cursor: not-allowed;
+}
+
+.errorText {
+  color: rgb(224, 56, 56);
+}
+
+.formerror {
+  background: rgb(109, 0, 0);
+  color: #fff;
+  border-radius: 4px;
+  padding: 6px 12px;
+  box-shadow: inset 0 1px #ffffff28;
+}
+
+.formsuccess {
+  background: rgb(29, 109, 0);
+  color: fff;
+  border-radius: 4px;
+  padding: 6px 12px;
+  box-shadow: inset 0 1px #ffffff28;
+}
+
+.linkbutton {
+  width: auto;
+  display: inline-block;
+}
+.linkbutton:active {
+  padding: 6px 12px;
+}
+
+.linkbutton:hover {
+  color: #fff;
+}
+
+.linkbutton svg {
+  height: 1.5em;
+  margin: -4px 0;
+}
+
+.msg {
+  border-radius: 12px;
+  padding: 10px 20px;
+}
+.msg.error {
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid rgb(135, 77, 77);
+  color: #fff;
+}
+
+.searchwrap {
+  position: relative;
+}
+.searchinput {
+  padding: 4px 12px 4px 35px;
+  margin-top: -1px;
+  background: linear-gradient(rgb(76, 80, 76), rgb(56, 56, 56));
+}
+.searchinput::placeholder {
+  color: #aaa;
+}
+.searchwrap svg {
+  position: absolute;
+  width: 0.99em;
+  top: 5px;
+  left: 9px;
+  color: #999;
+  z-index: 1;
+}
+.searchwrap .clearSearch {
+  position: absolute;
+  right: 5px;
+  top: 4px;
+  bottom: 0;
+  left: auto;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  color: #bea8a8;
+  z-index: 1;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+.clearSearch:hover {
+  color: #fff;
+}
+
+.clearable .clear {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  bottom: 0;
+  left: auto;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  color: #bbb;
+  z-index: 1;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+.clearSearch:hover {
+  color: #fff;
+}
+
+.oneLineForm {
+  display: grid;
+  grid-template-columns: 1fr min-content;
+  gap: 12px;
+}
+
+.searching {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-height: 200px;
+  max-height: 400px;
+  height: 100%;
+  left: 0;
+  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
+}
+.searching span {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 4px 8px;
+  border-radius: 12px;
 }

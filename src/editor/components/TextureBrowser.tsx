@@ -3,8 +3,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import groupBy from 'lodash.groupby';
 import { Asset, AssetSubtype } from '@editor/model/Asset';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import { useAssetsAndGroups } from '@editor/api';
 import { AssetVersionNodeData } from '@core/graph';
 import SearchBox from './SearchBox';
@@ -32,10 +30,8 @@ const hasMultiDiffuse = (assets: Asset[]) =>
 
 const TextureBrowser = ({
   onSelect,
-  onClose,
 }: {
   onSelect: (a: AssetVersionNodeData) => void;
-  onClose: () => void;
 }) => {
   const { assets, groups } = useAssetsAndGroups();
   const assetsByGroupId = useMemo(() => groupBy(assets, 'groupId'), [assets]);
@@ -59,14 +55,19 @@ const TextureBrowser = ({
     );
   }, [assetsByGroupId]);
 
-  const doSearch = (search: string) => {
-    setSearch(search);
+  const doSearch = (rawSearch: string) => {
+    const seach = search.toLowerCase().normalize();
+
+    setSearch(rawSearch);
     if (showGroups) {
       setFilteredGroups(
         Object.values(groups).filter(
           (g) =>
-            g.name.toLowerCase().includes(search.toLowerCase()) ||
-            g.description.toLowerCase().includes(search.toLowerCase())
+            g.name.toLowerCase().includes(seach) ||
+            g.description.toLowerCase().includes(seach) ||
+            assetsByGroupId[g.id].some((a) =>
+              a.name.toLowerCase().normalize().includes(seach)
+            )
         )
       );
     } else {
@@ -74,7 +75,7 @@ const TextureBrowser = ({
         Object.values(assets).filter(
           (a) =>
             a.subtype === 'Diffuse' &&
-            a.name.toLowerCase().includes(search.toLowerCase())
+            a.name.toLowerCase().normalize().includes(seach)
         )
       );
     }
@@ -89,120 +90,106 @@ const TextureBrowser = ({
   }, [showGroups]);
 
   return (
-    <div className={styles.bottomModal}>
-      <button
-        className={styles.closeModal}
-        onClick={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-      >
-        <FontAwesomeIcon icon={faTimes} />
-      </button>
-      <div className={styles.modalContent}>
-        <div className="grid col2 shrinkGrow m-bottom-10">
-          <div className={styles.textureSearch}>
-            <SearchBox
-              value={search}
-              onChange={doSearch}
-              placeholder="Search textures"
-            />
-          </div>
-          <div>
-            <div className="grid col2 m-left-10 shrinkGrow gap25">
-              <label className={styles.radioLabel}>
-                <input
-                  type="radio"
-                  name="showGroups"
-                  value="true"
-                  checked={showGroups}
-                  onChange={handleChange}
-                />
-                Browse Asset Groups
-              </label>
-              <label className={styles.radioLabel}>
-                <input
-                  type="radio"
-                  name="showGroups"
-                  value="false"
-                  checked={!showGroups}
-                  onChange={handleChange}
-                />
-                Browse Textures
-              </label>
-            </div>
+    <>
+      <div className="grid col2 growShrink m-bottom-10">
+        <div>
+          <div className="grid col2 shrinkGrow gap25">
+            <label className={styles.radioLabel}>
+              <input
+                type="radio"
+                name="showGroups"
+                value="true"
+                checked={showGroups}
+                onChange={handleChange}
+              />
+              Browse Asset Groups
+            </label>
+            <label className={styles.radioLabel}>
+              <input
+                type="radio"
+                name="showGroups"
+                value="false"
+                checked={!showGroups}
+                onChange={handleChange}
+              />
+              Browse Textures
+            </label>
           </div>
         </div>
-        {showGroups ? (
-          filteredGroups.map((group) => (
-            <div key={group.id} className={styles.assetGroup}>
-              <div title={group.description} className={styles.groupTitle}>
-                {group.name}
-              </div>
-              <div
-                className={
-                  multiGroups.has(group.id)
-                    ? styles.diffuseList
-                    : styles.groupList
-                }
-              >
-                {assetSort(assetsByGroupId[group.id]).map((asset) => (
-                  <div
-                    key={asset.id}
-                    className={styles.assetCard}
-                    onClick={() =>
-                      onSelect({
-                        assetId: asset.id,
-                        versionId: asset.versions[0].id,
-                      })
-                    }
-                  >
-                    <div className={styles.assetThumbnail}>
-                      <img src={asset.versions[0].thumbnail} alt={asset.name} />
-                      {asset.versions.length > 1 ? (
-                        <div className={styles.hiRes}>High res</div>
-                      ) : null}
-                    </div>
-                    {multiGroups.has(group.id) ? (
-                      <div className={styles.assetName} title={asset.name}>
-                        {asset.name}
-                      </div>
-                    ) : (
-                      <div
-                        className={styles.assetSubtype}
-                        title={asset.subtype}
-                      >
-                        {asset.subtype}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className={styles.assetList}>
-            {filteredAssets.map((asset) => (
-              <div
-                key={asset.id}
-                className={styles.assetCard}
-                onClick={() =>
-                  onSelect({
-                    assetId: asset.id,
-                    versionId: asset.versions[0].id,
-                  })
-                }
-              >
-                <div className={styles.assetThumbnail}>
-                  <img src={asset.versions[0].thumbnail} alt={asset.name} />
-                </div>
-                <div className={styles.assetSubtype}>{asset.name}</div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className={styles.textureSearch}>
+          <SearchBox
+            value={search}
+            onChange={doSearch}
+            placeholder="Search textures"
+          />
+        </div>
       </div>
-    </div>
+      {showGroups ? (
+        filteredGroups.map((group) => (
+          <div key={group.id} className={styles.assetGroup}>
+            <div title={group.description} className={styles.groupTitle}>
+              {group.name}
+            </div>
+            <div
+              className={
+                multiGroups.has(group.id)
+                  ? styles.diffuseList
+                  : styles.groupList
+              }
+            >
+              {assetSort(assetsByGroupId[group.id]).map((asset) => (
+                <div
+                  key={asset.id}
+                  className={styles.assetCard}
+                  onClick={() =>
+                    onSelect({
+                      assetId: asset.id,
+                      versionId: asset.versions[0].id,
+                    })
+                  }
+                >
+                  <div className={styles.assetThumbnail}>
+                    <img src={asset.versions[0].thumbnail} alt={asset.name} />
+                    {asset.versions.length > 1 ? (
+                      <div className={styles.hiRes}>High res</div>
+                    ) : null}
+                  </div>
+                  {multiGroups.has(group.id) ? (
+                    <div className={styles.assetName} title={asset.name}>
+                      {asset.name}
+                    </div>
+                  ) : (
+                    <div className={styles.assetSubtype} title={asset.subtype}>
+                      {asset.subtype}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className={styles.assetList}>
+          {filteredAssets.map((asset) => (
+            <div
+              key={asset.id}
+              className={styles.assetCard}
+              onClick={() =>
+                onSelect({
+                  assetId: asset.id,
+                  versionId: asset.versions[0].id,
+                })
+              }
+            >
+              <div className={styles.assetThumbnail}>
+                <img src={asset.versions[0].thumbnail} alt={asset.name} />
+              </div>
+              <div className={styles.assetSubtype}>{asset.name}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 };
 

@@ -6,3 +6,5 @@ export type AddParameters<
 ) => ReturnType<TFunction>;
 
 export type ValueOf<T> = T[keyof T];
+
+export type AnyFn = (...args: any) => any;

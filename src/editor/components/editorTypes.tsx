@@ -10,6 +10,7 @@ import {
   ShaderUpdateInput,
 } from '@editor/model/Shader';
 import { CurrentUser } from '@editor/model';
+import { AnyFn } from '@/editor/util/types';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -19,8 +20,6 @@ export type BaseSceneConfig = {
   previewObject: string;
 };
 export type AnySceneConfig = BaseSceneConfig & Record<string, any>;
-
-type AnyFn = (...args: any) => any;
 
 /**
  * This is the interface for the props that any engine scene component must

@@ -1,4 +1,4 @@
 .flowContainer {
-  height: 100%;
+  height: calc(100% - 23px);
   width: 100%;
 }

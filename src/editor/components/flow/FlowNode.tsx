@@ -1,7 +1,14 @@
-import React, { memo, MouseEventHandler, useMemo } from 'react';
+import React, {
+  memo,
+  MouseEventHandler,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import classnames from 'classnames/bind';
 import groupBy from 'lodash.groupby';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useReactFlow } from 'reactflow';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGear,
@@ -12,7 +19,6 @@ import {
 import {
   ShaderStage,
   GraphDataType,
-  Vector2,
   Vector3,
   Vector4,
   InputCategory,
@@ -28,7 +34,14 @@ import { useAssetsAndGroups } from '@editor/api';
 
 import styles from './flownode.module.css';
 import { AssetVersionNodeData } from '@core/graph';
-import { randomBetween } from '@/editor/util/math';
+import { randomBetween } from '@editor/util/math';
+import { restrictToParentElement } from '@dnd-kit/modifiers';
+
+import { useDraggable, DndContext, useDndMonitor } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { NODRAG_CLASS } from '../editorTypes';
+import LabeledInput from '../LabeledInput';
+import clamp from '@editor/util/clamp';
 const cx = classnames.bind(styles);
 
 const headerHeight = 30;
@@ -206,22 +219,171 @@ const VectorEditor = ({
   const onComponentChange = (component: number, n: string) => {
     onChange(id, replaceAt(data.value, component, n));
   };
+
   return (
-    <div className={styles.grid}>
-      {(data.value as Vector2 | Vector3 | Vector4).map((_, index) => (
-        <div key={index}>
-          <label className={styles.vectorLabel}>
-            {vectorComponents.charAt(index)}
-            <input
-              className="nodrag"
-              type="text"
-              onChange={(e) => onComponentChange(index, e.currentTarget.value)}
-              value={data.value[index]}
-            />
-          </label>
-        </div>
+    <div className={cx(styles.grid, 'm-top-10 gap-5')}>
+      {(data.value as Vector3 | Vector4).map((_, index) => (
+        <LabeledInput
+          key={index}
+          label={vectorComponents.charAt(index)}
+          type="text"
+          onChange={(e) => onComponentChange(index, e.currentTarget.value)}
+          value={data.value[index]}
+        />
       ))}
     </div>
+  );
+};
+
+const GRID_DIMENSION = 128;
+const HANDLE_DIMENSION = 15;
+const maxGridCursor = GRID_DIMENSION - HANDLE_DIMENSION;
+const normalizeToGrid = (value: number) => {
+  if (value < 0.1) {
+    value = 0;
+  }
+  if (value >= maxGridCursor - 1) {
+    value = maxGridCursor;
+  }
+  return value / maxGridCursor;
+};
+const percentBetween = (low: number, high: number, percent: number) =>
+  low + (high - low) * percent;
+
+const Vector2Editor = (props: {
+  id: string;
+  data: FlowNodeDataData;
+  onChange: ChangeHandler;
+}) => {
+  const { id, data, onChange } = props;
+
+  // DndContext is used in a higher component in this file, so that the
+  // modifiers in DndContext apply to these calls
+  const {
+    attributes,
+    listeners,
+    transform,
+    setNodeRef: draggableRef,
+  } = useDraggable({
+    id: `handle_${id}`,
+  });
+
+  const transformRef = useRef(transform);
+  transformRef.current = transform;
+  const [initialCoords, setInitialCoords] = useState<[number, number]>();
+
+  const reactFlowInstance = useReactFlow();
+  const zoom = reactFlowInstance.getZoom() || 1;
+  const range = useMemo(
+    () =>
+      ((data.config?.range as string[]) || ['-1', '1', '-1', '1']).map(
+        parseFloat
+      ),
+    [data.config]
+  );
+  const value = useMemo(
+    () => (data.value as string[]).map(parseFloat),
+    [data.value]
+  );
+  const rangeScale = useMemo(() => {
+    return {
+      x: range[1] - range[0],
+      y: range[3] - range[2],
+    };
+  }, [range]);
+
+  const onDragStart = () => {
+    setInitialCoords([
+      clamp(
+        ((value[0] - range[0]) / rangeScale.x) * maxGridCursor,
+        0,
+        maxGridCursor
+      ),
+      clamp(
+        ((value[1] - range[2]) / rangeScale.y) * maxGridCursor,
+        0,
+        maxGridCursor
+      ),
+    ]);
+  };
+
+  const onDragEnd = useCallback(() => {
+    setInitialCoords(undefined);
+  }, []);
+
+  const onDragMove = useCallback(() => {
+    if (transformRef.current && initialCoords) {
+      onChange(id, [
+        '' +
+          percentBetween(
+            range[0],
+            range[1],
+            normalizeToGrid(initialCoords[0] + transformRef.current.x / zoom)
+          ),
+        '' +
+          percentBetween(
+            range[2],
+            range[3],
+            normalizeToGrid(initialCoords[1] + transformRef.current.y / zoom)
+          ),
+      ]);
+    }
+  }, [id, initialCoords, onChange, zoom, range]);
+
+  useDndMonitor({
+    onDragEnd,
+    onDragStart,
+    onDragMove,
+  });
+
+  /**
+   * When dragging, dnd-kit produces an offset (the css translate) from the
+   * original drag position (the lefft/top). So when dragging, we need to add
+   * the offset to the initial position. On every drag, we update the value with
+   * onChange(), but we need to ignore that value for the handle position, until
+   * the drag ends. Then we set the handle to the final position without any
+   * more css transform.
+   */
+  const style = {
+    transform: transform
+      ? CSS.Translate.toString({
+          ...transform,
+          x: (transform?.x || 1) / zoom,
+          y: (transform?.y || 1) / zoom,
+        })
+      : undefined,
+    ...(initialCoords
+      ? {
+          left: `${initialCoords[0]}px`,
+          top: `${initialCoords[1]}px`,
+        }
+      : {
+          left: `${clamp(
+            ((value[0] - range[0]) / rangeScale.x) * maxGridCursor,
+            0,
+            maxGridCursor
+          )}px`,
+          top: `${clamp(
+            ((value[1] - range[2]) / rangeScale.y) * maxGridCursor,
+            0,
+            maxGridCursor
+          )}px`,
+        }),
+  };
+
+  return (
+    <>
+      <div className={`gridHelper ${NODRAG_CLASS}`}>
+        <div
+          className="dragHandle"
+          ref={draggableRef}
+          style={style}
+          {...listeners}
+          {...attributes}
+        ></div>
+      </div>
+      <VectorEditor {...props} />
+    </>
   );
 };
 
@@ -234,6 +396,16 @@ const rgbToHex = (r: number, g: number, b: number) => {
   return '#' + componentToHex(r) + componentToHex(g) + componentToHex(b);
 };
 
+const rgbaToHex = (r: number, g: number, b: number, a: number) => {
+  return (
+    '#' +
+    componentToHex(r) +
+    componentToHex(g) +
+    componentToHex(b) +
+    componentToHex(a)
+  );
+};
+
 const hexToRgb = (hex: string) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
@@ -241,6 +413,19 @@ const hexToRgb = (hex: string) => {
         (parseInt(result[1], 16) / 255).toString(),
         (parseInt(result[2], 16) / 255).toString(),
         (parseInt(result[3], 16) / 255).toString(),
+      ]
+    : [];
+};
+const hexToRgba = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(
+    hex
+  );
+  return result
+    ? [
+        (parseInt(result[1], 16) / 255).toString(),
+        (parseInt(result[2], 16) / 255).toString(),
+        (parseInt(result[3], 16) / 255).toString(),
+        (parseInt(result[4], 16) / 255).toString(),
       ]
     : [];
 };
@@ -256,11 +441,12 @@ const ColorEditor = ({
   onChange: ChangeHandler;
 }) => {
   const value = data.value as Vector3 | Vector4;
+  const isRgb = value.length === 3;
   const onComponentChange = (component: number, n: string) => {
     onChange(id, replaceAt(value, component, n));
   };
   return (
-    <div className={styles.grid}>
+    <>
       <div>
         <label className={styles.vectorLabel}>
           rgb
@@ -273,26 +459,30 @@ const ColorEditor = ({
                 parseFloat(value[2])
               )}
               onChange={(e) => {
-                onChange(id, hexToRgb(e.target.value));
+                onChange(
+                  id,
+                  isRgb
+                    ? hexToRgb(e.target.value)
+                    : hexToRgba(e.target.value + 'ff')
+                );
               }}
             />
           </div>
         </label>
       </div>
-      {value.map((_, index) => (
-        <div key={index}>
-          <label className={styles.vectorLabel}>
-            {colorComponents.charAt(index)}
-            <input
-              className="nodrag"
-              type="text"
-              onChange={(e) => onComponentChange(index, e.currentTarget.value)}
-              value={value[index]}
-            />
-          </label>
-        </div>
-      ))}
-    </div>
+      <div className="grid gap-5 m-top-10">
+        {value.map((_, index) => (
+          <LabeledInput
+            key={index}
+            label={colorComponents.charAt(index)}
+            className="nodrag"
+            type="text"
+            onChange={(e) => onComponentChange(index, e.currentTarget.value)}
+            value={value[index]}
+          />
+        ))}
+      </div>
+    </>
   );
 };
 
@@ -307,7 +497,7 @@ const NumberEditor = ({
 }) => (
   <>
     <input
-      className="nodrag"
+      className="nodrag textinput"
       type="text"
       onChange={(e) => onChange(id, e.currentTarget.value)}
       value={data.value}
@@ -479,27 +669,32 @@ const DataNodeComponent = memo(
         </div>
 
         <div className="body">
-          {data.type === 'number' ? (
-            <NumberEditor id={id} data={data} onChange={onChange} />
-          ) : data.type === 'array' ||
-            data.type === 'vector2' ||
-            data.type === 'vector3' ||
-            data.type === 'vector4' ? (
-            <VectorEditor id={id} data={data} onChange={onChange} />
-          ) : data.type === 'rgb' || data.type === 'rgba' ? (
-            <ColorEditor id={id} data={data} onChange={onChange} />
-          ) : data.type === 'texture' ? (
-            <TextureEditor id={id} data={data} onChange={onChange} />
-          ) : data.type === 'samplerCube' ? (
-            <SamplerEditor
-              id={id}
-              data={data}
-              onChange={onChange}
-              tex={samplerCubes}
-            />
-          ) : (
-            <div>NOOOOOO FlowNode for {data.type}</div>
-          )}
+          {/* This context powers the vector grid drag. This needs to wrap
+              the calls to useDraggable() so the modifiers work. */}
+          <DndContext modifiers={[restrictToParentElement]}>
+            {data.type === 'number' ? (
+              <NumberEditor id={id} data={data} onChange={onChange} />
+            ) : data.type === 'vector2' ? (
+              <Vector2Editor id={id} data={data} onChange={onChange} />
+            ) : data.type === 'array' ||
+              data.type === 'vector3' ||
+              data.type === 'vector4' ? (
+              <VectorEditor id={id} data={data} onChange={onChange} />
+            ) : data.type === 'rgb' || data.type === 'rgba' ? (
+              <ColorEditor id={id} data={data} onChange={onChange} />
+            ) : data.type === 'texture' ? (
+              <TextureEditor id={id} data={data} onChange={onChange} />
+            ) : data.type === 'samplerCube' ? (
+              <SamplerEditor
+                id={id}
+                data={data}
+                onChange={onChange}
+                tex={samplerCubes}
+              />
+            ) : (
+              <div>NOOOOOO FlowNode for {data.type}</div>
+            )}
+          </DndContext>
         </div>
 
         <div className={styles.outputs}>

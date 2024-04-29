@@ -11,7 +11,7 @@ import { Engine, NodeErrors } from '@core';
 import { usePrevious } from '../hooks/usePrevious';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GlslSyntaxError } from '@shaderfrog/glsl-parser';
-import { AnyFn } from '@/editor/util/types';
+import { AnyFn } from '@editor/util/types';
 
 import styles from '../styles/editor.module.css';
 

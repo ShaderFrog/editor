@@ -1,5 +1,6 @@
 import debounce from 'lodash.debounce';
 import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import {
   useEffect,
   useMemo,
@@ -97,6 +98,18 @@ const EffectSearch = ({
   };
 
   const count = effects.shaders.length;
+
+  const {
+    attributes,
+    listeners,
+    transform,
+    setNodeRef: draggableRef,
+  } = useDraggable({
+    id: `unizue-handle`,
+  });
+  const style = {
+    transform: CSS.Translate.toString(transform),
+  };
 
   return (
     <>

@@ -1,4 +1,4 @@
-import { AnyFn } from '@/editor/util/types';
+import { AnyFn } from '@editor/util/types';
 import throttle from 'lodash.throttle';
 import { useCallback, useEffect, useRef } from 'react';
 

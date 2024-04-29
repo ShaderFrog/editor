@@ -123,7 +123,13 @@ import { FlowGraphContext } from '@editor/editor/flowGraphContext';
 import { findNodeAndData, findNodeTree } from './flow/graph-helpers';
 import { isMacintosh } from '@editor/util/platform';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { AnySceneConfig, EditorProps, EngineProps } from './editorTypes';
+import {
+  AnySceneConfig,
+  EditorProps,
+  EngineProps,
+  NODRAG_CLASS,
+  NODROP_CLASS,
+} from './editorTypes';
 import EffectSearch from './EffectSearch';
 import ShaderPreview from './ShaderPreview';
 import TextureBrowser from './TextureBrowser';
@@ -669,12 +675,17 @@ const Editor = ({
       updateGraphNode(nodeId, { value });
 
       // Only recompile if a non-data-node value changes
-      const { dataNodes } = compileResult;
-      if (!(nodeId in dataNodes)) {
+      if (!isDataNode(graph.nodes.find((n) => n.id === nodeId)!)) {
         debouncedSetNeedsCompile(true);
       }
     },
-    [compileResult, debouncedSetNeedsCompile, updateGraphNode, updateFlowNode]
+    [
+      compileResult,
+      debouncedSetNeedsCompile,
+      updateGraphNode,
+      updateFlowNode,
+      graph.nodes,
+    ]
   );
 
   const onInputBakedToggle = useCallback(
@@ -1725,24 +1736,50 @@ const Editor = ({
   const [activeShader, setActiveShader] = useState<Shader | null>(null);
 
   const onDragStart = (event: DragStartEvent) => {
-    const shader = event.active.data.current!.shader as Shader;
-    setActiveShader(shader);
+    if (
+      hasParent(
+        event.active.data?.current?.target as HTMLDivElement,
+        `.${NODRAG_CLASS}`
+      )
+    ) {
+      return;
+    }
+    if (event.active.data?.current?.shader) {
+      const shader = event.active.data.current!.shader as Shader;
+      setActiveShader(shader);
+    }
   };
 
   const onDragEnd = (event: DragEndEvent) => {
-    if (!event.over) {
+    if (
+      hasParent(
+        event.activatorEvent.target as HTMLDivElement,
+        `.${NODRAG_CLASS}`
+      )
+    ) {
       return;
     }
+    setActiveShader(null);
+    setReplacingNode(null);
     setNodes((nodes) =>
       nodes.map((node) => updateFlowNodeData(node, { ghost: false }))
     );
-    setActiveShader(null);
+    if (!event.over) {
+      return;
+    }
+    if (
+      hasParent(
+        event.activatorEvent.target as HTMLDivElement,
+        `.${NODROP_CLASS}`
+      )
+    ) {
+      return;
+    }
     if (replacingNode && activeShader) {
       onSelectGroup(
         graph.nodes.find((n) => n.id === replacingNode.id),
         activeShader
       );
-      setReplacingNode(null);
     } else if (activeShader) {
       // Figure out some shit from the incoming graph
       const { graph: originalIncomingGraph } = activeShader.config;
@@ -1815,6 +1852,14 @@ const Editor = ({
   };
 
   const onDragMove = (event: DragMoveEvent) => {
+    if (
+      hasParent(
+        event.activatorEvent.target as HTMLDivElement,
+        `.${NODRAG_CLASS}`
+      )
+    ) {
+      return;
+    }
     if (mouseRef.current) {
       const closestNode = getClosestNodeToPosition(mouseRef.current.projected);
       setNodes((nodes) =>
@@ -1965,7 +2010,12 @@ const Editor = ({
           <TabPanel className={styles.growShrinkRows}>
             <SplitPane split="vertical" defaultSizes={[0.2, 0.8]}>
               <div
-                className={cx(styles.splitInner, styles.vSplit, styles.vScroll)}
+                className={cx(
+                  styles.splitInner,
+                  styles.vSplit,
+                  styles.vScroll,
+                  NODROP_CLASS
+                )}
               >
                 <EffectSearch
                   engine={engine.name}

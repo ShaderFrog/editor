@@ -23,7 +23,7 @@
   box-sizing: border-box;
   color: #eee;
   font-size: 14px;
-  padding: 6px 12px;
+  padding: 4px 8px;
   border-radius: 6px;
   border: 0 none;
   white-space: nowrap;
@@ -128,7 +128,7 @@
 }
 
 .textinput {
-  background: linear-gradient(rgb(51 53 50), rgb(47 46 46));
+  background: linear-gradient(rgb(41, 43, 40), rgb(34, 34, 34));
   box-shadow: 0 0 2px rgb(0 0 0 / 90%), inset 0 -1px rgb(255 255 255 / 4%),
     0 1px 6px inset #00000033;
   appearance: none;
@@ -337,4 +337,45 @@
   background: rgba(0, 0, 0, 0.7);
   padding: 4px 8px;
   border-radius: 12px;
+}
+
+.gridHelper {
+  width: 128px;
+  height: 128px;
+  position: relative;
+  box-shadow: inset 0 1px 4px #1f1f1f, inset 0 -1px 0 #444;
+  background: -1px -1px, -1px -1px, -1px -1px, -1px -1px #111;
+  border-radius: 4px;
+  background-image: linear-gradient(#aaa 2px, transparent 2px),
+    linear-gradient(90deg, #aaa 2px, transparent 2px),
+    linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+  background-size: 64px 64px, 64px 64px, 8px 8px, 8px 8px;
+}
+.dragHandle {
+  position: absolute;
+  height: 15px;
+  width: 15px;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, #4e4e4e 0, #222 100%);
+  box-shadow: inset 0 1px 1px #858585, 0 1px 2px #1b1b1b;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.labeledInput {
+  position: relative;
+}
+.labeledInput input {
+  padding-left: 26px;
+}
+.labeledInput label {
+  position: absolute;
+  top: 0.25em;
+  left: 0.8em;
+  font-size: 14px;
+  color: #777;
+}
+.labeledInput input.label-med {
+  padding-left: 44px;
 }

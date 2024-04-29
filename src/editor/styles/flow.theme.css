@@ -314,11 +314,17 @@
   top: 2px;
 } */
 
-.flownode.vector2,
-.flownode.vector3,
-.flownode.vector4,
+.flownode.vector2 {
+  height: 215px !important;
+}
 .flownode.rgb,
 .flownode.rgba {
+  min-width: 300px;
+  height: 125px !important;
+}
+
+.flownode.vector3,
+.flownode.vector4 {
   height: 90px !important;
 }
 

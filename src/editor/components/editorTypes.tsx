@@ -10,7 +10,7 @@ import {
   ShaderUpdateInput,
 } from '@editor/model/Shader';
 import { CurrentUser } from '@editor/model';
-import { AnyFn } from '@/editor/util/types';
+import { AnyFn } from '@editor/util/types';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -79,3 +79,11 @@ export type EngineProps = {
   ) => [Set<string>, Graph] | undefined;
   sceneComponent: FunctionComponent<SceneProps>;
 };
+
+// React-flow's default class for non-draggable inner elements. Also used to
+// short circuit Editor drag events
+export const NODRAG_CLASS = 'nodrag';
+
+// Prevent dropping on element panes which are over the graph from triggering
+// an effect drop
+export const NODROP_CLASS = 'nodrop';

@@ -17,6 +17,7 @@ import {
   linkFromVertToFrag,
   isError,
   NodeErrors,
+  AssetVersionNodeData,
 } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
@@ -65,7 +66,12 @@ const expandUniformDataNodes = (graph: Graph): Graph =>
           let n;
           switch (uniform.type) {
             case 'texture': {
-              n = textureNode(makeId(), uniform.name, position, uniform.value);
+              n = textureNode(
+                makeId(),
+                uniform.name,
+                position,
+                uniform.value as AssetVersionNodeData
+              );
               break;
             }
             case 'number': {

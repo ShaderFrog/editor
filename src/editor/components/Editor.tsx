@@ -88,7 +88,7 @@ import { ensure } from '../../util/ensure';
 
 import { makeId } from '../../util/id';
 import { hasParent } from '../../util/hasParent';
-import { useWindowSize } from '../hooks/useWindowSize';
+import { SMALL_SCREEN_WIDTH, useWindowSize } from '../hooks/useWindowSize';
 
 import {
   FlowNode,
@@ -136,8 +136,6 @@ import TextureBrowser from './TextureBrowser';
 import randomShaderName from '@editor/util/randomShaderName';
 import { Shader } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
-
-const SMALL_SCREEN_WIDTH = 500;
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
@@ -745,7 +743,7 @@ const Editor = ({
 
   useLayoutEffect(() => {
     const width = window.innerWidth;
-    if (width >= SMALL_SCREEN_WIDTH) {
+    if (!isSmallScreen) {
       const DEFAULT_SPLIT_PERCENT = 30;
       const sizes = [
         0.1 * (100 - DEFAULT_SPLIT_PERCENT) * width,
@@ -753,7 +751,7 @@ const Editor = ({
       ];
       setDefaultMainSplitSize(sizes);
     }
-  }, []);
+  }, [isSmallScreen]);
 
   const syncSceneSize = useThrottle(() => {
     if (sceneWrapRef.current) {

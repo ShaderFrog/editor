@@ -14,6 +14,7 @@ import { GlslSyntaxError } from '@shaderfrog/glsl-parser';
 import { AnyFn } from '@editor/util/types';
 
 import styles from '../styles/editor.module.css';
+import { SMALL_SCREEN_WIDTH, useWindowSize } from '../hooks/useWindowSize';
 
 const consoleError = console.error;
 let callback: Function;
@@ -199,7 +200,11 @@ const CodeEditor = ({
     checkErrors();
   }, [identity, lastIdentity, defaultValue, checkErrors]);
 
-  return errored ? (
+  const windowSize = useWindowSize();
+  const isSmallScreen = windowSize.width < SMALL_SCREEN_WIDTH;
+
+  // Monaco is not supported on mobile
+  return errored || isSmallScreen ? (
     <textarea
       spellCheck={false}
       className={styles.fallbackEditor}

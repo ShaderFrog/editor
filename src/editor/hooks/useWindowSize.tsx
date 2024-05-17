@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 
+export const SMALL_SCREEN_WIDTH = 500;
+
 interface Size {
   width: number;
   height: number;

@@ -40,9 +40,7 @@ const TextureBrowser = ({
   const [search, setSearch] = useState('');
 
   const [filteredGroups, setFilteredGroups] = useState(Object.values(groups));
-  const [filteredAssets, setFilteredAssets] = useState(
-    Object.values(assets).filter((a) => a.subtype === 'Diffuse')
-  );
+  const [filteredAssets, setFilteredAssets] = useState(Object.values(assets));
 
   const multiGroups = useMemo(() => {
     return new Set(
@@ -72,10 +70,8 @@ const TextureBrowser = ({
       );
     } else {
       setFilteredAssets(
-        Object.values(assets).filter(
-          (a) =>
-            a.subtype === 'Diffuse' &&
-            a.name.toLowerCase().normalize().includes(seach)
+        Object.values(assets).filter((a) =>
+          a.name.toLowerCase().normalize().includes(seach)
         )
       );
     }

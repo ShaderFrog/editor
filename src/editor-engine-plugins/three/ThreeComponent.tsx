@@ -450,7 +450,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
               }
               // TODO RENDER TARGET
               if (fromNode.type === 'samplerCube') {
-                return;
+                newValue = textures[(fromNode as SamplerCubeNode).value];
               }
 
               if (input.type === 'property') {

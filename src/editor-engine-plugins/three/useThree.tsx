@@ -1,5 +1,5 @@
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { useCallback, useEffect, useRef, useState, useContext } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Object3D,
   Mesh,
@@ -12,7 +12,6 @@ import {
   LinearMipmapLinearFilter,
   sRGBEncoding,
   LinearToneMapping,
-  ACESFilmicToneMapping,
 } from 'three';
 
 import { useHoisty } from '../../editor/hoistedRefContext';
@@ -56,7 +55,6 @@ export const useThree = (callback: Callback, isPaused = false) => {
       // https://www.donmccurdy.com/2020/06/17/color-management-in-threejs/
       const renderer = new WebGLRenderer();
       renderer.outputEncoding = sRGBEncoding;
-      renderer.toneMapping = ACESFilmicToneMapping;
       renderer.toneMapping = LinearToneMapping;
 
       return {

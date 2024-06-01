@@ -10,6 +10,9 @@ export const stubApi: ClientApi = {
   searchShaders: async () => {
     return { count: 0, shaders: [] };
   },
+  searchEffects: async () => {
+    return { count: 0, shaders: [] };
+  },
 };
 
 // Stub data injected at page load time for SWR

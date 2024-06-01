@@ -1,6 +1,5 @@
 import debounce from 'lodash.debounce';
 import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import {
   useEffect,
   useMemo,
@@ -8,6 +7,7 @@ import {
   HTMLAttributes,
   useCallback,
 } from 'react';
+import classnames from 'classnames/bind';
 
 import { SourceNode } from '@core/graph';
 
@@ -15,6 +15,9 @@ import ShaderPreview from './ShaderPreview';
 import { Shader } from '@editor/model/Shader';
 import SearchBox from './SearchBox';
 import { useApi } from '@editor/api';
+
+import styles from '../styles/editor.module.css';
+const cx = classnames.bind(styles);
 
 const DraggableShaderPreview = ({
   shader,
@@ -47,6 +50,7 @@ const EffectSearch = ({
 }) => {
   const api = useApi();
   const [search, setSearch] = useState<string>('');
+  const [includeMy, setIncludeMy] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [effects, setEffects] = useState<{
     total: number;
@@ -59,29 +63,18 @@ const EffectSearch = ({
     async (text: string) => {
       try {
         setIsSearching(true);
-        const { count, shaders } = await api.searchShaders({
+        const { count, shaders } = await api.searchEffects({
           text,
           engine,
-          tags: ['composable'],
+          includeMy,
         });
-
-        // Remove shaders with engine nodes. There's probably a more important
-        // criteria here that I don't know yet.
-        const filtered = (shaders as Shader[]).filter((s) => {
-          return (
-            !s.config.graph.nodes.find((n) => (n as SourceNode).engine) &&
-            // And make sure there's actually nodes in the graph
-            s.config.graph.nodes.filter((n) => n.type !== 'output').length > 0
-          );
-        });
-
-        setEffects({ total: count, shaders: filtered });
+        setEffects({ total: count, shaders });
       } catch (e) {
         console.error('Error searching', e);
       }
       setIsSearching(false);
     },
-    [engine, api]
+    [engine, api, includeMy]
   );
 
   const doSearchDebounced = useMemo(() => {
@@ -99,29 +92,26 @@ const EffectSearch = ({
 
   const count = effects.shaders.length;
 
-  const {
-    attributes,
-    listeners,
-    transform,
-    setNodeRef: draggableRef,
-  } = useDraggable({
-    id: `unizue-handle`,
-  });
-  const style = {
-    transform: CSS.Translate.toString(transform),
-  };
-
   return (
     <>
       <div>
         <label className="label">Effect Search</label>
-        <div className="m-bottom-10">
+        <div className="m-bottom-5">
           <SearchBox
             value={search}
             onChange={onChange}
             placeholder="Search effects"
           />
         </div>
+        <label className={cx('label m-bottom-10 px12', styles.controlGrid)}>
+          <input
+            className="checkbox"
+            type="checkbox"
+            checked={includeMy}
+            onChange={(e) => setIncludeMy(e.target.checked)}
+          ></input>
+          Include my effects
+        </label>
         {suggestions.map((s) => (
           <div
             key={s}

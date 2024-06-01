@@ -1765,14 +1765,7 @@ const Editor = ({
     if (!event.over) {
       return;
     }
-    if (
-      hasParent(
-        event.activatorEvent.target as HTMLDivElement,
-        `.${NODROP_CLASS}`
-      )
-    ) {
-      return;
-    }
+
     if (replacingNode && activeShader) {
       onSelectGroup(
         graph.nodes.find((n) => n.id === replacingNode.id),

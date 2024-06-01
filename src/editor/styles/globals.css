@@ -110,7 +110,7 @@ a:hover {
   color: #aaa;
 }
 .px12 {
-  font-size: 12px;
+  font-size: 12px !important;
 }
 
 .linkBtn {

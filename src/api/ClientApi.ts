@@ -12,4 +12,13 @@ export interface ClientApi {
     engine: string;
     tags: string[];
   }) => Promise<{ count: number; shaders: Shader[] }>;
+  searchEffects: ({
+    text,
+    engine,
+    includeMy,
+  }: {
+    text: string;
+    engine: string;
+    includeMy: boolean;
+  }) => Promise<{ count: number; shaders: Shader[] }>;
 }

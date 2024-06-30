@@ -62,7 +62,6 @@ import FlowEditor, {
   MouseData,
   NodeContextActions,
   SHADERFROG_FLOW_EDGE_TYPE,
-  useEditorStore,
 } from './flow/FlowEditor';
 
 import { Engine, EngineContext } from '@core/engine';
@@ -136,6 +135,7 @@ import TextureBrowser from './TextureBrowser';
 import randomShaderName from '@editor/util/randomShaderName';
 import { Shader } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
+import { useEditorStore } from './flow/useEditorStore';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);

@@ -29,7 +29,6 @@ import { ChangeHandler, useFlowEventHack } from '../../flowEventHack';
 import { replaceAt } from '@editor/util/replaceAt';
 import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
 import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
-import { useEditorStore } from './FlowEditor';
 import { useAssetsAndGroups } from '@editor/api';
 
 import styles from './flownode.module.css';
@@ -42,6 +41,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { NODRAG_CLASS } from '../editorTypes';
 import LabeledInput from '../LabeledInput';
 import clamp from '@editor/util/clamp';
+import { useEditorStore } from './useEditorStore';
 const cx = classnames.bind(styles);
 
 const headerHeight = 30;
@@ -103,7 +103,7 @@ export interface FlowNodeSourceData extends CoreFlowNode {
 export type FlowNodeData = FlowNodeSourceData | FlowNodeDataData;
 
 const showPosition = (id: any, xPos: number, yPos: number) =>
-  window.location.search.indexOf('debug') > -1 ? (
+  global?.location?.search?.indexOf('debug') > -1 ? (
     <>
       ({id}) {Math.round(xPos)}, {Math.round(yPos)}
     </>

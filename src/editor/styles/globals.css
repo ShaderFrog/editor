@@ -239,6 +239,10 @@ a:hover {
   grid-auto-flow: row;
   grid-template-columns: 1fr min-content min-content;
 }
+.growShinkGrow {
+  grid-auto-flow: row;
+  grid-template-columns: 1fr min-content 1fr;
+}
 .shrinkGrowShrink {
   grid-auto-flow: row;
   grid-template-columns: min-content 1fr min-content;

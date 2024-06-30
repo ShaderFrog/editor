@@ -174,6 +174,12 @@ a:hover {
 .m-right-50 {
   margin-right: 50px !important;
 }
+.m-right-100 {
+  margin-right: 100px !important;
+}
+.m-right-200 {
+  margin-right: 200px !important;
+}
 
 .m-bottom-5 {
   margin-bottom: 5px !important;
@@ -193,6 +199,12 @@ a:hover {
 .m-bottom-50 {
   margin-bottom: 50px !important;
 }
+.m-bottom-100 {
+  margin-bottom: 100px !important;
+}
+.m-bottom-200 {
+  margin-bottom: 100px !important;
+}
 
 .m-left-5 {
   margin-left: 5px !important;
@@ -211,6 +223,12 @@ a:hover {
 }
 .m-left-50 {
   margin-left: 50px !important;
+}
+.m-left-100 {
+  margin-left: 100px !important;
+}
+.m-left-200 {
+  margin-left: 200px !important;
 }
 
 /*******************************************************************************
@@ -281,6 +299,11 @@ a:hover {
   .col3 {
     width: 100%;
     grid-row-gap: 10px;
+    grid-auto-flow: row;
+    grid-template-columns: auto;
+  }
+  .growShinkGrow {
+    width: 100%;
     grid-auto-flow: row;
     grid-template-columns: auto;
   }

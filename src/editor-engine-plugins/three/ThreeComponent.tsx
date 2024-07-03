@@ -109,7 +109,7 @@ export type SceneConfig = {
   icosahedronResolution: [number];
 };
 
-const maxResolution = 256;
+const maxResolution = 10000;
 const defaultResolution = {
   torusResolution: [200, 32],
   torusKnotResolution: [200, 32],

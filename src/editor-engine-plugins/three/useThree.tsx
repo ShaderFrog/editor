@@ -53,7 +53,7 @@ export const useThree = (callback: Callback, isPaused = false) => {
       scene.add(cubeCamera);
 
       // https://www.donmccurdy.com/2020/06/17/color-management-in-threejs/
-      const renderer = new WebGLRenderer();
+      const renderer = new WebGLRenderer({ antialias: true });
       renderer.outputEncoding = sRGBEncoding;
       renderer.toneMapping = LinearToneMapping;
 

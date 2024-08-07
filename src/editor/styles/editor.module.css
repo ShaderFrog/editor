@@ -292,6 +292,10 @@ textarea.error {
   grid-template-columns: auto minmax(auto, 200px) 1fr;
   gap: 4px;
 }
+.grid_200_4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(auto, 200px));
+}
 
 .fitMaxFitRows {
   display: grid;

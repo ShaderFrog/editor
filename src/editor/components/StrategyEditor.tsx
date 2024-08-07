@@ -3,7 +3,13 @@ import React from 'react';
 
 import { EngineContext } from '@core/engine';
 import { Strategy, StrategyType } from '@core/strategy';
-import { SourceNode, SourceType, Graph, findLinkedNode } from '@core/graph';
+import {
+  SourceNode,
+  SourceType,
+  Graph,
+  findLinkedNode,
+  Backfillers,
+} from '@core/graph';
 
 import styles from '../styles/editor.module.css';
 
@@ -78,6 +84,8 @@ const StrategyEditor = ({
       </select>
     );
   };
+
+  const backfillers: Backfillers = node.backfillers || {};
 
   return (
     <>
@@ -223,15 +231,75 @@ const StrategyEditor = ({
           The names of the inputs found by the node strategies. For debugging
           only.
         </div>
-        {inputs.length ? (
-          <ul>
-            {inputs.map((i) => (
-              <li key={i.id}>{i.id}</li>
-            ))}
-          </ul>
-        ) : (
-          'No inputs found'
-        )}
+        {inputs.length
+          ? inputs.map((i) => (
+              <div key={i.id} className={cx('divide-b-10')}>
+                {backfillers[i.id] ? (
+                  <form
+                    className={cx('grid growGrowGrowShrink gap25')}
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const data = new FormData(
+                        event.target as HTMLFormElement
+                      );
+
+                      (backfillers[i.id][0] = {
+                        argType: data.get('argType') as string,
+                        targetVariable: data.get('targetVariable') as string,
+                      }),
+                        onSave();
+                    }}
+                  >
+                    <div>{i.id}</div>
+                    <label>
+                      Arg Type
+                      <input
+                        className="textinput m-top-10"
+                        type="text"
+                        defaultValue={backfillers[i.id][0].argType}
+                      />
+                    </label>
+                    <label>
+                      Target Variable
+                      <input
+                        className="textinput m-top-10"
+                        type="text"
+                        defaultValue={backfillers[i.id][0].targetVariable}
+                      />
+                    </label>
+                    <div>
+                      <button
+                        className="buttonauto formbutton m-top-20"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          delete backfillers[i.id];
+                          onSave();
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <span className={cx('grid', 'growShrink', 'gap25')}>
+                    <div>{i.id}</div>
+                    <button
+                      className="buttonauto formbutton"
+                      onClick={() => {
+                        node.backfillers = {
+                          ...(node.backfillers || {}),
+                          [i.id]: [{ argType: 'vec2', targetVariable: 'vUv' }],
+                        };
+                        onSave();
+                      }}
+                    >
+                      Backfill
+                    </button>
+                  </span>
+                )}
+              </div>
+            ))
+          : 'No inputs found'}
       </div>
     </>
   );

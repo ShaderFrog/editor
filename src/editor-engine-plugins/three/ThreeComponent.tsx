@@ -87,8 +87,11 @@ import { SceneProps } from '@editor-components/editorTypes';
 import { useAssetsAndGroups } from '@editor/api';
 
 import styles from '../../editor/styles/editor.module.css';
+import clamp from '@/editor/util/clamp';
 
 const cx = classnames.bind(styles);
+
+const AUTO_ROTATE_CLAMP = 10;
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
@@ -332,11 +335,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const [isPaused, setIsPaused] = useState(false);
 
   const { sceneData, scene, camera, threeDomCbRef, renderer } = useThree(
-    (time) => {
+    (time, controls) => {
       const { mesh } = sceneData;
       if (!mesh) {
         return;
       }
+
+      controls.autoRotate = sceneConfig.autoRotate || false;
+      controls.autoRotateSpeed = sceneConfig.autoRotateSpeed || 0.5;
 
       if (shadersUpdated.current) {
         const gl = renderer.getContext();
@@ -1359,6 +1365,48 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   </option>
                 </select>
               </div>
+            </div>
+            <div className="grid span2">
+              <div className={styles.controlGrid}>
+                <div>
+                  <input
+                    className="checkbox"
+                    id="arc"
+                    type="checkbox"
+                    checked={sceneConfig.autoRotate}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        autoRotate: event?.target.checked,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label noselect" htmlFor="arc">
+                    <span>Auto Rotate Camera</span>
+                  </label>
+                </div>
+              </div>
+              <label className="label noselect">
+                Auto Rotate Speed
+                <input
+                  className="textinput"
+                  id="ars"
+                  type="text"
+                  checked={sceneConfig.autoRotateSpeed}
+                  onChange={(event) =>
+                    setSceneConfig({
+                      ...sceneConfig,
+                      autoRotateSpeed: clamp(
+                        parseFloat(event.target.value),
+                        -AUTO_ROTATE_CLAMP,
+                        AUTO_ROTATE_CLAMP
+                      ),
+                    })
+                  }
+                />
+              </label>
             </div>
           </TabPanel>
         </TabPanels>

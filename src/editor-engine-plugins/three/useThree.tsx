@@ -18,7 +18,7 @@ import { useHoisty } from '../../editor/hoistedRefContext';
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component.useThree)\x1b[0m', ...args);
 
-type Callback = (time: number) => void;
+type Callback = (time: number, controls: OrbitControls) => void;
 
 type SceneData = {
   helpers: Object3D[];
@@ -137,7 +137,7 @@ export const useThree = (callback: Callback, isPaused = false) => {
       if (isPaused !== true) {
         renderer.render(scene, camera);
       }
-      savedCallback.current(time);
+      savedCallback.current(time, controlsRef.current!);
 
       frameRef.current = requestAnimationFrame(animate);
     },
@@ -158,5 +158,12 @@ export const useThree = (callback: Callback, isPaused = false) => {
     };
   }, [animate, threeDomElement]);
 
-  return { sceneData, threeDomElement, threeDomCbRef, scene, camera, renderer };
+  return {
+    sceneData,
+    threeDomElement,
+    threeDomCbRef,
+    scene,
+    camera,
+    renderer,
+  };
 };

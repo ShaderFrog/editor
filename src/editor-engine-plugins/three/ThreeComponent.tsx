@@ -91,7 +91,7 @@ import clamp from '@/editor/util/clamp';
 
 const cx = classnames.bind(styles);
 
-const AUTO_ROTATE_CLAMP = 10;
+export const AUTO_ROTATE_LIMIT = 10;
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
@@ -110,6 +110,8 @@ export type SceneConfig = {
   planeResolution: [number, number];
   sphereResolution: [number, number];
   icosahedronResolution: [number];
+  autoRotate: boolean;
+  autoRotateSpeed: number;
 };
 
 const maxResolution = 10000;
@@ -1400,8 +1402,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
                       ...sceneConfig,
                       autoRotateSpeed: clamp(
                         parseFloat(event.target.value),
-                        -AUTO_ROTATE_CLAMP,
-                        AUTO_ROTATE_CLAMP
+                        -AUTO_ROTATE_LIMIT,
+                        AUTO_ROTATE_LIMIT
                       ),
                     })
                   }

@@ -20,7 +20,7 @@
     "@monaco-editor/react": "^4.6.0",
     "@react-hook/resize-observer": "^1.2.6",
     "@shaderfrog/core": "^1.5.3",
-    "@shaderfrog/glsl-parser": "^4.1.0",
+    "@shaderfrog/glsl-parser": "^5.1.1",
     "@svgr/webpack": "^8.1.0",
     "@types/lodash.groupby": "^4.6.7",
     "@types/three": "^0.131.0",

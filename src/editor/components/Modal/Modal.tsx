@@ -3,7 +3,7 @@ import { faTimes } from '@fortawesome/free-solid-svg-icons';
 
 import styles from '../../styles/editor.module.css';
 
-const BottomModal = ({
+const Modal = ({
   children,
   onClose,
 }: {
@@ -11,7 +11,7 @@ const BottomModal = ({
   onClose: () => void;
 }) => {
   return (
-    <div className={styles.bottomModal}>
+    <div className={styles.modal}>
       <button
         className={styles.closeModal}
         onClick={(e) => {
@@ -21,9 +21,9 @@ const BottomModal = ({
       >
         <FontAwesomeIcon icon={faTimes} />
       </button>
-      <div className={styles.bottomModalContent}>{children}</div>
+      <div className={styles.modalContent}>{children}</div>
     </div>
   );
 };
 
-export default BottomModal;
+export default Modal;

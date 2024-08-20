@@ -452,6 +452,23 @@ textarea.error {
   overflow-y: scroll;
 }
 
+.modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  background: linear-gradient(0deg, #1a1a1a, rgb(41, 41, 41));
+  border: 1px solid #444;
+  border-radius: 14px;
+  box-shadow: 0 0 10px #000;
+  height: auto;
+}
+.modalContent {
+  padding: 30px 40px;
+  max-height: 80vh;
+}
+
 .bottomModal {
   position: absolute;
   left: 4px;
@@ -463,7 +480,7 @@ textarea.error {
   border-radius: 6px;
   box-shadow: 0 0 10px #000;
 }
-.modalContent {
+.bottomModalContent {
   height: calc(min(200px, 50vh));
   padding: 6px 14px;
   overflow: scroll;

@@ -162,6 +162,14 @@ const expandUniformDataNodes = (graph: Graph): Graph =>
     return updated;
   }, graph);
 
+export const linkNodes = (
+  frag: GraphNode,
+  vert: GraphNode
+): [Edge[], GraphNode[]] => [
+  [linkFromVertToFrag(makeId(), vert.id, frag.id)],
+  [frag, vert],
+];
+
 const createGraphNode = (
   nodeDataType: string,
   name: string,
@@ -175,10 +183,6 @@ const createGraphNode = (
 
   let newGns: GraphNode[] = [];
   let newEdges: Edge[] = [];
-  const link = (frag: GraphNode, vert: GraphNode): [Edge[], GraphNode[]] => [
-    [linkFromVertToFrag(makeId(), vert.id, frag.id)],
-    [frag, vert],
-  ];
 
   if (nodeDataType === 'number') {
     newGns = [
@@ -272,7 +276,7 @@ gl_Position = vec4(1.0);
       'vertex',
       engine.name
     );
-    [newEdges, newGns] = link(fragment, vertex);
+    [newEdges, newGns] = linkNodes(fragment, vertex);
   } else if (nodeDataType === 'fragment' || nodeDataType === 'vertex') {
     newGns = [
       sourceNode(

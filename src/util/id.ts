@@ -1,2 +1,3 @@
 let counter = 0;
-export const makeId = () => `${Date.now()}_${counter++}`;
+export const makeId = () => `${Date.now()}_${count()}`;
+export const count = () => counter++;

@@ -56,6 +56,7 @@ import {
   resetGraphIds,
   isError,
   NodeErrors,
+  sourceNode,
 } from '@core/graph';
 
 import FlowEditor, {
@@ -85,7 +86,7 @@ import { UICompileGraphResult } from '../uICompileGraphResult';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { ensure } from '../../util/ensure';
 
-import { makeId } from '../../util/id';
+import { count, makeId } from '../../util/id';
 import { hasParent } from '../../util/hasParent';
 import { SMALL_SCREEN_WIDTH, useWindowSize } from '../hooks/useWindowSize';
 
@@ -116,6 +117,7 @@ import {
   compileGraphAsync,
   createGraphNode,
   expandUniformDataNodes,
+  linkNodes,
 } from './useGraph';
 import StrategyEditor from './StrategyEditor';
 import { FlowGraphContext } from '@editor/editor/flowGraphContext';
@@ -136,9 +138,112 @@ import randomShaderName from '@editor/util/randomShaderName';
 import { Shader } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
 import { useEditorStore } from './flow/useEditorStore';
+import Modal from './Modal';
+import { texture2DStrategy, uniformStrategy } from '@/core';
+import { generate, parser } from '@shaderfrog/glsl-parser';
+import { Program } from '@shaderfrog/glsl-parser/ast';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
+
+const ConvertModal = ({
+  engine,
+  onImport,
+  onClose,
+}: {
+  engine: Engine;
+  onImport: (n: GraphNode[], e: Edge[]) => void;
+  onClose: () => void;
+}) => {
+  const [importError, setImportError] = useState<string | null>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  return (
+    <Modal onClose={onClose}>
+      <h2 className={cx(styles.uiHeader)}>
+        Import from Shadertoy (experimental)
+      </h2>
+      <p className="blerfiarie">
+        Paste your Shadertoy code below. The following are <b>not</b> currently
+        supported:
+      </p>
+      <ul className="blerfiarie">
+        <li>Multiple buffers</li>
+        <li>Mouse input</li>
+        <li>Audio input</li>
+      </ul>
+      <textarea
+        ref={textAreaRef}
+        className="textinput"
+        placeholder="Paste your ShaderToy GLSL here"
+      ></textarea>
+      {importError ? (
+        <div className={cx(styles.errored, `m-top-10`)}>{importError}</div>
+      ) : null}
+      <div className="m-top-10">
+        <button
+          className="buttonauto formbutton size2"
+          onClick={(e) => {
+            e.preventDefault();
+            let ast: Program;
+
+            try {
+              const value = textAreaRef.current!.value;
+              // SAD HACK to catch variables in preprocessor lines
+              ast = parser.parse(
+                value
+                  .replace(/\biTime\b/g, 'time')
+                  .replace(/\biResolution\b/g, 'renderResolution')
+              );
+              engine.importers.shadertoy.convertAst(ast);
+            } catch (e) {
+              console.error('Error importing shader', e);
+              setImportError(
+                'Error importing shader! Check the console log, and please use the link at the top right to file a bug.'
+              );
+              return;
+            }
+
+            const c = count();
+            const fragment = sourceNode(
+              makeId(),
+              'Shadertoy Import ' + c,
+              { x: 0, y: 0 },
+              {
+                version: 2,
+                preprocess: true,
+                strategies: [uniformStrategy(), texture2DStrategy()],
+                uniforms: [],
+              },
+              generate(ast),
+              'fragment',
+              engine.name
+            );
+            const vertex = sourceNode(
+              makeId(),
+              'Shadertoy Import ' + c,
+              { x: 0, y: 299 },
+              {
+                version: 2,
+                preprocess: true,
+                strategies: [uniformStrategy()],
+                uniforms: [],
+              },
+              engine.importers.shadertoy.code!.defaultShadertoyVertex,
+              'vertex',
+              engine.name
+            );
+            const [newEdges, newGns] = linkNodes(fragment, vertex);
+            onImport(newGns, newEdges);
+          }}
+          title="Import"
+        >
+          Import
+        </button>
+      </div>
+    </Modal>
+  );
+};
 
 const Editor = ({
   assetPrefix,
@@ -1926,6 +2031,8 @@ const Editor = ({
     { preventDefault: true }
   );
 
+  const [isShowingImport, setShowImport] = useState(false);
+
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [canDelete, setCanDelete] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
@@ -1952,6 +2059,17 @@ const Editor = ({
             </div>
           ) : null}
           <div className="m-right-15">
+            {'shadertoy' in engine.importers ? (
+              <button
+                className="buttonauto formbutton size2 secondary m-right-10"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowImport(true);
+                }}
+              >
+                Import&hellip;
+              </button>
+            ) : null}
             {!shader.id || !isOwnShader ? null : (
               <button
                 disabled={isSaving || isDeleting}
@@ -2017,6 +2135,26 @@ const Editor = ({
                 />
               </div>
               <div className={styles.splitInner} ref={reactFlowWrapper}>
+                {isShowingImport ? (
+                  <ConvertModal
+                    engine={engine}
+                    onClose={() => setShowImport(false)}
+                    onImport={(newNodes, newEdges) => {
+                      const newGraph: Graph = {
+                        nodes: graph.nodes.concat(newNodes).flat(2),
+                        edges: graph.edges.concat(newEdges).flat(2),
+                      };
+
+                      const newFlowGraph = graphToFlowGraph(newGraph);
+
+                      setNodes(newFlowGraph.nodes);
+                      setEdges(newFlowGraph.edges);
+                      setGraph(newGraph);
+
+                      setShowImport(false);
+                    }}
+                  />
+                ) : null}
                 {isTextureBrowserOpen ? (
                   <BottomModal onClose={() => closeTextureBrowser()}>
                     <TextureBrowser

@@ -494,6 +494,18 @@ const ThreeComponent: React.FC<SceneProps> = ({
       }
       if (
         // @ts-ignore
+        mesh.material?.uniforms?.renderResolution &&
+        !Array.isArray(mesh.material) &&
+        ctx.runtime
+      ) {
+        // @ts-ignore
+        mesh.material.uniforms.renderResolution.value = new Vector2(
+          ctx.runtime.renderer.domElement.width,
+          ctx.runtime.renderer.domElement.height
+        );
+      }
+      if (
+        // @ts-ignore
         mesh.material?.uniforms?.cameraPosition &&
         !Array.isArray(mesh.material)
       ) {

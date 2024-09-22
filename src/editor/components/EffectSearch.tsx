@@ -67,6 +67,7 @@ const EffectSearch = ({
           text,
           engine,
           includeMy,
+          limit: 1000,
         });
         setEffects({ total: count, shaders });
       } catch (e) {

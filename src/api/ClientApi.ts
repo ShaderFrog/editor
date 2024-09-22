@@ -16,9 +16,11 @@ export interface ClientApi {
     text,
     engine,
     includeMy,
+    limit,
   }: {
     text: string;
     engine: string;
     includeMy: boolean;
+    limit: number;
   }) => Promise<{ count: number; shaders: Shader[] }>;
 }

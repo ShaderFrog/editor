@@ -4,7 +4,7 @@ import { API } from './api';
 
 // Stub API endpoints, called from the client side
 export const stubApi: ClientApi = {
-  getAssetsAndGroups: async () => {
+  getEditorAssetsAndGroups: async () => {
     return { assets: {}, groups: {} };
   },
   searchShaders: async () => {

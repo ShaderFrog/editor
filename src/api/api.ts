@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react';
 import { ClientApi } from './ClientApi';
 
 export const API = {
+  tag: 'tag',
   assets: 'assets',
   shader: 'shader',
 };

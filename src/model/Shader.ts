@@ -1,11 +1,13 @@
 import { Edge, GraphNode } from '@core';
 import { Tag } from './Tag';
+import { ValueOf } from '../util/types';
 
 export const SHADER_VISIBILITY = {
   PUBLIC: 1,
   UNLISTED: 2,
   PRIVTE: 3,
 } as const;
+export type ShaderVisibility = ValueOf<typeof SHADER_VISIBILITY>;
 
 export type ShaderUser = {
   name: string;

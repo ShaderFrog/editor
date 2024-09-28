@@ -195,9 +195,16 @@ const FlowWrap = ({
       height:
         height ||
         `${
-          (data as any).type === 'texture'
-            ? 250
-            : outputHandleTopWithLabel +
+          // Nodes where there is no chance the inputs will be taller than the
+          // node contents itself, let it auto height
+          ['texture', 'vector2', 'vector3', 'vector4', 'rgb', 'rgba'].includes(
+            (data as any).type
+          )
+            ? null
+            : // The problem with other nodes is they have the aboslutely
+              // positioned inputs/outputs which have variable height, so we do
+              // need to explicitly set height here
+              outputHandleTopWithLabel +
               Math.min(Math.max(data.inputs.length, 1) * inputHeight, 100)
         }px`,
       zIndex: 0,
@@ -222,7 +229,7 @@ const VectorEditor = ({
   };
 
   return (
-    <div className={cx(styles.grid, 'm-top-10 gap-5')}>
+    <div className={cx(styles.grid, 'm-top-20 gap-5')}>
       {(data.value as Vector3 | Vector4).map((_, index) => (
         <LabeledInput
           key={index}

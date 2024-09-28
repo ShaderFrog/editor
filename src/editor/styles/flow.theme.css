@@ -15,19 +15,17 @@
   color: #fff;
   box-shadow: 0 0 10px rgba(0, 0, 0, 1);
   position: relative;
-  min-width: 240px;
+  width: 240px;
   min-height: 80px;
   max-width: 300px;
-  height: calc(100% - 4px);
+  padding: 2px;
 }
 
 .flownode .contents {
-  height: calc(100% - 4px);
-  width: calc(100% - 4px);
+  width: 100%;
+  height: 100%;
   border-radius: 8px;
   position: relative;
-  top: 2px;
-  left: 2px;
 }
 
 .react-flow__node-output.selectable:hover,
@@ -46,7 +44,7 @@
   grid-template-columns: 1fr auto auto;
   column-gap: 5px;
   border-radius: 8px 8px 0 0;
-  padding: 3px 11px 3px 13px;
+  padding: 3px 5px 3px 13px;
   border-bottom: 1px solid #666;
   text-shadow: 0 0 2px #000;
   font-size: 18px;
@@ -70,11 +68,11 @@
 
 .flowlabel .stage,
 .flowlabel .dataType {
-  box-shadow: 0 0 4px rgba(50, 0, 0, 0.1);
+  margin-top: 2px;
+  box-shadow: 0 0 4px rgba(50, 0, 0, 0.5);
   text-transform: uppercase;
   font-size: 12px;
-  line-height: 17px;
-  float: right;
+  height: 21px;
   padding: 2px 8px;
   border-radius: 6px;
 }
@@ -99,7 +97,7 @@
 
 .flowInputs {
   position: absolute;
-  top: 25px; /* height of node header label */
+  top: 27px; /* height of node header label */
   width: 100%;
 }
 
@@ -271,7 +269,6 @@
 }
 
 .flow-node_data.flownode {
-  min-height: 84px;
   background: linear-gradient(
     -22deg,
     rgb(0, 162, 255) 25%,
@@ -311,27 +308,12 @@
 }
 
 .flownode.texture {
-  min-height: 100px !important;
   max-width: 200px;
 }
-/* push the full width dropdown below the output */
-/* .flownode.texture select {
-  position: relative;
-  top: 2px;
-} */
 
-.flownode.vector2 {
-  height: 215px !important;
-}
 .flownode.rgb,
 .flownode.rgba {
   min-width: 300px;
-  height: 125px !important;
-}
-
-.flownode.vector3,
-.flownode.vector4 {
-  height: 90px !important;
 }
 
 .flownode.number input {
@@ -437,9 +419,8 @@
 
 /* selected edge */
 .react-flow__edge.fragment.selected .react-flow__edge-path,
-/* override the gray default focus/active style */
-  .react-flow__edge.fragment:active .react-flow__edge-path,
-  .react-flow__edge.fragment:focus .react-flow__edge-path {
+.react-flow__edge.fragment:active .react-flow__edge-path,
+.react-flow__edge.fragment:focus .react-flow__edge-path {
   stroke: #d4ff00;
 }
 
@@ -615,7 +596,7 @@
   border: none;
   color: #fff;
   padding: 0;
-  margin: 0;
+  margin: 2px 0 0;
   font-size: 18px;
   cursor: pointer;
 }

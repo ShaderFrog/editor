@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import classnames from 'classnames';
 import {
   ACESFilmicToneMapping,
@@ -19,11 +13,9 @@ import {
   FrontSide,
   Group,
   IcosahedronGeometry,
-  LinearMipMapLinearFilter,
   LinearToneMapping,
   Mesh,
   MeshBasicMaterial,
-  NearestFilter,
   NoToneMapping,
   Object3D,
   PerspectiveCamera,
@@ -43,7 +35,6 @@ import {
   Vector2,
   Vector3,
   WebGLRenderer,
-  WebGLRenderTarget,
 } from 'three';
 // @ts-ignore
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
@@ -122,10 +113,6 @@ const defaultResolution = {
   planeResolution: [64, 64],
   sphereResolution: [128, 128],
   icosahedronResolution: [0],
-};
-
-const areGraphsSimilarEnough = (a: Graph, b: Graph) => {
-  return a.nodes.length === b.nodes.length && a.edges.length === b.edges.length;
 };
 
 const resolutionConfigMapping: Record<
@@ -730,7 +717,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     }
   }, [renderer, sceneConfig.toneMapping]);
 
-  const [ctx] = useState<EngineContext>(
+  const [ctx] = useState<EngineContext<ThreeRuntime>>(
     // Use context from hoisted ref as initializer to avoid re-creating context
     // including cache and envmaptexture
     {
@@ -743,6 +730,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
         scene,
         camera,
         index: 0,
+        engineMaterial: null,
+        loaded: false,
         cache: { data: {}, nodes: {} },
       },
       nodes: {},
@@ -1059,7 +1048,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       const canvasHeight = sceneWrapperSize.height;
       camera.aspect = canvasWidth / canvasHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(canvasWidth, canvasHeight, 400);
+      renderer.setSize(canvasWidth, canvasHeight);
     }
   }, [sceneWrapperSize, ctx.runtime]);
 

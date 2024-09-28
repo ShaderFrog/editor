@@ -29,7 +29,7 @@ type SceneData = {
 type ScenePersistence = {
   sceneData: SceneData;
   scene: Scene;
-  camera: Camera;
+  camera: PerspectiveCamera;
   cubeCamera: CubeCamera;
   cubeRenderTarget: WebGLCubeRenderTarget;
   renderer: WebGLRenderer;

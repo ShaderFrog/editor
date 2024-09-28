@@ -632,7 +632,7 @@ const TextureEditor = ({
                 properties: {
                   ...(properties || {}),
                   repeat: {
-                    x: properties?.repeat.x || 1,
+                    x: properties?.repeat?.x || 1,
                     y: parseFloat(e.currentTarget.value),
                   },
                 },

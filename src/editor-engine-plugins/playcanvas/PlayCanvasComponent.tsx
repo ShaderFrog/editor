@@ -26,7 +26,7 @@ import {
   evaluateNode,
   findLinkedNode,
   SourceNode,
-  AssetVersionNodeData,
+  TextureNodeValueData,
 } from '@core/graph';
 import {
   EngineContext,
@@ -272,7 +272,7 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
                 // is black until the user chooses a texture. TODO?
                 if (value) {
                   // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
-                  newValue = loadTexture(value as AssetVersionNodeData);
+                  newValue = loadTexture(value as TextureNodeValueData);
                 }
               }
               if (fromNode.type === 'samplerCube') {
@@ -325,11 +325,11 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
   const textureLoader = useTextureLoader(app);
 
   const { assets } = useAssetsAndGroups();
-  const textureCacheKey = (value: AssetVersionNodeData) =>
+  const textureCacheKey = (value: TextureNodeValueData) =>
     `${value.assetId}-${value.versionId}`;
   const textureCache = useRef<Record<string, Texture>>({});
   const loadTexture = useCallback(
-    (value: AssetVersionNodeData) => {
+    (value: TextureNodeValueData) => {
       if (!textureCache.current) {
         return;
       }

@@ -35,6 +35,7 @@ import {
   Vector2,
   Vector3,
   WebGLRenderer,
+  ClampToEdgeWrapping,
 } from 'three';
 // @ts-ignore
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
@@ -48,7 +49,7 @@ import {
   Graph,
   findLinkedNode,
   SourceNode,
-  AssetVersionNodeData,
+  TextureNodeValueData,
 } from '@core/graph';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import { EngineContext } from '@core/engine';
@@ -439,9 +440,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
               }
               let newValue = value;
               if (fromNode.type === 'texture') {
-                // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
-                const val = (fromNode as TextureNode).value;
-                newValue = loadTexture(val as AssetVersionNodeData);
+                // Runtime uniform updating
+                newValue = getAndUpdateTexture(fromNode as TextureNode);
               }
               // TODO RENDER TARGET
               if (fromNode.type === 'samplerCube') {
@@ -504,11 +504,11 @@ const ThreeComponent: React.FC<SceneProps> = ({
   );
 
   const { assets } = useAssetsAndGroups();
-  const textureCacheKey = (value: AssetVersionNodeData) =>
+  const textureCacheKey = (value: TextureNodeValueData) =>
     `${value.assetId}-${value.versionId}`;
   const textureCache = useRef<Record<string, Texture>>({});
   const loadTexture = useCallback(
-    (value: AssetVersionNodeData) => {
+    (value: TextureNodeValueData) => {
       if (!textureCache.current) {
         return;
       }
@@ -527,7 +527,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
           return;
         }
         const tl = new TextureLoader();
-        const texture = repeat(tl.load(url), 3, 3);
+        const texture = tl.load(url);
         if (subtype === 'Diffuse') {
           texture.encoding = sRGBEncoding;
         }
@@ -537,6 +537,36 @@ const ThreeComponent: React.FC<SceneProps> = ({
       }
     },
     [assets, textureCache]
+  );
+
+  const getAndUpdateTexture = useCallback(
+    (node: TextureNode) => {
+      const value = node.value as TextureNodeValueData;
+      if (!value) {
+        return;
+      }
+      const properties = value.properties;
+      const texture = loadTexture(value as TextureNodeValueData);
+      if (!texture) {
+        throw new Error(`Could not load texture for node ${node.id}`);
+      }
+      if (!properties || (texture as any).__properties === properties) {
+        return texture;
+      }
+
+      if (properties?.repeatTexure && properties?.repeat) {
+        texture.wrapS = texture.wrapT = RepeatWrapping;
+        texture.repeat.set(properties.repeat.x || 1, properties.repeat.y || 1);
+      } else {
+        texture.wrapS = texture.wrapT = ClampToEdgeWrapping;
+        texture.repeat.set(1, 1);
+      }
+      (texture as any).__properties = properties;
+      texture.needsUpdate = true;
+
+      return texture;
+    },
+    [loadTexture]
   );
 
   const [textures] = useState<Record<string, any>>({});
@@ -881,10 +911,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
             }
             let newValue = value;
             if (fromNode.type === 'texture') {
-              // THIS DUPLICATES OTHER LINE
-              // This is instantiation of initial shader
-              const val = (fromNode as TextureNode).value;
-              newValue = loadTexture(val as AssetVersionNodeData);
+              // This is instantiation of initial value
+              newValue = getAndUpdateTexture(fromNode as TextureNode);
             } else if (fromNode.type === 'samplerCube') {
               newValue = textures[(fromNode as SamplerCubeNode).value];
             }

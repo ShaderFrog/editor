@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import groupBy from 'lodash.groupby';
 import { Asset, AssetSubtype } from '@editor/model/Asset';
 import { useAssetsAndGroups } from '@editor/api';
-import { AssetVersionNodeData } from '@core/graph';
+import { TextureNodeValueData } from '@core/graph';
 import SearchBox from './SearchBox';
 
 export const assetSortOrder: Record<AssetSubtype, number> = {
@@ -31,7 +31,7 @@ const hasMultiDiffuse = (assets: Asset[]) =>
 const TextureBrowser = ({
   onSelect,
 }: {
-  onSelect: (a: AssetVersionNodeData) => void;
+  onSelect: (a: TextureNodeValueData) => void;
 }) => {
   const { assets, groups } = useAssetsAndGroups();
   const assetsByGroupId = useMemo(() => groupBy(assets, 'groupId'), [assets]);

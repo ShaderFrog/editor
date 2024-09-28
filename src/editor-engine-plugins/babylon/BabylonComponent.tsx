@@ -30,7 +30,7 @@ import {
   TextureNode,
   findLinkedNode,
   SourceNode,
-  AssetVersionNodeData,
+  TextureNodeValueData,
 } from '@core/graph';
 import { EngineContext, EngineNodeType } from '@core/engine';
 import {
@@ -227,11 +227,11 @@ const BabylonComponent: React.FC<SceneProps> = ({
   });
 
   const { assets } = useAssetsAndGroups();
-  const textureCacheKey = (value: AssetVersionNodeData) =>
+  const textureCacheKey = (value: TextureNodeValueData) =>
     `${value.assetId}-${value.versionId}`;
   const textureCache = useRef<Record<string, Texture>>({});
   const loadTexture = useCallback(
-    (value: AssetVersionNodeData) => {
+    (value: TextureNodeValueData) => {
       if (!textureCache.current) {
         return;
       }
@@ -382,7 +382,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
                   if (fromNode.type === 'texture') {
                     // THIS DUPLICATES OTHER LINE, used for runtime uniform setting
                     newValue = loadTexture(
-                      (fromNode as TextureNode).value as AssetVersionNodeData
+                      (fromNode as TextureNode).value as TextureNodeValueData
                     );
                     // console.log('setting texture', newValue, 'from', fromNode);
                   }

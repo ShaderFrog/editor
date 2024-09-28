@@ -31,8 +31,9 @@ import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
 import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
 import { useAssetsAndGroups } from '@editor/api';
 
+import editorStyles from '../../styles/editor.module.css';
 import styles from './flownode.module.css';
-import { AssetVersionNodeData } from '@core/graph';
+import { TextureNodeValueData } from '@core/graph';
 import { randomBetween } from '@editor/util/math';
 import { restrictToParentElement } from '@dnd-kit/modifiers';
 
@@ -195,7 +196,7 @@ const FlowWrap = ({
         height ||
         `${
           (data as any).type === 'texture'
-            ? 210
+            ? 250
             : outputHandleTopWithLabel +
               Math.min(Math.max(data.inputs.length, 1) * inputHeight, 100)
         }px`,
@@ -551,7 +552,8 @@ const TextureEditor = ({
   const hasHighRes = currentUser?.isPro;
   const { assets } = useAssetsAndGroups();
   const { openTextureBrowser } = useEditorStore();
-  const tData = data.value as AssetVersionNodeData;
+  const tData = data.value as TextureNodeValueData;
+  const properties = tData?.properties;
 
   const asset = assets[tData?.assetId];
   const versions = asset?.versions || [];
@@ -575,12 +577,78 @@ const TextureEditor = ({
         </div>
       </div>
 
+      <div className={cx(editorStyles.controlGrid, 'm-top-5')}>
+        <div>
+          <input
+            className="checkbox"
+            id={`repeat_tex_${id}`}
+            type="checkbox"
+            checked={properties?.repeatTexure}
+            onChange={(e) =>
+              onChange(id, {
+                ...tData,
+                properties: {
+                  ...(properties || {}),
+                  repeatTexure: e.currentTarget.checked,
+                },
+              })
+            }
+          />
+        </div>
+        <div>
+          <label className="label noselect" htmlFor={`repeat_tex_${id}`}>
+            <span>Repeat Texture</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="grid col2 m-top-5">
+        <div>
+          <LabeledInput
+            label="x"
+            type="text"
+            onChange={(e) =>
+              onChange(id, {
+                ...tData,
+                properties: {
+                  ...(properties || {}),
+                  repeat: {
+                    x: parseFloat(e.currentTarget.value),
+                    y: properties?.repeat?.y || 1,
+                  },
+                },
+              })
+            }
+            value={properties?.repeat?.x || 1}
+          />
+        </div>
+        <div>
+          <LabeledInput
+            label="y"
+            type="text"
+            onChange={(e) =>
+              onChange(id, {
+                ...tData,
+                properties: {
+                  ...(properties || {}),
+                  repeat: {
+                    x: properties?.repeat.x || 1,
+                    y: parseFloat(e.currentTarget.value),
+                  },
+                },
+              })
+            }
+            value={properties?.repeat?.y || 1}
+          />
+        </div>
+      </div>
+
       {versions.length > 1 ? (
         <select
           className={cx('nodrag select m-top-5', styles.versionSelector)}
           onChange={(e) =>
             onChange(id, {
-              ...tData!,
+              ...tData,
               versionId: parseFloat(e.currentTarget.value),
             })
           }

@@ -17,7 +17,7 @@ import {
   linkFromVertToFrag,
   isError,
   NodeErrors,
-  AssetVersionNodeData,
+  TextureNodeValueData,
 } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
 import { UICompileGraphResult } from '../uICompileGraphResult';
@@ -70,7 +70,7 @@ const expandUniformDataNodes = (graph: Graph): Graph =>
                 makeId(),
                 uniform.name,
                 position,
-                uniform.value as AssetVersionNodeData
+                uniform.value as TextureNodeValueData
               );
               break;
             }

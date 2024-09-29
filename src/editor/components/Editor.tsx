@@ -142,6 +142,7 @@ import Modal from './Modal';
 import { texture2DStrategy, uniformStrategy } from '@/core';
 import { generate, parser } from '@shaderfrog/glsl-parser';
 import { Program } from '@shaderfrog/glsl-parser/ast';
+import { xor } from '@shaderfrog/glsl-parser/parser/utils';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
@@ -369,6 +370,7 @@ const Editor = ({
   );
   const [sceneConfig, setSceneConfig] =
     useState<AnySceneConfig>(initialSceneConfig);
+
   const [graph, setGraph] = useLocalStorage<Graph>('graph', initialGraph);
   const [nodeErrors, setNodeErrors] = useState<Record<string, NodeErrors>>({});
 
@@ -494,6 +496,18 @@ const Editor = ({
   const debouncedSetNeedsCompile = useMemo(
     () => debounce(setNeedsCompile, 500),
     []
+  );
+
+  // Changing the environment map requires a shader re-compile!
+  // const previousSceneConfig = usePrevious(sceneConfig);
+  const setSceneConfigAndRecompile = useCallback(
+    (newConfig: AnySceneConfig) => {
+      setSceneConfig(newConfig);
+      if (xor(newConfig.bg, sceneConfig?.bg)) {
+        debouncedSetNeedsCompile(true);
+      }
+    },
+    [sceneConfig, setSceneConfig, debouncedSetNeedsCompile]
   );
 
   useEffect(() => {
@@ -2513,7 +2527,7 @@ const Editor = ({
       <div className={styles.sceneAndControls}>
         <SceneComponent
           sceneConfig={sceneConfig}
-          setSceneConfig={setSceneConfig}
+          setSceneConfig={setSceneConfigAndRecompile}
           setCtx={setCtx}
           graph={graph}
           compile={childCompile}

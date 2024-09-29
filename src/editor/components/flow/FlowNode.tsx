@@ -197,9 +197,15 @@ const FlowWrap = ({
         `${
           // Nodes where there is no chance the inputs will be taller than the
           // node contents itself, let it auto height
-          ['texture', 'vector2', 'vector3', 'vector4', 'rgb', 'rgba'].includes(
-            (data as any).type
-          )
+          [
+            'number',
+            'texture',
+            'vector2',
+            'vector3',
+            'vector4',
+            'rgb',
+            'rgba',
+          ].includes((data as any).type)
             ? null
             : // The problem with other nodes is they have the aboslutely
               // positioned inputs/outputs which have variable height, so we do

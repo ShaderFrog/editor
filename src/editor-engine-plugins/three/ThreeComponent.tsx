@@ -68,7 +68,13 @@ import {
 } from '../../editor/components/tabs/Tabs';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPause, faPlay } from '@fortawesome/free-solid-svg-icons';
+import {
+  faCamera,
+  faCube,
+  faInfoCircle,
+  faPause,
+  faPlay,
+} from '@fortawesome/free-solid-svg-icons';
 
 import { useThree } from './useThree';
 import { usePrevious } from '../../editor/hooks/usePrevious';
@@ -115,6 +121,13 @@ const defaultResolution = {
   sphereResolution: [128, 128],
   icosahedronResolution: [0],
 };
+
+const LIGHT_SETTINGS = {
+  NONE: 'none',
+  THREE_POINT: '3point',
+  POINT: 'point',
+  SPOT: 'spot',
+} as const;
 
 const resolutionConfigMapping: Record<
   string,
@@ -367,32 +380,32 @@ const ThreeComponent: React.FC<SceneProps> = ({
       }
 
       if (sceneConfig.animatedLights) {
-        if (sceneConfig.lights === 'point' && sceneData.lights.length >= 1) {
-          const light = sceneData.lights[0];
-          light.position.x = 1.2 * Math.sin(time * 0.001);
-          light.position.y = 1.2 * Math.cos(time * 0.001);
-        } else if (
-          sceneConfig.lights === 'point' &&
+        if (
+          sceneConfig.lights === LIGHT_SETTINGS.POINT &&
           sceneData.lights.length >= 1
         ) {
           const light = sceneData.lights[0];
           light.position.x = 1.2 * Math.sin(time * 0.001);
           light.position.y = 1.2 * Math.cos(time * 0.001);
         } else if (
-          sceneConfig.lights === 'spot' &&
+          sceneConfig.lights === LIGHT_SETTINGS.SPOT &&
           sceneData.lights.length >= 2
         ) {
-          const light = sceneData.lights[0];
-          light.position.x = 1.2 * Math.sin(time * 0.001);
-          light.position.y = 1.2 * Math.cos(time * 0.001);
-          light.lookAt(new Vector3(0, 0, 0));
-
-          const light1 = sceneData.lights[1];
-          light1.position.x = 1.3 * Math.cos(time * 0.0015);
-          light1.position.y = 1.3 * Math.sin(time * 0.0015);
-
+          const light1 = sceneData.lights[0];
+          light1.position.x = 1.2 * Math.sin(time * 0.001);
+          light1.position.y = 1.2 * Math.cos(time * 0.001);
           light1.lookAt(new Vector3(0, 0, 0));
-        } else if (sceneConfig.lights === '3point') {
+
+          const light2 = sceneData.lights[1];
+          light2.position.x = 1.3 * Math.cos(time * 0.0015);
+          light2.position.y = 1.3 * Math.sin(time * 0.0015);
+          light2.lookAt(new Vector3(0, 0, 0));
+
+          if (sceneConfig.showHelpers && sceneData.lights.length >= 2) {
+            (sceneData.lights[2] as SpotLightHelper).update();
+            (sceneData.lights[3] as SpotLightHelper).update();
+          }
+        } else if (sceneConfig.lights === LIGHT_SETTINGS.THREE_POINT) {
           const group = sceneData.lights[0];
           group.rotation.x = 1.2 * Math.sin(time * 0.0002);
           group.rotation.y = 1.2 * Math.cos(time * 0.0002);
@@ -702,11 +715,11 @@ const ThreeComponent: React.FC<SceneProps> = ({
     if (sceneConfig.bg) {
       if (sceneConfig.bg === 'modelviewer') {
         const pmremGenerator = new PMREMGenerator(renderer);
-        scene.environment = pmremGenerator.fromScene(
+        scene.background = pmremGenerator.fromScene(
           new RoomEnvironment(),
           0.04
         ).texture;
-        scene.background = scene.environment;
+        scene.environment = scene.background;
       } else {
         scene.background = textures[sceneConfig.bg];
         scene.environment = textures[sceneConfig.bg];
@@ -857,6 +870,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     if (!compileResult?.fragmentResult) {
       return;
     }
+
     const material = createMaterial(compileResult, ctx);
     const graph = graphRef.current;
 
@@ -965,6 +979,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
     material.side = sceneConfig.doubleSide ? DoubleSide : FrontSide;
     material.transparent = sceneConfig.transparent;
 
+    // The envMap needs to be set on the material. Note scene.envMap globally
+    // applies to all materials that don't override it. Setting on the
+    // material is required to work for the envMapIntensity property to work.
+    if (scene.environment) {
+      // @ts-ignore
+      material.envMap = scene.environment;
+    }
+
     log('🏞 Re-creating Three.js material!', {
       material,
       properties,
@@ -974,7 +996,15 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     mesh.material = material;
     shadersUpdated.current = true;
-  }, [loadTexture, sceneConfig, compileResult, ctx, textures]);
+  }, [
+    loadTexture,
+    sceneConfig,
+    compileResult,
+    ctx,
+    textures,
+    getAndUpdateTexture,
+    scene.environment,
+  ]);
 
   const prevLights = usePrevious(sceneConfig.lights);
   const previousShowHelpers = usePrevious(sceneConfig.showHelpers);
@@ -995,13 +1025,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     let helpers: Object3D[] = [];
     let newLights: Object3D[] = [];
-    if (sceneConfig.lights === 'point') {
+    if (sceneConfig.lights === LIGHT_SETTINGS.POINT) {
       const pointLight = new PointLight(0xffffff, 1);
       pointLight.position.set(0, 0, 2);
 
       newLights = [pointLight];
       helpers = [new PointLightHelper(pointLight, 0.1)];
-    } else if (sceneConfig.lights === '3point') {
+    } else if (sceneConfig.lights === LIGHT_SETTINGS.THREE_POINT) {
       const group = new Group();
 
       const light1 = new PointLight(0xffffff, 1, 0);
@@ -1023,7 +1053,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
         group.add(new PointLightHelper(light2, 0.1));
         group.add(new PointLightHelper(light3, 0.1));
       }
-    } else if (sceneConfig.lights === 'spot') {
+    } else if (sceneConfig.lights === LIGHT_SETTINGS.SPOT) {
       const light1 = new SpotLight(0x00ff00, 1, 3, 0.4, 1);
       light1.position.set(0, 0, 2);
 
@@ -1088,8 +1118,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
     <>
       <Tabs onTabSelect={setEditorTabIndex} selected={editorTabIndex}>
         <TabGroup className={styles.tabBar}>
-          <Tab>Scene</Tab>
-          <Tab>Settings</Tab>
+          <Tab>
+            <FontAwesomeIcon icon={faCube} color="#aca" /> Object
+          </Tab>
+          <Tab>
+            <FontAwesomeIcon icon={faCamera} color="#aca" /> Scene
+          </Tab>
           <div className={styles.sceneTabControls}>
             <button
               className={styles.playPause}
@@ -1109,134 +1143,98 @@ const ThreeComponent: React.FC<SceneProps> = ({
         </TabGroup>
         <TabPanels>
           <TabPanel className={styles.sceneControls}>
-            <div className={styles.controlGrid}>
-              <div>
-                <label htmlFor="Lightingsfs" className="label noselect">
-                  <span>Lighting</span>
-                </label>
-              </div>
-              <div>
-                <select
-                  id="Lightingsfs"
-                  className="select"
-                  onChange={(event) => {
+            <div>
+              <label htmlFor="Modelsfs" className="label noselect">
+                <span>Model</span>
+              </label>
+            </div>
+            <div>
+              <select
+                id="Modelsfs"
+                className="select"
+                onChange={(event) => {
+                  setSceneConfig({
+                    ...sceneConfig,
+                    previewObject: event.target.value,
+                  });
+                }}
+                value={sceneConfig.previewObject}
+              >
+                <option value="sphere">Sphere</option>
+                <option value="cube">Cube</option>
+                <option value="plane">Plane</option>
+                <option value="torus">Torus</option>
+                <option value="torusknot">Torus Knot</option>
+                <option value="icosahedron">Icosahedron</option>
+              </select>
+            </div>
+
+            <div className={cx(styles.controlGrid, 'm-top-5')}>
+              {resolutionConfig ? (
+                <VectorEditor
+                  value={
+                    sceneConfig[resolutionConfig.key] ||
+                    defaultResolution[resolutionConfig.key]
+                  }
+                  placeholder={defaultResolution[resolutionConfig.key]}
+                  labels={resolutionConfig.labels}
+                  onChange={(v) =>
                     setSceneConfig({
                       ...sceneConfig,
-                      lights: event.target.value,
-                    });
-                  }}
-                  value={sceneConfig.lights}
-                >
-                  <option value="point">Single Point Light</option>
-                  <option value="3point">Multiple Point Lights</option>
-                  <option value="spot">Spot Lights</option>
-                </select>
-              </div>
+                      [resolutionConfig.key]: v,
+                    })
+                  }
+                />
+              ) : null}
+            </div>
 
-              <div className="grid span2">
-                <div className={styles.controlGrid}>
-                  <div>
-                    <input
-                      className="checkbox"
-                      id="sha"
-                      type="checkbox"
-                      checked={sceneConfig.animatedLights}
-                      onChange={(event) =>
-                        setSceneConfig({
-                          ...sceneConfig,
-                          animatedLights: event?.target.checked,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="label noselect" htmlFor="sha">
-                      <span>Animate</span>
-                    </label>
-                  </div>
+            <div className="grid col2 m-top-5">
+              <div className={styles.controlGrid}>
+                <div>
+                  <input
+                    className="checkbox"
+                    id="dbs"
+                    type="checkbox"
+                    checked={sceneConfig.doubleSide}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        doubleSide: event?.target.checked,
+                      })
+                    }
+                  />
                 </div>
-
-                <div className={styles.controlGrid}>
-                  <div>
-                    <input
-                      className="checkbox"
-                      id="shp"
-                      type="checkbox"
-                      checked={sceneConfig.showHelpers}
-                      onChange={(event) =>
-                        setSceneConfig({
-                          ...sceneConfig,
-                          showHelpers: event?.target.checked,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="label noselect" htmlFor="shp">
-                      <span>Lighting Helpers</span>
-                    </label>
-                  </div>
+                <div>
+                  <label className="label noselect" htmlFor="dbs">
+                    <span>Double Side</span>
+                  </label>
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="Modelsfs" className="label noselect">
-                  <span>Model</span>
-                </label>
-              </div>
-              <div>
-                <select
-                  id="Modelsfs"
-                  className="select"
-                  onChange={(event) => {
-                    setSceneConfig({
-                      ...sceneConfig,
-                      previewObject: event.target.value,
-                    });
-                  }}
-                  value={sceneConfig.previewObject}
-                >
-                  <option value="sphere">Sphere</option>
-                  <option value="cube">Cube</option>
-                  <option value="plane">Plane</option>
-                  <option value="torus">Torus</option>
-                  <option value="torusknot">Torus Knot</option>
-                  <option value="icosahedron">Icosahedron</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="Backgroundsfs" className="label noselect">
-                  <span>Background</span>
-                </label>
-              </div>
-              <div>
-                <select
-                  id="Backgroundsfs"
-                  className="select"
-                  onChange={(event) => {
-                    setSceneConfig({
-                      ...sceneConfig,
-                      bg:
-                        event.target.value === 'none'
-                          ? null
-                          : event.target.value,
-                    });
-                  }}
-                  value={sceneConfig.bg ? sceneConfig.bg : 'none'}
-                >
-                  <option value="none">None</option>
-                  <option value="skyImage">Sky</option>
-                  <option value="warehouseImage">Warehouse</option>
-                  <option value="pondCubeMap">Pond Cube Map</option>
-                  <option value="modelviewer">Model Viewer</option>
-                </select>
+              <div className={styles.controlGrid}>
+                <div>
+                  <input
+                    className="checkbox"
+                    id="trnsp"
+                    type="checkbox"
+                    checked={sceneConfig.transparent}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        transparent: event?.target.checked,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label noselect" htmlFor="trnsp">
+                    <span>Transparent</span>
+                  </label>
+                </div>
               </div>
             </div>
-          </TabPanel>
 
-          <TabPanel className={styles.sceneControls}>
-            <div className="grid col2">
+            <div className="grid col2 m-top-10">
               <div className={styles.controlGrid}>
                 <div>
                   <input
@@ -1303,71 +1301,128 @@ const ThreeComponent: React.FC<SceneProps> = ({
                 </div>
               </div>
             </div>
+          </TabPanel>
 
-            <div className="grid col2 m-top-5">
-              <div className={styles.controlGrid}>
-                <div>
-                  <input
-                    className="checkbox"
-                    id="dbs"
-                    type="checkbox"
-                    checked={sceneConfig.doubleSide}
-                    onChange={(event) =>
-                      setSceneConfig({
-                        ...sceneConfig,
-                        doubleSide: event?.target.checked,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="label noselect" htmlFor="dbs">
-                    <span>Double Side</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className={styles.controlGrid}>
-                <div>
-                  <input
-                    className="checkbox"
-                    id="trnsp"
-                    type="checkbox"
-                    checked={sceneConfig.transparent}
-                    onChange={(event) =>
-                      setSceneConfig({
-                        ...sceneConfig,
-                        transparent: event?.target.checked,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="label noselect" htmlFor="trnsp">
-                    <span>Transparent</span>
-                  </label>
-                </div>
-              </div>
-            </div>
+          <TabPanel className={styles.sceneControls}>
             <div className={cx(styles.controlGrid, 'm-top-5')}>
-              {resolutionConfig ? (
-                <VectorEditor
-                  value={
-                    sceneConfig[resolutionConfig.key] ||
-                    defaultResolution[resolutionConfig.key]
-                  }
-                  placeholder={defaultResolution[resolutionConfig.key]}
-                  labels={resolutionConfig.labels}
-                  onChange={(v) =>
+              <div>
+                <label htmlFor="Lightingsfs" className="label noselect">
+                  <span>Lighting</span>
+                </label>
+              </div>
+              <div>
+                <select
+                  id="Lightingsfs"
+                  className="select"
+                  onChange={(event) => {
                     setSceneConfig({
                       ...sceneConfig,
-                      [resolutionConfig.key]: v,
-                    })
-                  }
-                />
-              ) : null}
+                      lights: event.target.value,
+                    });
+                  }}
+                  value={sceneConfig.lights}
+                >
+                  <option value={LIGHT_SETTINGS.NONE}>None</option>
+                  <option value={LIGHT_SETTINGS.POINT}>
+                    Single Point Light
+                  </option>
+                  <option value={LIGHT_SETTINGS.THREE_POINT}>
+                    Multiple Point Lights
+                  </option>
+                  <option value={LIGHT_SETTINGS.SPOT}>Spot Lights</option>
+                </select>
+              </div>
             </div>
-            <div className={cx(styles.controlGrid, 'm-top-10')}>
+
+            <div className="bottomDivide m-bottom-5 m-top-5">
+              <div className="grid span2">
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="sha"
+                      type="checkbox"
+                      checked={sceneConfig.animatedLights}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          animatedLights: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label noselect" htmlFor="sha">
+                      <span>Animate</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="shp"
+                      type="checkbox"
+                      checked={sceneConfig.showHelpers}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          showHelpers: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label noselect" htmlFor="shp">
+                      <span>Lighting Helpers</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {graph.nodes.find(
+                (node) => (node as any).engine === true
+              ) ? null : (
+                <div className="secondary m-top-5 px12">
+                  <FontAwesomeIcon icon={faInfoCircle} /> Lights have no effect
+                  without a Three.js material in the graph.
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="Backgroundsfs" className="label noselect">
+                <span>Background</span>
+              </label>
+            </div>
+            <div>
+              <select
+                id="Backgroundsfs"
+                className="select"
+                onChange={(event) => {
+                  setSceneConfig({
+                    ...sceneConfig,
+                    bg:
+                      event.target.value === 'none' ? null : event.target.value,
+                  });
+                }}
+                value={sceneConfig.bg ? sceneConfig.bg : 'none'}
+              >
+                <option value="none">None</option>
+                <option value="skyImage">Sky</option>
+                <option value="warehouseImage">Warehouse</option>
+                <option value="pondCubeMap">Pond Cube Map</option>
+                <option value="modelviewer">Model Viewer</option>
+              </select>
+            </div>
+
+            <div
+              className={cx(
+                styles.controlGrid,
+                'm-top-10 bottomDivide m-bottom-10'
+              )}
+            >
               <div>
                 <label htmlFor="tonemappingfs" className="label noselect">
                   <span>Tone Mapping</span>

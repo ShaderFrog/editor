@@ -20,6 +20,7 @@ import React, {
   useRef,
   useState,
   MouseEvent,
+  memo,
 } from 'react';
 
 import {
@@ -139,7 +140,7 @@ import { Shader } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
 import { useEditorStore } from './flow/useEditorStore';
 import Modal from './Modal';
-import { texture2DStrategy, uniformStrategy } from '@/core';
+import { texture2DStrategy, uniformStrategy } from '@shaderfrog/core';
 import { generate, parser } from '@shaderfrog/glsl-parser';
 import { Program } from '@shaderfrog/glsl-parser/ast';
 import { xor } from '@shaderfrog/glsl-parser/parser/utils';
@@ -245,6 +246,13 @@ const ConvertModal = ({
     </Modal>
   );
 };
+
+// 1. Memoize FlowEditor to prevent unnecessary re-renders
+const MemoizedFlowEditor = memo(FlowEditor);
+
+// 2. Memoize CodeEditor and StrategyEditor similarly
+const MemoizedCodeEditor = memo(CodeEditor);
+const MemoizedStrategyEditor = memo(StrategyEditor);
 
 const Editor = ({
   assetPrefix,
@@ -1729,14 +1737,6 @@ const Editor = ({
     [compiling, graph, setNodes, setEdges]
   );
 
-  // const onNodeContextClose = useCallback(() => {
-  //   setFlowElements((fe) => ({
-  //     ...fe,
-  //     nodes: fe.nodes.map((node) => updateFlowNodeData(node, { ghost: false })),
-  //     edges: fe.edges.map((edge) => updateFlowEdgeData(edge, { ghost: false })),
-  //   }));
-  // }, [setFlowElements]);
-
   /**
    * Convenience compilation effect. This lets other callbacks update the
    * graph or flowElements however they want, and then set needsCompliation
@@ -2196,7 +2196,7 @@ const Editor = ({
                     />
                   </BottomModal>
                 ) : null}
-                <FlowEditor
+                <MemoizedFlowEditor
                   menuItems={menuItems}
                   mouse={mouseRef}
                   onMenuAdd={onMenuAdd}
@@ -2290,7 +2290,7 @@ const Editor = ({
                     </button>
                   )}
                 </div>
-                <CodeEditor
+                <MemoizedCodeEditor
                   engine={engine}
                   identity={activeEditingNode.id}
                   defaultValue={activeEditingNode.source}
@@ -2317,7 +2317,7 @@ const Editor = ({
               </div>
               {/* Strategy editor split */}
               <div className={cx(styles.splitInner, styles.nodeEditorPanel)}>
-                <StrategyEditor
+                <MemoizedStrategyEditor
                   ctx={ctx}
                   node={activeEditingNode}
                   graph={graph}
@@ -2333,7 +2333,7 @@ const Editor = ({
                     setNodes(updated.nodes);
                     setEdges(updated.edges);
                   }}
-                ></StrategyEditor>
+                ></MemoizedStrategyEditor>
               </div>
             </SplitPane>
           </TabPanel>
@@ -2478,7 +2478,7 @@ const Editor = ({
                       {(uiState.fragError || '').substring(0, 500)}
                     </div>
                   )}
-                  <CodeEditor
+                  <MemoizedCodeEditor
                     engine={engine}
                     value={compileResult?.fragmentResult}
                     onChange={(value, event) => {
@@ -2493,7 +2493,7 @@ const Editor = ({
                       {(uiState.vertError || '').substring(0, 500)}
                     </div>
                   )}
-                  <CodeEditor
+                  <MemoizedCodeEditor
                     engine={engine}
                     value={compileResult?.vertexResult}
                     onChange={(value, event) => {
@@ -2615,4 +2615,4 @@ const EditorWithProviders = (props: EditorProps & EngineProps) => {
   );
 };
 
-export default EditorWithProviders;
+export default React.memo(EditorWithProviders);

@@ -142,7 +142,7 @@ const EffectSearch = ({
           <label className="label">Results{count ? ` (${count})` : null}</label>
         </div>
         {count ? (
-          <div className="grid col2">
+          <div className="grid col2 break">
             {effects.shaders.map((shader) => (
               <DraggableShaderPreview
                 key={shader.id}

@@ -314,12 +314,12 @@ a:hover {
 }
 
 @media (max-width: 600px) {
-  .col2 {
+  .col2.break {
     width: 100%;
     grid-auto-flow: row;
     grid-template-columns: auto;
   }
-  .col3 {
+  .col3.break {
     width: 100%;
     grid-row-gap: 10px;
     grid-auto-flow: row;

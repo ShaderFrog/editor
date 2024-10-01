@@ -1232,9 +1232,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   </label>
                 </div>
               </div>
-            </div>
-
-            <div className="grid col2 m-top-10">
               <div className={styles.controlGrid}>
                 <div>
                   <input

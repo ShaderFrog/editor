@@ -87,6 +87,10 @@ import { useAssetsAndGroups } from '@editor/api';
 import styles from '../../editor/styles/editor.module.css';
 import clamp from '@/editor/util/clamp';
 
+export const THREE_IMAGE_ENCODINGS = {
+  SRGB: 'srgb',
+} as const;
+
 const cx = classnames.bind(styles);
 
 export const AUTO_ROTATE_LIMIT = 10;
@@ -533,18 +537,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
         return textureCache.current[key];
       }
       const { assetId, versionId } = value;
-      if (value.assetId in assets) {
-        const { subtype, versions } = assets[assetId];
+      if (assetId !== undefined && assetId in assets) {
+        const { versions } = assets[assetId];
         const { url } = versions.find((v) => v.id === versionId) || {};
         if (!url) {
           return;
         }
         const tl = new TextureLoader();
         const texture = tl.load(url);
-        if (subtype === 'Diffuse') {
-          texture.encoding = sRGBEncoding;
-        }
-        texture.anisotropy = 16;
         textureCache.current[key] = texture;
         return texture;
       }
@@ -574,12 +574,26 @@ const ThreeComponent: React.FC<SceneProps> = ({
         texture.wrapS = texture.wrapT = ClampToEdgeWrapping;
         texture.repeat.set(1, 1);
       }
+
+      if (properties.encoding === THREE_IMAGE_ENCODINGS.SRGB) {
+        texture.encoding = sRGBEncoding;
+      } else {
+        const { assetId } = value;
+        if (assetId !== undefined && assetId in assets) {
+          const { subtype } = assets[assetId];
+          if (subtype === 'Diffuse') {
+            texture.encoding = sRGBEncoding;
+          }
+        }
+      }
+      texture.anisotropy = properties.anisotropy || 16;
+
       (texture as any).__properties = properties;
       texture.needsUpdate = true;
 
       return texture;
     },
-    [loadTexture]
+    [loadTexture, assets]
   );
 
   const [textures] = useState<Record<string, any>>({});
@@ -1388,30 +1402,34 @@ const ThreeComponent: React.FC<SceneProps> = ({
               )}
             </div>
 
-            <div>
-              <label htmlFor="Backgroundsfs" className="label noselect">
-                <span>Background</span>
-              </label>
-            </div>
-            <div>
-              <select
-                id="Backgroundsfs"
-                className="select"
-                onChange={(event) => {
-                  setSceneConfig({
-                    ...sceneConfig,
-                    bg:
-                      event.target.value === 'none' ? null : event.target.value,
-                  });
-                }}
-                value={sceneConfig.bg ? sceneConfig.bg : 'none'}
-              >
-                <option value="none">None</option>
-                <option value="skyImage">Sky</option>
-                <option value="warehouseImage">Warehouse</option>
-                <option value="pondCubeMap">Pond Cube Map</option>
-                <option value="modelviewer">Model Viewer</option>
-              </select>
+            <div className={cx(styles.controlGrid, 'm-top-10')}>
+              <div>
+                <label htmlFor="Backgroundsfs" className="label noselect">
+                  <span>Background</span>
+                </label>
+              </div>
+              <div>
+                <select
+                  id="Backgroundsfs"
+                  className="select"
+                  onChange={(event) => {
+                    setSceneConfig({
+                      ...sceneConfig,
+                      bg:
+                        event.target.value === 'none'
+                          ? null
+                          : event.target.value,
+                    });
+                  }}
+                  value={sceneConfig.bg ? sceneConfig.bg : 'none'}
+                >
+                  <option value="none">None</option>
+                  <option value="skyImage">Sky</option>
+                  <option value="warehouseImage">Warehouse</option>
+                  <option value="pondCubeMap">Pond Cube Map</option>
+                  <option value="modelviewer">Model Viewer</option>
+                </select>
+              </div>
             </div>
 
             <div

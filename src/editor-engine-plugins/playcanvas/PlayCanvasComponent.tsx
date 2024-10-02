@@ -341,7 +341,7 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
         return textureCache.current[key];
       }
       const { assetId, versionId } = value;
-      if (value.assetId in assets) {
+      if (assetId !== undefined && assetId in assets) {
         const { versions } = assets[assetId];
         const { url } = versions.find((v) => v.id === versionId) || {};
         if (!url) {

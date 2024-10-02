@@ -470,7 +470,7 @@ textarea.error {
 }
 
 .bottomModal {
-  position: absolute;
+  position: absolute !important;
   left: 4px;
   right: 5px;
   bottom: 5px;
@@ -481,7 +481,7 @@ textarea.error {
   box-shadow: 0 0 10px #000;
 }
 .bottomModalContent {
-  height: calc(min(200px, 50vh));
+  height: 100%;
   padding: 6px 14px;
   overflow: scroll;
 }

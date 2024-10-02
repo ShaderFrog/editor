@@ -31,6 +31,7 @@
     "lodash.groupby": "^4.6.0",
     "lodash.throttle": "^4.1.1",
     "playcanvas": "^1.65.3",
+    "re-resizable": "^6.10.0",
     "react-hotkeys-hook": "^4.4.4",
     "reactflow": "^11.10.1",
     "swr": "^2.2.5",

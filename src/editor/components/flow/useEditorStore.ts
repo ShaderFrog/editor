@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { XYPosition } from 'reactflow';
+import { ValueOf } from '@/editor/util/types';
 
 /**
  * This file is an attempt to break up Editor.tsx by abstracting out the view
@@ -14,14 +15,11 @@ import { XYPosition } from 'reactflow';
 
 interface EditorStore {
   menu: ContextMenu | undefined;
-  isTextureBrowserOpen: boolean;
-  isNodeConfigEditorOpen: boolean;
+  bottomPanelType: EDITOR_BOTTOM_PANEL | undefined;
   setMenu: (menu: ContextMenuType, position: XYPosition) => void;
   hideMenu: () => void;
-  openTextureBrowser: () => void;
-  closeTextureBrowser: () => void;
-  openNodeConfigEditor: () => void;
-  closeNodeConfigEditor: () => void;
+  openEditorBottomPanel: (bottomPanelType: EDITOR_BOTTOM_PANEL) => void;
+  closeEditorBottomPanel: () => void;
 }
 
 export enum ContextMenuType {
@@ -31,14 +29,18 @@ export enum ContextMenuType {
 
 export type ContextMenu = { menu: ContextMenuType; position: XYPosition };
 
+export const EDITOR_BOTTOM_PANEL = {
+  TEXTURE_BROWSER: 'texture-browser',
+  NODE_CONFIG_EDITOR: 'node-config-editor',
+} as const;
+export type EDITOR_BOTTOM_PANEL = ValueOf<typeof EDITOR_BOTTOM_PANEL>;
+
 export const useEditorStore = create<EditorStore>((set) => ({
   menu: undefined,
-  isTextureBrowserOpen: false,
-  isNodeConfigEditorOpen: false,
+  bottomPanelType: undefined,
   setMenu: (menu, position) => set(() => ({ menu: { menu, position } })),
   hideMenu: () => set(() => ({ menu: undefined })),
-  openTextureBrowser: () => set(() => ({ isTextureBrowserOpen: true })),
-  closeTextureBrowser: () => set(() => ({ isTextureBrowserOpen: false })),
-  openNodeConfigEditor: () => set(() => ({ isNodeConfigEditorOpen: true })),
-  closeNodeConfigEditor: () => set(() => ({ isNodeConfigEditorOpen: false })),
+  openEditorBottomPanel: (bottomPanelType: EDITOR_BOTTOM_PANEL) =>
+    set(() => ({ bottomPanelType })),
+  closeEditorBottomPanel: () => set(() => ({ bottomPanelType: undefined })),
 }));

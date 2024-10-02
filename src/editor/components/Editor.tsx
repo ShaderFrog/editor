@@ -137,7 +137,7 @@ import TextureBrowser from './TextureBrowser';
 import randomShaderName from '@editor/util/randomShaderName';
 import { Shader } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
-import { useEditorStore } from './flow/useEditorStore';
+import { EDITOR_BOTTOM_PANEL, useEditorStore } from './flow/useEditorStore';
 import Modal from './Modal';
 import { texture2DStrategy, uniformStrategy } from '@/core';
 import { generate, parser } from '@shaderfrog/glsl-parser';
@@ -246,6 +246,9 @@ const ConvertModal = ({
   );
 };
 
+const guessIfColorName = (name: string) =>
+  /col|foreground|background/i.test(name);
+
 const Editor = ({
   assetPrefix,
   saveErrors,
@@ -274,11 +277,9 @@ const Editor = ({
   const {
     hideMenu,
     menu,
-    isTextureBrowserOpen,
-    closeTextureBrowser,
-    isNodeConfigEditorOpen,
-    openNodeConfigEditor,
-    closeNodeConfigEditor,
+    bottomPanelType,
+    openEditorBottomPanel,
+    closeEditorBottomPanel,
   } = useEditorStore();
 
   const [shader, setShader] = useState<Shader>(() => {
@@ -1049,12 +1050,20 @@ const Editor = ({
   );
 
   const onNodeDoubleClick = useCallback(
-    (event, node: FlowNode) => {
-      if (!('value' in node.data)) {
-        openNodeEditor(node.id);
+    (event, flowNode: FlowNode) => {
+      const node = graph.nodes.find((n) => n.id === flowNode.id) as SourceNode;
+
+      addSelectedNodes([node.id]);
+      setSelectedNode(node);
+
+      if (isDataNode(node)) {
+        openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
+      } else {
+        setActiveEditingNode(node);
+        setEditorTabIndex(1);
       }
     },
-    [openNodeEditor]
+    [addSelectedNodes, graph.nodes, openEditorBottomPanel]
   );
 
   const onSelectionChange = useCallback<OnSelectionChangeFunc>(
@@ -1310,9 +1319,19 @@ const Editor = ({
             (p) => p.property === input.property
           )?.defaultValue;
         }
+
+        let guessedType = type;
+        if (guessIfColorName(input.displayName)) {
+          if (input.dataType === 'vector3') {
+            guessedType = 'rgb';
+          } else if (input.dataType === 'vector4') {
+            guessedType = 'rgba';
+          }
+        }
+
         addNodeAtPosition(
           graph,
-          type,
+          guessedType,
           input.displayName,
           screenToFlowPosition({
             x: event.clientX,
@@ -1323,7 +1342,7 @@ const Editor = ({
             // This needs to line up with the weird naming convention in data-nodes.ts output
             output: '1',
             input: input.id,
-            type,
+            type: guessedType,
           },
           defaultValue
         );
@@ -1610,13 +1629,13 @@ const Editor = ({
         (n) => n.id === nodeId
       ) as SourceNode;
       if (type === NodeContextActions.EDIT_SOURCE) {
-        setActiveEditingNode(currentNode);
         addSelectedNodes([currentNode.id]);
         setSelectedNode(currentNode);
 
         if (isDataNode(currentNode)) {
-          openNodeConfigEditor();
+          openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
         } else {
+          setActiveEditingNode(currentNode);
           setEditorTabIndex(1);
         }
       } else if (type === NodeContextActions.DELETE_NODE_ONLY) {
@@ -1668,7 +1687,7 @@ const Editor = ({
       setEditorTabIndex,
       hideMenu,
       debouncedSetNeedsCompile,
-      openNodeConfigEditor,
+      openEditorBottomPanel,
     ]
   );
 
@@ -2169,8 +2188,8 @@ const Editor = ({
                     }}
                   />
                 ) : null}
-                {isTextureBrowserOpen ? (
-                  <BottomModal onClose={() => closeTextureBrowser()}>
+                {bottomPanelType === EDITOR_BOTTOM_PANEL.TEXTURE_BROWSER ? (
+                  <BottomModal onClose={() => closeEditorBottomPanel()}>
                     <TextureBrowser
                       onSelect={(av) => {
                         if (selectedNode?.type === 'texture') {
@@ -2179,8 +2198,9 @@ const Editor = ({
                       }}
                     />
                   </BottomModal>
-                ) : isNodeConfigEditorOpen && selectedNode ? (
-                  <BottomModal onClose={() => closeNodeConfigEditor()}>
+                ) : bottomPanelType ===
+                    EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR && selectedNode ? (
+                  <BottomModal onClose={() => closeEditorBottomPanel()}>
                     <ConfigEditor
                       node={selectedNode}
                       onChange={(change) => {

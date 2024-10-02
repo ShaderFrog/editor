@@ -42,7 +42,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { NODRAG_CLASS } from '../editorTypes';
 import LabeledInput from '../LabeledInput';
 import clamp from '@editor/util/clamp';
-import { useEditorStore } from './useEditorStore';
+import { EDITOR_BOTTOM_PANEL, useEditorStore } from './useEditorStore';
 const cx = classnames.bind(styles);
 
 const headerHeight = 30;
@@ -564,18 +564,21 @@ const TextureEditor = ({
   const { currentUser } = useFlowGraphContext();
   const hasHighRes = currentUser?.isPro;
   const { assets } = useAssetsAndGroups();
-  const { openTextureBrowser } = useEditorStore();
+  const { openEditorBottomPanel } = useEditorStore();
   const tData = data.value as TextureNodeValueData;
+  const assetId = tData?.assetId;
   const properties = tData?.properties;
 
-  const asset = assets[tData?.assetId];
+  const asset = assetId !== undefined ? assets[assetId] : null;
   const versions = asset?.versions || [];
   const version = versions.find((v) => v.id === tData?.versionId);
   return (
     <>
       <div
         className={cx(styles.textureSelect, { [styles.hasImg]: !!asset })}
-        onClick={openTextureBrowser}
+        onClick={() =>
+          openEditorBottomPanel(EDITOR_BOTTOM_PANEL.TEXTURE_BROWSER)
+        }
       >
         {version ? (
           <div
@@ -656,7 +659,7 @@ const TextureEditor = ({
         </div>
       </div>
 
-      {versions.length > 1 ? (
+      {asset && versions.length > 1 ? (
         <select
           className={cx('nodrag select m-top-5', styles.versionSelector)}
           onChange={(e) =>

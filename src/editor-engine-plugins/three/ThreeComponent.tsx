@@ -555,7 +555,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const getAndUpdateTexture = useCallback(
     (node: TextureNode) => {
       const value = node.value as TextureNodeValueData;
-      if (!value) {
+      if (!value || !value.assetId || !value.versionId) {
         return;
       }
       const properties = value.properties;

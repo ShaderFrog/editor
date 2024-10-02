@@ -62,14 +62,30 @@
   grid-column: span 3;
 }
 
-.contextRow svg {
+.contextRow svg[data-icon='code'] {
+  color: #4ebc00;
+}
+.contextRow svg[data-icon='image'] {
+  color: #82f7ff;
+}
+.contextRow svg[data-icon='palette'] {
+  color: #e100ff;
+}
+.contextRow svg[data-icon='plus'] {
+  color: #975757;
+}
+.contextRow svg[data-icon='xmark'] {
+  color: #975757;
+}
+
+.chevron {
   color: #999;
 }
 .contextRow:hover {
   background: linear-gradient(#42982d, #265314) !important;
   cursor: pointer;
 }
-.contextRow:hover svg {
+.contextRow:hover .chevron {
   color: #fff;
 }
 .contextRow.active {

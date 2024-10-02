@@ -142,7 +142,10 @@ const ContextMenu = ({
                 {hasLeft ? <span>{icon}</span> : null}
                 <span>{display}</span>
                 <span>
-                  <FontAwesomeIcon icon={faCircleChevronRight} />
+                  <FontAwesomeIcon
+                    icon={faCircleChevronRight}
+                    className={styles.chevron}
+                  />
                 </span>
               </div>
             ) : (

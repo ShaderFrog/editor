@@ -30,6 +30,15 @@ import { isMacintosh } from '@editor/util/platform';
 
 import styles from './floweditor.module.css';
 import { ContextMenuType, useEditorStore } from './useEditorStore';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faCode,
+  faImage,
+  faMultiply,
+  faPalette,
+  faPallet,
+  faPlus,
+} from '@fortawesome/free-solid-svg-icons';
 
 // Terrible hack to make the flow graph full height minus the tab height - I
 // need better layoutting of the tabs + graph
@@ -233,9 +242,21 @@ const FlowEditor = ({
       display: 'Source Code',
       value: 'Source Code',
       children: [
-        { display: 'Fragment and Vertex', value: 'fragmentandvertex' },
-        { display: 'Fragment', value: 'fragment' },
-        { display: 'Vertex', value: 'vertex' },
+        {
+          display: 'Fragment and Vertex',
+          value: 'fragmentandvertex',
+          icon: <FontAwesomeIcon icon={faCode} />,
+        },
+        {
+          display: 'Fragment',
+          value: 'fragment',
+          icon: <FontAwesomeIcon icon={faCode} />,
+        },
+        {
+          display: 'Vertex',
+          value: 'vertex',
+          icon: <FontAwesomeIcon icon={faCode} />,
+        },
       ],
     },
     {
@@ -243,21 +264,41 @@ const FlowEditor = ({
       value: 'Data',
       children: [
         { display: 'Number', value: 'number' },
-        { display: 'Texture', value: 'texture' },
+        {
+          display: 'Texture',
+          value: 'texture',
+          icon: <FontAwesomeIcon icon={faImage} />,
+        },
         { display: 'Sampler Cube', value: 'samplerCube' },
         { display: 'Vector2', value: 'vector2' },
         { display: 'Vector3', value: 'vector3' },
         { display: 'Vector4', value: 'vector4' },
-        { display: 'Color (RGB)', value: 'rgb' },
-        { display: 'Color (RGBA)', value: 'rgba' },
+        {
+          display: 'Color (RGB)',
+          value: 'rgb',
+          icon: <FontAwesomeIcon icon={faPalette} />,
+        },
+        {
+          display: 'Color (RGBA)',
+          value: 'rgba',
+          icon: <FontAwesomeIcon icon={faPalette} />,
+        },
       ],
     },
     {
       display: 'Math',
       value: 'Math',
       children: [
-        { display: 'Add', value: 'add' },
-        { display: 'Multiply', value: 'multiply' },
+        {
+          display: 'Add',
+          value: 'add',
+          icon: <FontAwesomeIcon icon={faPlus} />,
+        },
+        {
+          display: 'Multiply',
+          value: 'multiply',
+          icon: <FontAwesomeIcon icon={faMultiply} />,
+        },
       ],
     },
     ...menuItems,

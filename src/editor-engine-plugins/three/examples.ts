@@ -704,9 +704,9 @@ export const menuItems: MenuItem[] = [
   {
     display: `Three.js Materials`,
     children: [
-      { display: 'Physical', value: 'physical' },
-      { display: 'Phong', value: 'phong' },
-      { display: 'Toon', value: 'toon' },
+      { display: 'Physical', value: 'physical', icon: '🌐' },
+      { display: 'Phong', value: 'phong', icon: '🌐' },
+      { display: 'Toon', value: 'toon', icon: '🌐' },
     ],
   },
 ];

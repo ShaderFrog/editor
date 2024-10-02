@@ -567,9 +567,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
         return texture;
       }
 
-      if (properties?.repeatTexure && properties?.repeat) {
+      if (properties?.repeatTexure) {
         texture.wrapS = texture.wrapT = RepeatWrapping;
-        texture.repeat.set(properties.repeat.x || 1, properties.repeat.y || 1);
+        texture.repeat.set(
+          properties.repeat?.x || 1,
+          properties.repeat?.y || 1
+        );
       } else {
         texture.wrapS = texture.wrapT = ClampToEdgeWrapping;
         texture.repeat.set(1, 1);

@@ -53,6 +53,8 @@ import { threngine } from '@core/plugins/three/threngine';
 import { expandUniformDataNodes } from '@editor-components/useGraph';
 import { MenuItem } from '@editor-components/ContextMenu';
 import { AnySceneConfig } from '@editor-components/editorTypes';
+import { faCube } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',
@@ -703,6 +705,7 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
 export const menuItems: MenuItem[] = [
   {
     display: `Three.js Materials`,
+    icon: <FontAwesomeIcon icon={faCube} />,
     children: [
       { display: 'Physical', value: 'physical', icon: '🌐' },
       { display: 'Phong', value: 'phong', icon: '🌐' },

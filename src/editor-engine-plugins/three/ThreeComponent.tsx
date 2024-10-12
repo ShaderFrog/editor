@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import classnames from 'classnames';
 import {
   ACESFilmicToneMapping,
@@ -50,6 +56,7 @@ import {
   findLinkedNode,
   SourceNode,
   TextureNodeValueData,
+  computeGrindex,
 } from '@core/graph';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import { EngineContext } from '@core/engine';
@@ -86,6 +93,7 @@ import { useAssetsAndGroups } from '@editor/api';
 
 import styles from '../../editor/styles/editor.module.css';
 import clamp from '@/editor/util/clamp';
+import { extractProperties } from './three-graph';
 
 export const THREE_IMAGE_ENCODINGS = {
   SRGB: 'srgb',
@@ -341,6 +349,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const sceneWrapperSize = useSize(sceneWrapper);
   const [isPaused, setIsPaused] = useState(false);
 
+  const grindex = useMemo(() => computeGrindex(graph), [graph]);
+
   const { sceneData, scene, camera, threeDomCbRef, renderer } = useThree(
     (time, controls) => {
       const { mesh } = sceneData;
@@ -421,8 +431,38 @@ const ThreeComponent: React.FC<SceneProps> = ({
       // in this component at RawShaderMaterial creation time. There might be
       // some logic duplication to worry about.
       if (compileResult?.dataInputs) {
+        const { uniforms, properties } = extractProperties(
+          graph,
+          grindex,
+          compileResult.dataInputs,
+          (node) => {
+            if (node.type === 'texture') {
+              return getAndUpdateTexture(node as TextureNode);
+            } else {
+              return textures[(node as SamplerCubeNode).value];
+            }
+          }
+        );
+
+        Object.entries(uniforms).forEach(([name, { value }]) => {
+          // @ts-ignore
+          if (name in (mesh.material.uniforms || {})) {
+            // @ts-ignore
+            mesh.material.uniforms[name].value = value;
+          } else {
+            console.warn('Unknown uniform', name);
+          }
+        });
+
+        Object.entries(properties).forEach(([name, value]) => {
+          // @ts-ignore
+          mesh.material[name] = value;
+        });
+
+        /*
         Object.entries(compileResult.dataInputs).forEach(([nodeId, inputs]) => {
-          const node = graph.nodes.find(({ id }) => id === nodeId);
+          // const node = graph.nodes.find(({ id }) => id === nodeId);
+          const node = grindex.nodes[nodeId];
           if (!node) {
             console.warn(
               `While populating uniforms, compileResults.dataInput referenced node id "${nodeId}," but this node is not in the graph.`,
@@ -489,6 +529,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
             }
           });
         });
+        */
       }
 
       // @ts-ignore
@@ -561,13 +602,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
       const properties = value.properties;
       const texture = loadTexture(value as TextureNodeValueData);
       if (!texture) {
-        throw new Error(`Could not load texture for node ${node.id}`);
+        console.error(`Could not load texture for node ${node.id}`);
+        return new Texture();
       }
       if (!properties || (texture as any).__properties === properties) {
         return texture;
       }
 
-      if (properties?.repeatTexure) {
+      if (properties?.repeatTexure || !properties) {
         texture.wrapS = texture.wrapT = RepeatWrapping;
         texture.repeat.set(
           properties.repeat?.x || 1,
@@ -901,76 +943,16 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     // Note this is setting the uniforms of the shader at creation time. The
     // uniforms are also updated every frame in the useThree() loop.
-    const { uniforms, properties } = Object.entries(
-      compileResult.dataInputs || {}
-    ).reduce<{
-      uniforms: Record<string, { value: any }>;
-      properties: Record<string, any>;
-    }>(
-      ({ uniforms, properties }, [nodeId, inputs]) => {
-        const node = graph.nodes.find(({ id }) => id === nodeId);
-        if (!node) {
-          console.warn(
-            'Graph dataInputs referenced nodeId',
-            nodeId,
-            'which was not present.',
-            { compileResult }
-          );
-          return { uniforms, properties };
+    const { uniforms, properties } = extractProperties(
+      graph,
+      grindex,
+      compileResult.dataInputs,
+      (node) => {
+        if (node.type === 'texture') {
+          return getAndUpdateTexture(node as TextureNode);
+        } else {
+          return textures[(node as SamplerCubeNode).value];
         }
-        const updatedUniforms: typeof uniforms = {};
-        const updatedProperties: typeof properties = {};
-
-        inputs.forEach((input) => {
-          const edge = graph.edges.find(
-            ({ to, input: i }) => to === nodeId && i === input.id
-          );
-          if (edge) {
-            const fromNode = ensure(
-              graph.nodes.find(({ id }) => id === edge.from)
-            );
-            // THIS DUPLICATE OTHER LINE
-            let value;
-            try {
-              value = evaluateNode(threngine, graph, fromNode);
-            } catch (err) {
-              console.warn('Tried to evaluate a non-data node!', {
-                err,
-                dataInputs: compileResult.dataInputs,
-              });
-              return;
-            }
-            let newValue = value;
-            if (fromNode.type === 'texture') {
-              // This is instantiation of initial value
-              newValue = getAndUpdateTexture(fromNode as TextureNode);
-            } else if (fromNode.type === 'samplerCube') {
-              newValue = textures[(fromNode as SamplerCubeNode).value];
-            }
-            // TODO: This doesn't work for engine variables because
-            // those aren't suffixed
-            const name = mangleVar(
-              input.displayName,
-              threngine,
-              node,
-              findLinkedNode(graph, node.id) as SourceNode
-            );
-
-            if (input.property) {
-              updatedProperties[name] = newValue;
-            } else {
-              updatedUniforms[name] = { value: newValue };
-            }
-          }
-        });
-        return {
-          uniforms: { ...uniforms, ...updatedUniforms },
-          properties: { ...properties, ...updatedProperties },
-        };
-      },
-      {
-        uniforms: {},
-        properties: {},
       }
     );
 
@@ -1014,6 +996,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     mesh.material = material;
     shadersUpdated.current = true;
   }, [
+    grindex,
     loadTexture,
     sceneConfig,
     compileResult,

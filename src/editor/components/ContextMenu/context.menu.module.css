@@ -62,8 +62,14 @@
   grid-column: span 3;
 }
 
+.contextRow svg {
+  filter: drop-shadow(0px 0px 2px rgb(0, 0, 0));
+}
 .contextRow svg[data-icon='code'] {
   color: #4ebc00;
+}
+.contextRow svg[data-icon='file-code'] {
+  color: #c7ba88;
 }
 .contextRow svg[data-icon='image'] {
   color: #82f7ff;
@@ -76,6 +82,15 @@
 }
 .contextRow svg[data-icon='xmark'] {
   color: #975757;
+}
+.contextRow svg[data-icon='cube'] {
+  color: #006aff;
+}
+.contextRow svg[data-icon='cubes'] {
+  color: #7effea;
+}
+.contextRow svg[data-icon='calculator'] {
+  color: #ff79d2;
 }
 
 .chevron {

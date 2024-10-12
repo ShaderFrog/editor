@@ -32,7 +32,11 @@ import styles from './floweditor.module.css';
 import { ContextMenuType, useEditorStore } from './useEditorStore';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  faCalculator,
   faCode,
+  faCubes,
+  faFileCode,
+  faHashtag,
   faImage,
   faMultiply,
   faPalette,
@@ -241,6 +245,7 @@ const FlowEditor = ({
     {
       display: 'Source Code',
       value: 'Source Code',
+      icon: <FontAwesomeIcon icon={faCode} />,
       children: [
         {
           display: 'Fragment and Vertex',
@@ -250,20 +255,25 @@ const FlowEditor = ({
         {
           display: 'Fragment',
           value: 'fragment',
-          icon: <FontAwesomeIcon icon={faCode} />,
+          icon: <FontAwesomeIcon icon={faFileCode} />,
         },
         {
           display: 'Vertex',
           value: 'vertex',
-          icon: <FontAwesomeIcon icon={faCode} />,
+          icon: <FontAwesomeIcon icon={faFileCode} />,
         },
       ],
     },
     {
       display: 'Data',
       value: 'Data',
+      icon: <FontAwesomeIcon icon={faCubes} />,
       children: [
-        { display: 'Number', value: 'number' },
+        {
+          display: 'Number',
+          value: 'number',
+          icon: <FontAwesomeIcon icon={faHashtag} />,
+        },
         {
           display: 'Texture',
           value: 'texture',
@@ -288,6 +298,7 @@ const FlowEditor = ({
     {
       display: 'Math',
       value: 'Math',
+      icon: <FontAwesomeIcon icon={faCalculator} />,
       children: [
         {
           display: 'Add',

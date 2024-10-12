@@ -57,6 +57,7 @@ import {
   isError,
   NodeErrors,
   sourceNode,
+  TextureNode,
 } from '@core/graph';
 
 import FlowEditor, {
@@ -2193,7 +2194,15 @@ const Editor = ({
                     <TextureBrowser
                       onSelect={(av) => {
                         if (selectedNode?.type === 'texture') {
-                          onNodeValueChange(selectedNode.id, av);
+                          const sn = selectedNode as TextureNode;
+                          onNodeValueChange(selectedNode.id, {
+                            ...sn.value,
+                            ...av,
+                            properties: {
+                              ...(av.properties || {}),
+                              ...(sn.value?.properties || {}),
+                            },
+                          });
                         }
                       }}
                     />

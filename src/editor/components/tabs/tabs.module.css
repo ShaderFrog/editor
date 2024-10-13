@@ -30,3 +30,17 @@
 .tab_selected:hover {
   background: linear-gradient(rgb(68, 136, 8), rgb(32, 94, 4));
 }
+
+.tab_tab :global(.close) {
+  margin-left: 6px;
+  color: rgb(240, 216, 216);
+  opacity: 0.1;
+}
+
+.tab_tab:hover :global(.close) {
+  opacity: 1;
+}
+
+.tab_tab:hover :global(.close):hover {
+  color: rgb(255, 58, 58);
+}

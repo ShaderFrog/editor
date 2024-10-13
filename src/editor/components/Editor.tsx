@@ -1,3 +1,4 @@
+import { NodeRendererProps, Tree } from 'react-arborist';
 import styles from '../styles/editor.module.css';
 import debounce from 'lodash.debounce';
 import {
@@ -58,6 +59,9 @@ import {
   NodeErrors,
   sourceNode,
   TextureNode,
+  computeGrindex,
+  findLinkedNode,
+  ShaderStage,
 } from '@core/graph';
 
 import FlowEditor, {
@@ -144,6 +148,19 @@ import { texture2DStrategy, uniformStrategy } from '@/core';
 import { generate, parser } from '@shaderfrog/glsl-parser';
 import { Program } from '@shaderfrog/glsl-parser/ast';
 import { xor } from '@shaderfrog/glsl-parser/parser/utils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faChevronDown,
+  faChevronRight,
+  faClose,
+  faCode,
+  faFolderClosed,
+  faFolderOpen,
+  faSquareShareNodes,
+  faVectorSquare,
+} from '@fortawesome/free-solid-svg-icons';
+import { capitalize } from '@/util/string';
+import { idSchema } from '@/api/shaderSchema';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
@@ -249,6 +266,44 @@ const ConvertModal = ({
 
 const guessIfColorName = (name: string) =>
   /col|foreground|background/i.test(name);
+
+type TreeData = {
+  id: string;
+  name: string;
+  children?: TreeData[];
+  stage?: ShaderStage;
+};
+
+const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeData>) => {
+  return (
+    <div
+      style={style}
+      ref={dragHandle}
+      // onClick={() => node.toggle()}
+      className={
+        (node.isLeaf ? styles.treeLeaf : styles.treeFolder) +
+        ' ' +
+        (node.data.stage === 'fragment'
+          ? styles.treeFragment
+          : node.data.stage === 'vertex'
+          ? styles.treeVertex
+          : styles.treeUnknown)
+      }
+    >
+      {node.isLeaf ? (
+        <FontAwesomeIcon icon={faCode} className={styles.treeIcon} />
+      ) : (
+        <FontAwesomeIcon
+          icon={node.isOpen ? faChevronDown : faChevronRight}
+          className={styles.treeIcon}
+        />
+      )}
+      {node.data.name}
+    </div>
+  );
+};
+
+const AUTO_SELECT = true;
 
 const Editor = ({
   assetPrefix,
@@ -374,6 +429,8 @@ const Editor = ({
     useState<AnySceneConfig>(initialSceneConfig);
 
   const [graph, setGraph] = useLocalStorage<Graph>('graph', initialGraph);
+  const grindex = useMemo(() => computeGrindex(graph), [graph]);
+
   const [nodeErrors, setNodeErrors] = useState<Record<string, NodeErrors>>({});
 
   /**
@@ -430,12 +487,10 @@ const Editor = ({
 
   const tryToUnEffTheGraph = () => {
     setGraph((graph) => {
-      const nodesById = graph.nodes.reduce<Record<string, GraphNode>>(
-        (acc, node) => ({ ...acc, [node.id]: node }),
-        {}
-      );
       const orphanedEdgeIds = graph.edges
-        .filter((edge) => !(edge.to in nodesById) || !(edge.from in nodesById))
+        .filter(
+          (edge) => !(edge.to in grindex.nodes) || !(edge.from in grindex.nodes)
+        )
         .reduce<Set<string>>((edges, edge) => {
           edges.add(edge.id);
           return edges;
@@ -459,10 +514,42 @@ const Editor = ({
   const [compiling, setCompiling] = useState<boolean>(false);
   const [guiError, setGuiError] = useState<string>('');
 
-  // Which node is active in the GLSL editor tab
+  // The IDs of nodes active in the GLSL editor tab. This determines which tabs
+  // are shown in the GLSL editor
+  const [editorTabNodeIds, setEditorTabNodeIds] = useState<string[]>([]);
+
+  // Add a new node ID to the editor tabs
+  const addEditorTab = (nodeId: string) =>
+    setEditorTabNodeIds((ids) => {
+      if (ids.includes(nodeId)) {
+        return ids;
+      }
+      return [...ids, nodeId];
+    });
+
+  // Remove a node ID from the editor tabs. If the node removed is the active
+  // node, swich to the tab to the left of this one
+  const removeEditorTabNodeId = (nodeId: string) => {
+    const tabIndex = editorTabNodeIds.indexOf(nodeId);
+    setEditorTabNodeIds((ids) => ids.filter((id) => id !== nodeId));
+    if (nodeId === activeEditingNode.id) {
+      const nextIndex = (tabIndex - 1) % (editorTabNodeIds.length - 1);
+      const nextNode = grindex.nodes[editorTabNodeIds[nextIndex]] as SourceNode;
+      if (nextNode) {
+        setActiveEditingNode(nextNode);
+      }
+    }
+  };
+
   const [activeEditingNode, setActiveEditingNode] = useState<SourceNode>(
     (graph.nodes.find((n) => n.type === 'source') ||
       graph.nodes[0]) as SourceNode
+  );
+
+  // Which node is selected in the glsl editor
+  const codeEditorTabIndex = Math.max(
+    editorTabNodeIds.indexOf(activeEditingNode?.id),
+    0
   );
 
   // Which node has the primary focus in the graph editor. Used for replacing
@@ -830,6 +917,7 @@ const Editor = ({
       const newGraph = expandUniformDataNodes(graph);
       setGraph(newGraph);
       setSceneConfig(sceneConfig);
+      addEditorTab(newGraph.nodes[0].id);
       setActiveEditingNode(newGraph.nodes[0] as SourceNode);
       addSelectedNodes([newGraph.nodes[0].id]);
 
@@ -1041,6 +1129,7 @@ const Editor = ({
   const openNodeEditor = useCallback(
     (nodeId: string) => {
       const active = graph.nodes.find((n) => n.id === nodeId) as SourceNode;
+      addEditorTab(active.id);
       setActiveEditingNode(active);
       addSelectedNodes([active.id]);
       setSelectedNode(active);
@@ -1060,6 +1149,7 @@ const Editor = ({
       if (isDataNode(node)) {
         openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
       } else {
+        addEditorTab(node.id);
         setActiveEditingNode(node);
         setEditorTabIndex(1);
       }
@@ -1636,6 +1726,7 @@ const Editor = ({
         if (isDataNode(currentNode)) {
           openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
         } else {
+          addEditorTab(currentNode.id);
           setActiveEditingNode(currentNode);
           setEditorTabIndex(1);
         }
@@ -2070,6 +2161,65 @@ const Editor = ({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [canDelete, setCanDelete] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
+
+  const treeData = useMemo(() => {
+    const fragmentFolders = graph.nodes
+      .filter(
+        (node): node is SourceNode =>
+          'stage' in node && node.stage === 'fragment'
+      )
+      .reduce(
+        (acc, node) => ({
+          ...acc,
+          [node.id]: {
+            id: `${node.id}_folder`,
+            name: node.name,
+            children: [
+              {
+                id: node.id,
+                name: node.stage ? capitalize(node.stage) : node.name,
+                stage: node.stage,
+              },
+            ],
+          },
+        }),
+        {} as Record<string, TreeData>
+      );
+
+    return graph.nodes
+      .filter(
+        (node) =>
+          node.type === 'source' &&
+          (!('stage' in node) || node.stage !== 'fragment')
+      )
+      .reduce((acc, node) => {
+        const linked = findLinkedNode(graph, node.id);
+        const stage = 'stage' in node ? node.stage : undefined;
+        if (linked && linked.id in acc) {
+          return {
+            ...acc,
+            [linked.id]: {
+              ...acc[linked.id],
+              children: (acc[linked.id].children || []).concat({
+                id: node.id,
+                name: stage ? capitalize(stage) : node.name,
+                stage: (node as SourceNode).stage,
+              }),
+            },
+          };
+        }
+        return {
+          ...acc,
+          [node.id]: {
+            id: node.id,
+            name: node.name,
+            stage,
+            children: [],
+          },
+        };
+      }, fragmentFolders);
+  }, [graph]);
+
   const editorElements = (
     <>
       {isSmallScreen ? null : isAuthenticated ? (
@@ -2273,96 +2423,130 @@ const Editor = ({
           </TabPanel>
           {/* Main code editor tab */}
           <TabPanel className="relative">
-            <SplitPane split="horizontal">
-              {/* Monaco split */}
-              <div className={cx(styles.shrinkGrowRows, 'wFull')}>
-                <div className={styles.editorControls}>
-                  <select
-                    className="select auto size2 m-right-5"
-                    onChange={(event) => {
-                      const node = graph.nodes.find(
-                        (n) => n.id === event.target.value
-                      ) as SourceNode;
-                      setActiveEditingNode(node);
-                      addSelectedNodes([node.id]);
-                    }}
-                    value={activeEditingNode.id}
-                  >
-                    {graph.nodes
-                      .filter(
-                        (n) => !isDataNode(n) && n.type !== NodeType.OUTPUT
-                      )
-                      .map((n) => (
-                        <option key={n.id} value={n.id}>
-                          {n.name} ({(n as SourceNode).stage})
-                        </option>
-                      ))}
-                  </select>
-                  {activeEditingNode.config?.properties?.length ||
-                  activeEditingNode.engine ? (
-                    <div className={styles.infoMsg}>
-                      Read-only: This node&apos;s source code is generated by{' '}
-                      {engine.displayName}, and can&apos;t be edited directly.
-                    </div>
-                  ) : (
-                    <button
-                      className="buttonauto formbutton size2"
-                      onClick={() =>
-                        compile(engine, ctx as EngineContext, graph, {
-                          nodes: flowNodes,
-                          edges: flowEdges,
-                        })
-                      }
-                      title={`${isMacintosh() ? `⌘-'` : `Ctrl+'`}`}
-                    >
-                      Compile
-                    </button>
-                  )}
-                </div>
-                <CodeEditor
-                  engine={engine}
-                  identity={activeEditingNode.id}
-                  defaultValue={activeEditingNode.source}
-                  errors={nodeErrors[activeEditingNode.id]}
-                  onSave={() => {
-                    saveOrFork();
+            <SplitPane split="vertical" defaultSizes={[0.15]}>
+              <div className={styles.treePanel}>
+                <Tree
+                  rowHeight={28}
+                  initialData={Object.values(treeData)}
+                  selection={selectedNode?.id}
+                  disableMultiSelection
+                  onSelect={(treeNodes) => {
+                    const id = treeNodes[0].id;
+                    addEditorTab(id);
+                    setSelectedNode(grindex.nodes[id]);
                   }}
-                  onCompile={() => {
-                    compile(engine, ctx as EngineContext, graph, {
-                      nodes: flowNodes,
-                      edges: flowEdges,
-                    });
-                  }}
-                  onChange={(value, event) => {
-                    if (value) {
-                      (
-                        graph.nodes.find(
-                          ({ id }) => id === activeEditingNode.id
-                        ) as SourceNode
-                      ).source = value;
-                    }
-                  }}
-                />
+                >
+                  {TreeNode}
+                </Tree>
               </div>
-              {/* Strategy editor split */}
-              <div className={cx(styles.splitInner, styles.nodeEditorPanel)}>
-                <StrategyEditor
-                  ctx={ctx}
-                  node={activeEditingNode}
-                  graph={graph}
-                  onSave={() =>
-                    compile(engine, ctx as EngineContext, graph, {
-                      nodes: flowNodes,
-                      edges: flowEdges,
-                    })
-                  }
-                  onGraphChange={() => {
-                    setGraph(graph);
-                    const updated = graphToFlowGraph(graph);
-                    setNodes(updated.nodes);
-                    setEdges(updated.edges);
+              <div className="wFull relative">
+                {/* Monaco split */}
+                <Tabs
+                  onTabSelect={(idx) => {
+                    setActiveEditingNode(
+                      grindex.nodes[editorTabNodeIds[idx]] as SourceNode
+                    );
                   }}
-                ></StrategyEditor>
+                  selected={codeEditorTabIndex}
+                  className={styles.shrinkGrowRows}
+                >
+                  <TabGroup className={styles.tabBar}>
+                    {editorTabNodeIds.map((id) => (
+                      <Tab key={id}>
+                        {grindex.nodes[id]?.name}{' '}
+                        {'stage' in grindex.nodes[id]
+                          ? `(${capitalize(grindex.nodes[id].stage!)})`
+                          : ''}
+                        <span
+                          onClick={(e) => {
+                            e.preventDefault();
+                            // Stop click from bubbling up to tab selection click!
+                            e.stopPropagation();
+                            removeEditorTabNodeId(id);
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faClose} className="close" />
+                        </span>
+                      </Tab>
+                    ))}
+
+                    <div className={styles.editorControls}>
+                      {/* <select
+                      className="select auto size2 m-right-5"
+                      onChange={(event) => {
+                        const node = graph.nodes.find(
+                          (n) => n.id === event.target.value
+                        ) as SourceNode;
+                        setActiveEditingNode(node);
+                        addEditorTab(node.id);
+                        addSelectedNodes([node.id]);
+                      }}
+                      value={activeEditingNode.id}
+                    >
+                      {graph.nodes
+                        .filter(
+                          (n) => !isDataNode(n) && n.type !== NodeType.OUTPUT
+                        )
+                        .map((n) => (
+                          <option key={n.id} value={n.id}>
+                            {n.name} ({(n as SourceNode).stage})
+                          </option>
+                        ))}
+                    </select> */}
+                      {activeEditingNode.config?.properties?.length ||
+                      activeEditingNode.engine ? (
+                        <div className={styles.infoMsg}>
+                          Read-only: This node&apos;s source code is generated
+                          by {engine.displayName}, and can&apos;t be edited
+                          directly.
+                        </div>
+                      ) : (
+                        <button
+                          className="buttonauto formbutton size2"
+                          onClick={() =>
+                            compile(engine, ctx as EngineContext, graph, {
+                              nodes: flowNodes,
+                              edges: flowEdges,
+                            })
+                          }
+                          title={`${isMacintosh() ? `⌘-'` : `Ctrl+'`}`}
+                        >
+                          Compile
+                        </button>
+                      )}
+                    </div>
+                  </TabGroup>
+                  <TabPanels>
+                    {editorTabNodeIds.map((id) => (
+                      <TabPanel key={id}>
+                        <CodeEditor
+                          engine={engine}
+                          identity={activeEditingNode.id}
+                          defaultValue={activeEditingNode.source}
+                          errors={nodeErrors[activeEditingNode.id]}
+                          onSave={() => {
+                            saveOrFork();
+                          }}
+                          onCompile={() => {
+                            compile(engine, ctx as EngineContext, graph, {
+                              nodes: flowNodes,
+                              edges: flowEdges,
+                            });
+                          }}
+                          onChange={(value, event) => {
+                            if (value) {
+                              (
+                                graph.nodes.find(
+                                  ({ id }) => id === activeEditingNode.id
+                                ) as SourceNode
+                              ).source = value;
+                            }
+                          }}
+                        />
+                      </TabPanel>
+                    ))}
+                  </TabPanels>
+                </Tabs>
               </div>
             </SplitPane>
           </TabPanel>

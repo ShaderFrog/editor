@@ -1,12 +1,13 @@
 .tab_tabs {
-  display: grid;
+  /* display: grid; */
   background: linear-gradient(#222, #111);
-  grid-auto-flow: column;
+  /* grid-auto-flow: column; */
   color: #fff;
-  grid-auto-columns: max-content;
+  /* grid-auto-columns: max-content; */
   border-bottom: 1px solid #000;
 }
 .tab_tab {
+  display: inline-block;
   user-select: none;
   max-height: 28px;
   border-radius: 6px 6px 0 0;

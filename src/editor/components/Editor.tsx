@@ -1,4 +1,3 @@
-import { NodeRendererProps, Tree } from 'react-arborist';
 import styles from '../styles/editor.module.css';
 import debounce from 'lodash.debounce';
 import {
@@ -52,11 +51,9 @@ import {
   computeAllContexts,
   computeContextForNodes,
   isDataNode,
-  NodeType,
   makeEdge,
   resetGraphIds,
   isError,
-  NodeErrors,
   sourceNode,
   TextureNode,
   computeGrindex,
@@ -124,7 +121,6 @@ import {
   expandUniformDataNodes,
   linkNodes,
 } from './useGraph';
-import StrategyEditor from './StrategyEditor';
 import { FlowGraphContext } from '@editor/editor/flowGraphContext';
 import { findNodeAndData, findNodeTree } from './flow/graph-helpers';
 import { isMacintosh } from '@editor/util/platform';
@@ -148,19 +144,8 @@ import { texture2DStrategy, uniformStrategy } from '@/core';
 import { generate, parser } from '@shaderfrog/glsl-parser';
 import { Program } from '@shaderfrog/glsl-parser/ast';
 import { xor } from '@shaderfrog/glsl-parser/parser/utils';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faChevronDown,
-  faChevronRight,
-  faClose,
-  faCode,
-  faFolderClosed,
-  faFolderOpen,
-  faSquareShareNodes,
-  faVectorSquare,
-} from '@fortawesome/free-solid-svg-icons';
 import { capitalize } from '@/util/string';
-import { idSchema } from '@/api/shaderSchema';
+import GlslEditor from './GlslEditor';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
@@ -274,37 +259,6 @@ type TreeData = {
   stage?: ShaderStage;
 };
 
-const TreeNode = ({ node, style, dragHandle }: NodeRendererProps<TreeData>) => {
-  return (
-    <div
-      style={style}
-      ref={dragHandle}
-      // onClick={() => node.toggle()}
-      className={
-        (node.isLeaf ? styles.treeLeaf : styles.treeFolder) +
-        ' ' +
-        (node.data.stage === 'fragment'
-          ? styles.treeFragment
-          : node.data.stage === 'vertex'
-          ? styles.treeVertex
-          : styles.treeUnknown)
-      }
-    >
-      {node.isLeaf ? (
-        <FontAwesomeIcon icon={faCode} className={styles.treeIcon} />
-      ) : (
-        <FontAwesomeIcon
-          icon={node.isOpen ? faChevronDown : faChevronRight}
-          className={styles.treeIcon}
-        />
-      )}
-      {node.data.name}
-    </div>
-  );
-};
-
-const AUTO_SELECT = true;
-
 const Editor = ({
   assetPrefix,
   saveErrors,
@@ -336,6 +290,12 @@ const Editor = ({
     bottomPanelType,
     openEditorBottomPanel,
     closeEditorBottomPanel,
+    primarySelectedNodeId,
+    setPrimarySelectedNodeId,
+    addEditorTab,
+    setNodeErrors,
+    clearNodeErrors,
+    setGlslEditorActiveNodeId,
   } = useEditorStore();
 
   const [shader, setShader] = useState<Shader>(() => {
@@ -431,7 +391,9 @@ const Editor = ({
   const [graph, setGraph] = useLocalStorage<Graph>('graph', initialGraph);
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
 
-  const [nodeErrors, setNodeErrors] = useState<Record<string, NodeErrors>>({});
+  const primarySelectedNode = primarySelectedNodeId
+    ? grindex.nodes[primarySelectedNodeId]
+    : undefined;
 
   /**
    * Compare the react-flow graph to the core graph, look for discrepancies.
@@ -514,51 +476,6 @@ const Editor = ({
   const [compiling, setCompiling] = useState<boolean>(false);
   const [guiError, setGuiError] = useState<string>('');
 
-  // The IDs of nodes active in the GLSL editor tab. This determines which tabs
-  // are shown in the GLSL editor
-  const [editorTabNodeIds, setEditorTabNodeIds] = useState<string[]>([]);
-
-  // Add a new node ID to the editor tabs
-  const addEditorTab = (nodeId: string) =>
-    setEditorTabNodeIds((ids) => {
-      if (ids.includes(nodeId)) {
-        return ids;
-      }
-      return [...ids, nodeId];
-    });
-
-  // Remove a node ID from the editor tabs. If the node removed is the active
-  // node, swich to the tab to the left of this one
-  const removeEditorTabNodeId = (nodeId: string) => {
-    const tabIndex = editorTabNodeIds.indexOf(nodeId);
-    setEditorTabNodeIds((ids) => ids.filter((id) => id !== nodeId));
-    if (nodeId === activeEditingNode.id) {
-      const nextIndex = (tabIndex - 1) % (editorTabNodeIds.length - 1);
-      const nextNode = grindex.nodes[editorTabNodeIds[nextIndex]] as SourceNode;
-      if (nextNode) {
-        setActiveEditingNode(nextNode);
-      }
-    }
-  };
-
-  const [activeEditingNode, setActiveEditingNode] = useState<SourceNode>(
-    (graph.nodes.find((n) => n.type === 'source') ||
-      graph.nodes[0]) as SourceNode
-  );
-
-  // Which node is selected in the glsl editor
-  const codeEditorTabIndex = Math.max(
-    editorTabNodeIds.indexOf(activeEditingNode?.id),
-    0
-  );
-
-  // Which node has the primary focus in the graph editor. Used for replacing
-  // the current selected node with another graph, used for the texture browser
-  // to replace the seleted node's texture value. This is different than the
-  // react-flow selection, which can select multiple nodes.
-  const [selectedNode, setSelectedNode] = useState<GraphNode | undefined>(
-    activeEditingNode
-  );
   const [replacingNode, setReplacingNode] = useState<FlowNode | null>(null);
 
   const [compileResult, setCompileResult] = useState<UICompileGraphResult>();
@@ -692,10 +609,7 @@ const Editor = ({
       compileGraphAsync(graph, engine, ctx)
         .then((result) => {
           if (isError(result)) {
-            setNodeErrors((nodeErrors) => ({
-              ...nodeErrors,
-              [result.nodeId]: result,
-            }));
+            setNodeErrors(result.nodeId, result);
             updateFlowNode(result.nodeId, { glslError: true });
             return;
           }
@@ -704,7 +618,7 @@ const Editor = ({
             compileResult: result,
           });
 
-          setNodeErrors({});
+          clearNodeErrors();
           setGuiError('');
           setCompileResult(result);
 
@@ -751,7 +665,14 @@ const Editor = ({
           setContexting(false);
         });
     },
-    [updateNodeInternals, setEdges, setNodes, updateFlowNode]
+    [
+      updateNodeInternals,
+      setEdges,
+      setNodes,
+      updateFlowNode,
+      clearNodeErrors,
+      setNodeErrors,
+    ]
   );
 
   // Let child components call compile after, say, their lighting has finished
@@ -787,10 +708,7 @@ const Editor = ({
         try {
           const result = await computeAllContexts(newCtx, engine, graph);
           if (isError(result)) {
-            setNodeErrors((nodeErrors) => ({
-              ...nodeErrors,
-              [result.nodeId]: result,
-            }));
+            setNodeErrors(result.nodeId, result);
             setNodes((nodes) =>
               updateFlowNodesData(nodes, result.nodeId, { glslError: true })
             );
@@ -816,7 +734,7 @@ const Editor = ({
             nodes.map((node) => updateFlowNodeData(node, { glslError: false }))
           );
 
-          setNodeErrors({});
+          clearNodeErrors();
           compile(engine, newCtx, graph, initialElements);
         } catch (error: any) {
           setContexting(false);
@@ -829,7 +747,7 @@ const Editor = ({
         }
       }, 0);
     },
-    [compile, engine, setNodes, setEdges]
+    [compile, engine, setNodes, setEdges, setNodeErrors, clearNodeErrors]
   );
 
   // Once we receive a new engine context, re-initialize the graph. This method
@@ -904,6 +822,7 @@ const Editor = ({
     [setGraph, setNodes, debouncedSetNeedsCompile]
   );
 
+  /*
   // TODO: Might be able to get rid of all of this, need to test running the
   // editor standalone to see how examples are used, if at all
   const previousExample = usePrevious(currentExample);
@@ -918,7 +837,7 @@ const Editor = ({
       setGraph(newGraph);
       setSceneConfig(sceneConfig);
       addEditorTab(newGraph.nodes[0].id);
-      setActiveEditingNode(newGraph.nodes[0] as SourceNode);
+      setPrimarySelectedNodeId(newGraph.nodes[0].id);
       addSelectedNodes([newGraph.nodes[0].id]);
 
       if (ctx) {
@@ -938,7 +857,10 @@ const Editor = ({
     examples,
     makeExampleGraph,
     onInputBakedToggle,
+    addEditorTab,
+    setPrimarySelectedNodeId,
   ]);
+  */
 
   /**
    * Split state mgmt
@@ -1129,14 +1051,13 @@ const Editor = ({
   const openNodeEditor = useCallback(
     (nodeId: string) => {
       const active = graph.nodes.find((n) => n.id === nodeId) as SourceNode;
-      addEditorTab(active.id);
-      setActiveEditingNode(active);
+      addEditorTab(active.id, 'code');
+      setGlslEditorActiveNodeId(active.id);
       addSelectedNodes([active.id]);
-      setSelectedNode(active);
 
       setEditorTabIndex(1);
     },
-    [addSelectedNodes, graph]
+    [addSelectedNodes, graph, setGlslEditorActiveNodeId, addEditorTab]
   );
 
   const onNodeDoubleClick = useCallback(
@@ -1144,17 +1065,24 @@ const Editor = ({
       const node = graph.nodes.find((n) => n.id === flowNode.id) as SourceNode;
 
       addSelectedNodes([node.id]);
-      setSelectedNode(node);
+      setPrimarySelectedNodeId(node.id);
 
       if (isDataNode(node)) {
         openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
-      } else {
-        addEditorTab(node.id);
-        setActiveEditingNode(node);
+      } else if (node.type === 'source') {
+        addEditorTab(node.id, 'code');
+        setGlslEditorActiveNodeId(node.id);
         setEditorTabIndex(1);
       }
     },
-    [addSelectedNodes, graph.nodes, openEditorBottomPanel]
+    [
+      addSelectedNodes,
+      graph.nodes,
+      openEditorBottomPanel,
+      setPrimarySelectedNodeId,
+      setGlslEditorActiveNodeId,
+      addEditorTab,
+    ]
   );
 
   const onSelectionChange = useCallback<OnSelectionChangeFunc>(
@@ -1162,12 +1090,12 @@ const Editor = ({
       const node = nodes?.[0];
       if (node) {
         const selected = graph.nodes.find((n) => n.id === node.id) as GraphNode;
-        setSelectedNode(selected);
+        setPrimarySelectedNodeId(selected.id);
       } else {
-        setSelectedNode(undefined);
+        setPrimarySelectedNodeId(undefined);
       }
     },
-    [graph]
+    [graph, setPrimarySelectedNodeId]
   );
 
   const setValidHandleTargets = useCallback(
@@ -1656,7 +1584,7 @@ const Editor = ({
     setGraph(newGraph);
 
     if (incomingOutFragNode) {
-      setActiveEditingNode(incomingOutFragNode as SourceNode);
+      setPrimarySelectedNodeId(incomingOutFragNode.id);
 
       // Flakey: Select the node visually in the graph. Don't know why flakey
       // so added timeout
@@ -1721,13 +1649,13 @@ const Editor = ({
       ) as SourceNode;
       if (type === NodeContextActions.EDIT_SOURCE) {
         addSelectedNodes([currentNode.id]);
-        setSelectedNode(currentNode);
+        setPrimarySelectedNodeId(currentNode.id);
 
         if (isDataNode(currentNode)) {
           openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
         } else {
-          addEditorTab(currentNode.id);
-          setActiveEditingNode(currentNode);
+          addEditorTab(currentNode.id, 'code');
+          setGlslEditorActiveNodeId(currentNode.id);
           setEditorTabIndex(1);
         }
       } else if (type === NodeContextActions.DELETE_NODE_ONLY) {
@@ -1773,13 +1701,14 @@ const Editor = ({
       setGraph,
       setEdges,
       setNodes,
-      setActiveEditingNode,
       addSelectedNodes,
-      setSelectedNode,
       setEditorTabIndex,
       hideMenu,
       debouncedSetNeedsCompile,
       openEditorBottomPanel,
+      setPrimarySelectedNodeId,
+      setGlslEditorActiveNodeId,
+      addEditorTab,
     ]
   );
 
@@ -2312,9 +2241,9 @@ const Editor = ({
               >
                 <EffectSearch
                   engine={engine.name}
-                  activeNode={selectedNode as SourceNode}
+                  activeNode={primarySelectedNode as SourceNode}
                   onSelect={(selection) =>
-                    onSelectGroup(selectedNode, selection)
+                    onSelectGroup(primarySelectedNode, selection)
                   }
                 />
               </div>
@@ -2343,9 +2272,9 @@ const Editor = ({
                   <BottomModal onClose={() => closeEditorBottomPanel()}>
                     <TextureBrowser
                       onSelect={(av) => {
-                        if (selectedNode?.type === 'texture') {
-                          const sn = selectedNode as TextureNode;
-                          onNodeValueChange(selectedNode.id, {
+                        if (primarySelectedNode?.type === 'texture') {
+                          const sn = primarySelectedNode as TextureNode;
+                          onNodeValueChange(primarySelectedNode.id, {
                             ...sn.value,
                             ...av,
                             properties: {
@@ -2358,18 +2287,19 @@ const Editor = ({
                     />
                   </BottomModal>
                 ) : bottomPanelType ===
-                    EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR && selectedNode ? (
+                    EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR &&
+                  primarySelectedNode ? (
                   <BottomModal onClose={() => closeEditorBottomPanel()}>
                     <ConfigEditor
-                      node={selectedNode}
+                      node={primarySelectedNode}
                       onChange={(change) => {
-                        updateGraphNode(selectedNode.id, change);
+                        updateGraphNode(primarySelectedNode.id, change);
                         if ('name' in change) {
-                          updateFlowNode(selectedNode.id, {
+                          updateFlowNode(primarySelectedNode.id, {
                             label: change.name,
                           });
                         } else {
-                          updateFlowNodeConfig(selectedNode.id, change);
+                          updateFlowNodeConfig(primarySelectedNode.id, change);
                         }
                       }}
                     />
@@ -2423,132 +2353,17 @@ const Editor = ({
           </TabPanel>
           {/* Main code editor tab */}
           <TabPanel className="relative">
-            <SplitPane split="vertical" defaultSizes={[0.15]}>
-              <div className={styles.treePanel}>
-                <Tree
-                  rowHeight={28}
-                  initialData={Object.values(treeData)}
-                  selection={selectedNode?.id}
-                  disableMultiSelection
-                  onSelect={(treeNodes) => {
-                    const id = treeNodes[0].id;
-                    addEditorTab(id);
-                    setSelectedNode(grindex.nodes[id]);
-                  }}
-                >
-                  {TreeNode}
-                </Tree>
-              </div>
-              <div className="wFull relative">
-                {/* Monaco split */}
-                <Tabs
-                  onTabSelect={(idx) => {
-                    setActiveEditingNode(
-                      grindex.nodes[editorTabNodeIds[idx]] as SourceNode
-                    );
-                  }}
-                  selected={codeEditorTabIndex}
-                  className={styles.shrinkGrowRows}
-                >
-                  <TabGroup className={styles.tabBar}>
-                    {editorTabNodeIds.map((id) => (
-                      <Tab key={id}>
-                        {grindex.nodes[id]?.name}{' '}
-                        {'stage' in grindex.nodes[id]
-                          ? `(${capitalize(grindex.nodes[id].stage!)})`
-                          : ''}
-                        <span
-                          onClick={(e) => {
-                            e.preventDefault();
-                            // Stop click from bubbling up to tab selection click!
-                            e.stopPropagation();
-                            removeEditorTabNodeId(id);
-                          }}
-                        >
-                          <FontAwesomeIcon icon={faClose} className="close" />
-                        </span>
-                      </Tab>
-                    ))}
-
-                    <div className={styles.editorControls}>
-                      {/* <select
-                      className="select auto size2 m-right-5"
-                      onChange={(event) => {
-                        const node = graph.nodes.find(
-                          (n) => n.id === event.target.value
-                        ) as SourceNode;
-                        setActiveEditingNode(node);
-                        addEditorTab(node.id);
-                        addSelectedNodes([node.id]);
-                      }}
-                      value={activeEditingNode.id}
-                    >
-                      {graph.nodes
-                        .filter(
-                          (n) => !isDataNode(n) && n.type !== NodeType.OUTPUT
-                        )
-                        .map((n) => (
-                          <option key={n.id} value={n.id}>
-                            {n.name} ({(n as SourceNode).stage})
-                          </option>
-                        ))}
-                    </select> */}
-                      {activeEditingNode.config?.properties?.length ||
-                      activeEditingNode.engine ? (
-                        <div className={styles.infoMsg}>
-                          Read-only: This node&apos;s source code is generated
-                          by {engine.displayName}, and can&apos;t be edited
-                          directly.
-                        </div>
-                      ) : (
-                        <button
-                          className="buttonauto formbutton size2"
-                          onClick={() =>
-                            compile(engine, ctx as EngineContext, graph, {
-                              nodes: flowNodes,
-                              edges: flowEdges,
-                            })
-                          }
-                          title={`${isMacintosh() ? `⌘-'` : `Ctrl+'`}`}
-                        >
-                          Compile
-                        </button>
-                      )}
-                    </div>
-                  </TabGroup>
-                  <TabPanels>
-                    {editorTabNodeIds.map((id) => (
-                      <TabPanel key={id}>
-                        <CodeEditor
-                          engine={engine}
-                          identity={activeEditingNode.id}
-                          defaultValue={activeEditingNode.source}
-                          errors={nodeErrors[activeEditingNode.id]}
-                          onSave={() => {
-                            saveOrFork();
-                          }}
-                          onCompile={() => {
-                            compile(engine, ctx as EngineContext, graph, {
-                              nodes: flowNodes,
-                              edges: flowEdges,
-                            });
-                          }}
-                          onChange={(value, event) => {
-                            if (value) {
-                              (
-                                graph.nodes.find(
-                                  ({ id }) => id === activeEditingNode.id
-                                ) as SourceNode
-                              ).source = value;
-                            }
-                          }}
-                        />
-                      </TabPanel>
-                    ))}
-                  </TabPanels>
-                </Tabs>
-              </div>
-            </SplitPane>
+            <GlslEditor
+              graph={graph}
+              engine={engine}
+              onCompile={() => {
+                compile(engine, ctx as EngineContext, graph, {
+                  nodes: flowNodes,
+                  edges: flowEdges,
+                });
+              }}
+              onSaveOrFork={saveOrFork}
+            />
           </TabPanel>
           {/* Final source code tab */}
           <TabPanel>

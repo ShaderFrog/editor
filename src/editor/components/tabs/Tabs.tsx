@@ -40,23 +40,38 @@ const Tabs = ({
   );
 };
 
+const childName = (child: React.ReactNode) => {
+  const ra = child as React.ReactElement;
+  if (!ra) {
+    return;
+  }
+  if (typeof ra.type === 'string') {
+    return;
+  }
+  return ra.type.name;
+};
+
 // Group of the tabs themselves
 const TabGroup = ({
   className,
   children,
   ...props
 }: WithChildren<{ className?: any }>) => {
+  let idxOffset = 0;
   return (
     <div {...props} className={cx('tab_tabs', className)}>
-      {React.Children.map<ReactNode, ReactNode>(
-        children,
-        (child, index) =>
-          React.isValidElement(child) &&
+      {React.Children.map<ReactNode, ReactNode>(children, (child, index) => {
+        if (childName(child) !== 'Tab') {
+          idxOffset++;
+          return child;
+        }
+        return (
           // Tell each <Tab> about its index
           React.cloneElement(child as React.ReactElement<{ index: number }>, {
-            index,
+            index: index - idxOffset,
           })
-      )}
+        );
+      })}
     </div>
   );
 };

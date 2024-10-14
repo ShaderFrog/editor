@@ -142,27 +142,6 @@ textarea.error {
   background: #222;
 }
 
-.tabBar {
-  height: 28px;
-  padding: 2px 0 0;
-}
-.tabControls {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  z-index: 10;
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-}
-.tabControls.col3 {
-  grid-template-columns: auto 1fr 1fr;
-}
-
-.sceneTabControls {
-  position: absolute;
-  top: 4px;
-  right: 10px;
-}
 .playPause {
   border: 0 none;
   background: transparent;
@@ -620,6 +599,52 @@ textarea.error {
 }
 
 /*******************************************************************************
+ * Tab annotations
+ ******************************************************************************/
+
+.tabBar {
+  min-height: 28px;
+  padding: 2px 0 0;
+}
+
+.tabIcon {
+  margin-right: 0.25em;
+}
+
+.tabIcon.tabFragment {
+  color: #a0ff5d;
+}
+
+.tabIcon.tabVertex {
+  color: #ff5f5f;
+}
+
+.tabControls {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+}
+.tabControls.col3 {
+  grid-template-columns: auto 1fr 1fr;
+}
+
+.tabAnnotation {
+  font-size: 12px;
+  color: #ccc;
+  display: inline-block;
+  margin-left: 0.25em;
+}
+
+.sceneTabControls {
+  position: absolute;
+  top: 4px;
+  right: 10px;
+}
+
+/*******************************************************************************
  * File Tree Viewer - see also global.css
  ******************************************************************************/
 
@@ -635,18 +660,27 @@ textarea.error {
   padding: 0 0.5em 0 0;
 }
 
-.treeFragment svg {
+.treeFragment .treeIcon {
   color: #a0ff5d;
 }
 
-.treeFragment svg {
+.treeFragment .treeIcon {
   color: #a0ff5d;
 }
 
-.treeVertex svg {
+.treeVertex .treeIcon {
   color: #ff5f5f;
 }
 
-.treeUnknown svg {
+.treeUnknown .treeIcon {
   color: #ccc;
+}
+
+.treeClose {
+  position: absolute;
+  right: 0.75em;
+  color: #aaa;
+}
+.treeClose:hover {
+  color: #fff;
 }

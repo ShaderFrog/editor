@@ -33,6 +33,8 @@ export type PaneState = {
   contents: CodePane | ConfigPane;
 };
 
+export type PaneType = CodePane['type'] | ConfigPane['type'];
+
 // I also realize that right now this does not support vscode's concept where
 // each split can itself have its own tabs. This assumes that the top level
 // of everything is tabs.
@@ -65,14 +67,13 @@ interface EditorState {
   setPrimarySelectedNodeId: (nodeId: string | undefined) => void;
 
   // The tabs in the GLSL editor
-  glslEditorActiveNodeId: string | undefined;
-  setGlslEditorActiveNodeId: (
-    glslEditorActiveNodeId: string | undefined
+  glslEditorActivePaneId: string | undefined;
+  setGlslEditorActivePaneId: (
+    glslEditorActivePaneId: string | undefined
   ) => void;
 
   glslEditorTabs: (PaneState | SplitPaneState)[];
-  glslEditorNodeIds: Set<string>;
-  addEditorTab: (nodeId: string, type: 'code' | 'config') => void;
+  addEditorTab: (nodeId: string, type: PaneType) => void;
   removeEditorTabPaneId: (paneId: string) => void;
   removeEditorTabByNodeId: (nodeId: string) => void;
 
@@ -100,23 +101,28 @@ export const useEditorStore = create<EditorState>((set) => ({
   bottomPanelType: undefined,
 
   // The tabs in the editor
-  glslEditorActiveNodeId: undefined,
+  glslEditorActivePaneId: undefined,
   glslEditorTabs: [],
-  glslEditorNodeIds: new Set(),
   primarySelectedNodeId: undefined,
-  setGlslEditorActiveNodeId: (glslEditorActiveNodeId) =>
-    set(() => ({ glslEditorActiveNodeId })),
+  setGlslEditorActivePaneId: (glslEditorActivePaneId) =>
+    set(() => ({ glslEditorActivePaneId })),
 
   addEditorTab: (nodeId, type) =>
     set(
       produce((state) => {
-        if (!state.glslEditorNodeIds.has(nodeId)) {
-          state.glslEditorNodeIds.add(nodeId);
+        const existing = findPaneForNodeId(state.glslEditorTabs, nodeId, type);
+        if (existing) {
+          console.log('FOUND EXISTING PANE');
+          state.glslEditorActivePaneId = existing.id;
+        } else {
+          const id = makeId();
           state.glslEditorTabs.push({
             type: 'pane',
-            id: makeId(),
+            id,
             contents: { type, nodeId },
           });
+          console.log('ADDING PANE', state.glslEditorTabs);
+          state.glslEditorActivePaneId = id;
         }
       })
     ),
@@ -124,9 +130,6 @@ export const useEditorStore = create<EditorState>((set) => ({
     set(
       produce((state) => {
         const pane = state.glslEditorTabs.find((tab) => tab.id === paneId)!;
-        if (pane.type === 'pane') {
-          state.glslEditorNodeIds.delete(pane.contents.nodeId);
-        }
         state.glslEditorTabs = state.glslEditorTabs.filter(
           ({ id }) => id !== paneId
         );
@@ -140,10 +143,6 @@ export const useEditorStore = create<EditorState>((set) => ({
           (tab) => (tab as PaneState).contents.nodeId === nodeId
         );
         if (pane) {
-          if (pane?.type === 'pane') {
-            // console.log('deleting node id', nodeId);
-            state.glslEditorNodeIds.delete(pane.contents.nodeId);
-          }
           // console.log('old tabs', state.glslEditorTabs);
           state.glslEditorTabs = (state.glslEditorTabs as PaneState[]).filter(
             (pane) => {
@@ -176,19 +175,39 @@ export const useEditorStore = create<EditorState>((set) => ({
 // Will need to look into this again once I include tabs that can contain node
 // configuration and/or split panes!
 export const useGlslEditorTabIndex = () => {
-  const { glslEditorTabs, glslEditorActiveNodeId } = useEditorStore(
-    useShallow(({ glslEditorTabs, glslEditorActiveNodeId }) => ({
+  const { glslEditorTabs, glslEditorActivePaneId } = useEditorStore(
+    useShallow(({ glslEditorTabs, glslEditorActivePaneId }) => ({
       glslEditorTabs,
-      glslEditorActiveNodeId,
+      glslEditorActivePaneId,
     }))
   );
 
   // Does not work with nesting yet
   return Math.max(
-    glslEditorTabs.findIndex(
-      (pane) =>
-        pane.type === 'pane' && pane.contents.nodeId === glslEditorActiveNodeId
-    ),
+    glslEditorTabs.findIndex(({ id }) => id === glslEditorActivePaneId),
     0
   );
+};
+
+export const findPaneForNodeId = (
+  glslEditorTabs: (PaneState | SplitPaneState)[],
+  nodeId: string,
+  type: PaneType
+) => {
+  return glslEditorTabs.find(
+    (pane) =>
+      pane.type === 'pane' &&
+      pane.contents.nodeId === nodeId &&
+      pane.contents.type === type
+  );
+};
+
+export const useIsNodeIdOpen = (nodeId: string, type: PaneType) => {
+  const { glslEditorTabs } = useEditorStore(
+    useShallow(({ glslEditorTabs }) => ({
+      glslEditorTabs,
+    }))
+  );
+
+  return !!findPaneForNodeId(glslEditorTabs, nodeId, type);
 };

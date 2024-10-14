@@ -16,7 +16,7 @@ import {
   computeGrindex,
 } from '@core/graph';
 
-import { Engine } from '@core/engine';
+import { Engine, EngineContext } from '@core/engine';
 
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import CodeEditor from './CodeEditor';
@@ -24,15 +24,23 @@ import CodeEditor from './CodeEditor';
 import { Hoisty } from '../hoistedRefContext';
 
 import { isMacintosh } from '@editor/util/platform';
-import { useEditorStore, useGlslEditorTabIndex } from './flow/useEditorStore';
+import {
+  PaneState,
+  PaneType,
+  useEditorStore,
+  useGlslEditorTabIndex,
+  useIsNodeIdOpen,
+} from './flow/useEditorStore';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChevronDown,
   faChevronRight,
   faClose,
   faCode,
+  faGear,
 } from '@fortawesome/free-solid-svg-icons';
 import { capitalize } from '@/util/string';
+import StrategyEditor from './StrategyEditor';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(glsl.editor)\x1b[0m', ...args);
@@ -42,8 +50,10 @@ const log = (...args: any[]) =>
  */
 type TreeData = {
   id: string;
+  nodeId: string;
   name: string;
   children?: TreeData[];
+  type: PaneType;
   stage?: ShaderStage;
 };
 
@@ -54,12 +64,22 @@ const TreeNode = ({
 }: NodeRendererProps<TreeData>) => {
   const node = treeNode.data;
 
-  const glslEditorNodeIds = useEditorStore((state) => state.glslEditorNodeIds);
-  const glslEditorActiveNodeId = useEditorStore(
-    (state) => state.glslEditorActiveNodeId
-  );
-  const { removeEditorTabByNodeId } = useEditorStore();
-  const opened = glslEditorNodeIds.has(node.id);
+  const { nodeId } = node;
+  const { removeEditorTabByNodeId, glslEditorActivePaneId, glslEditorTabs } =
+    useEditorStore();
+
+  // const activePane = glslEditorTabs.find(
+  //   (tab) => tab.id === glslEditorActivePaneId
+  // ) as PaneState | undefined;
+
+  // const isSelected =
+  //   node.type === activePane?.contents?.type &&
+  //   node.nodeId === activePane?.contents?.nodeId;
+
+  // const activeNodeId =
+  //   activePane?.type === 'pane' ? activePane?.contents?.nodeId : undefined;
+
+  const opened = useIsNodeIdOpen(nodeId, node.type);
 
   return (
     <div
@@ -67,29 +87,24 @@ const TreeNode = ({
       ref={dragHandle}
       // Disabling opening/closing node trees for now
       // onClick={() => node.toggle()}
-      className={
-        (glslEditorActiveNodeId !== node.id && opened ? 'opened' : '') +
-        ' ' +
-        cx(
-          treeNode.isLeaf ? styles.treeLeaf : styles.treeFolder,
-          node.stage === 'fragment'
-            ? styles.treeFragment
-            : node.stage === 'vertex'
-            ? styles.treeVertex
-            : styles.treeUnknown
-        )
-      }
+      className={cx(
+        treeNode.isLeaf ? styles.treeLeaf : styles.treeFolder,
+        node.stage === 'fragment'
+          ? styles.treeFragment
+          : node.stage === 'vertex'
+          ? styles.treeVertex
+          : styles.treeUnknown
+      )}
     >
       {treeNode.isLeaf ? (
         <FontAwesomeIcon icon={faCode} className={styles.treeIcon} />
       ) : (
         <FontAwesomeIcon
-          icon={treeNode.isOpen ? faChevronDown : faChevronRight}
+          icon={treeNode.isOpen ? faGear : faChevronRight}
           className={styles.treeIcon}
         />
       )}
       {node.name}
-
       {opened ? (
         <span
           title="Close tab"
@@ -98,7 +113,7 @@ const TreeNode = ({
             e.preventDefault();
             // Stop click from bubbling up to tab selection click!
             e.stopPropagation();
-            removeEditorTabByNodeId(node.id);
+            removeEditorTabByNodeId(nodeId);
           }}
         >
           <FontAwesomeIcon icon={faClose} className="close" />
@@ -132,20 +147,43 @@ const nodeTabName = (node: SourceNode) => (
 interface GlslEditorProps {
   graph: Graph;
   engine: Engine;
+  ctx: EngineContext;
   onCompile: () => void;
   onSaveOrFork: () => void;
+  onGraphChange: () => void;
 }
+
+const findInTree = (
+  trees: TreeData[],
+  test: (test: TreeData) => boolean
+): TreeData | undefined => {
+  for (let node of trees) {
+    if (test(node)) {
+      return node;
+    }
+    if (node.children) {
+      const found = findInTree(node.children, test);
+      if (found) {
+        return found;
+      }
+    }
+  }
+};
 
 const GlslEditor = ({
   graph,
   engine,
+  ctx,
   onCompile,
   onSaveOrFork,
+  onGraphChange,
 }: GlslEditorProps) => {
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
   const {
-    glslEditorActiveNodeId,
-    setGlslEditorActiveNodeId,
+    // glslEditorActiveNodeId,
+    // setGlslEditorActiveNodeId,
+    setGlslEditorActivePaneId,
+    glslEditorActivePaneId,
     addEditorTab,
     glslEditorTabs,
     nodeErrors,
@@ -153,13 +191,18 @@ const GlslEditor = ({
   } = useEditorStore();
 
   const codeEditorTabIndex = useGlslEditorTabIndex();
-  const primaryNode = grindex.nodes[glslEditorActiveNodeId!] as SourceNode;
 
-  const findNodeIdAtIndex = (index: number) => {
+  const activePane = glslEditorTabs.find(
+    (tab) => tab.id === glslEditorActivePaneId
+  );
+
+  const activeNodeId =
+    activePane?.type === 'pane' ? activePane?.contents?.nodeId : undefined;
+  const primaryNode = grindex.nodes[activeNodeId!] as SourceNode;
+
+  const findPaneIdAtIndex = (index: number) => {
     const pane = glslEditorTabs[index];
-    if (pane?.type === 'pane') {
-      return pane.contents.nodeId;
-    }
+    return pane.id;
   };
 
   // Calculate the left sidebar entries based on the graph nodes
@@ -174,12 +217,16 @@ const GlslEditor = ({
           ...acc,
           [node.id]: {
             id: `${node.id}_folder`,
+            nodeId: node.id,
             name: node.name,
+            type: 'config' as PaneType,
             children: [
               {
-                id: node.id,
+                id: `${node.id}_${node.stage}`,
+                nodeId: node.id,
                 name: node.stage ? capitalize(node.stage) : node.name,
                 stage: node.stage,
+                type: 'code' as PaneType,
               },
             ],
           },
@@ -203,8 +250,10 @@ const GlslEditor = ({
               ...acc[linked.id],
               children: (acc[linked.id].children || []).concat({
                 id: node.id,
+                nodeId: node.id,
                 name: stage ? capitalize(stage) : node.name,
                 stage: (node as SourceNode).stage,
+                type: 'code' as PaneType,
               }),
             },
           };
@@ -213,7 +262,9 @@ const GlslEditor = ({
           ...acc,
           [node.id]: {
             id: node.id,
+            nodeId: node.id,
             name: node.name,
+            type: 'code' as PaneType,
             stage,
             children: [],
           },
@@ -221,13 +272,36 @@ const GlslEditor = ({
       }, fragmentFolders);
   }, [graph]);
 
+  const topLevelVisiblePane = glslEditorTabs.find(
+    (tab) => tab.id === glslEditorActivePaneId
+  ) as PaneState;
+  // const selectedTreeId =
+  //   topLevelVisiblePane?.type === 'pane'
+  //     ? topLevelVisiblePane?.contents?.type === 'config'
+  //       ? `${topLevelVisiblePane.contents.nodeId}_folder`
+  //       : topLevelVisiblePane.contents.nodeId
+  //     : undefined;
+
+  const treeNodes = Object.values(treeData);
+
+  // console.log({ glslEditorActivePaneId, topLevelVisiblePane, selectedTreeId });
+  const selectedTreeId = topLevelVisiblePane
+    ? findInTree(
+        treeNodes,
+        (node) =>
+          node.type === topLevelVisiblePane?.contents?.type &&
+          node.nodeId === topLevelVisiblePane?.contents?.nodeId
+      )?.id
+    : undefined;
+
   return (
     <SplitPane split="vertical" defaultSizes={[0.2]} minSize={200}>
       <div className={styles.treePanel}>
         <Tree
+          disableDrag
           rowHeight={28}
-          initialData={Object.values(treeData)}
-          selection={glslEditorActiveNodeId}
+          initialData={treeNodes}
+          selection={selectedTreeId}
           disableMultiSelection
           onSelect={(treeNodes) => {
             if (!treeNodes.length) {
@@ -237,16 +311,12 @@ const GlslEditor = ({
             const treeNode = treeNodes[0];
             let node = treeNode?.data;
 
-            // For now, if selecting a parent folder, select the first child
-            // if (treeNode.children?.length) {
-            //   node = treeNode.children[0].data;
-            // }
             if (node) {
               addEditorTab(
-                node.id,
+                node.nodeId,
                 treeNode.children?.length ? 'config' : 'code'
               );
-              setGlslEditorActiveNodeId(node.id);
+              // setGlslEditorActivePaneId(node.nodeId);
             }
           }}
         >
@@ -257,7 +327,7 @@ const GlslEditor = ({
         {/* Monaco split */}
         <Tabs
           onTabSelect={(idx) => {
-            setGlslEditorActiveNodeId(findNodeIdAtIndex(idx));
+            setGlslEditorActivePaneId(findPaneIdAtIndex(idx));
           }}
           selected={codeEditorTabIndex}
           className={styles.shrinkGrowRows}
@@ -309,24 +379,44 @@ const GlslEditor = ({
           </TabGroup>
           <TabPanels>
             {glslEditorTabs.map((pane) => (
-              <TabPanel key={pane.id}>
+              <TabPanel
+                key={pane.id}
+                className={
+                  (pane as PaneState).contents?.type === 'config'
+                    ? 'y-scroll'
+                    : ''
+                }
+              >
                 {primaryNode ? (
-                  <CodeEditor
-                    engine={engine}
-                    identity={primaryNode.id}
-                    defaultValue={primaryNode.source}
-                    errors={nodeErrors[primaryNode.id]}
-                    onSave={onSaveOrFork}
-                    onCompile={onCompile}
-                    onChange={(value) => {
-                      if (value) {
-                        (grindex.nodes[primaryNode.id] as SourceNode).source =
-                          value;
-                      }
-                    }}
-                  />
+                  (pane as PaneState).contents?.type === 'code' ? (
+                    <CodeEditor
+                      engine={engine}
+                      identity={primaryNode.id}
+                      defaultValue={primaryNode.source}
+                      errors={nodeErrors[primaryNode.id]}
+                      onSave={onSaveOrFork}
+                      onCompile={onCompile}
+                      onChange={(value) => {
+                        if (value) {
+                          (grindex.nodes[primaryNode.id] as SourceNode).source =
+                            value;
+                        }
+                      }}
+                    />
+                  ) : (
+                    <StrategyEditor
+                      ctx={ctx}
+                      node={primaryNode}
+                      graph={graph}
+                      onSave={onCompile}
+                      onGraphChange={onGraphChange}
+                    ></StrategyEditor>
+                  )
                 ) : (
-                  <>No node selected</>
+                  <>
+                    No node selected for activeNodeId &quot;{activeNodeId}
+                    &quot;. This should not happen!
+                  </>
                 )}
               </TabPanel>
             ))}

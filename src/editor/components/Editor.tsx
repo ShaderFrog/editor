@@ -295,7 +295,7 @@ const Editor = ({
     addEditorTab,
     setNodeErrors,
     clearNodeErrors,
-    setGlslEditorActiveNodeId,
+    // setGlslEditorActiveNodeId,
   } = useEditorStore();
 
   const [shader, setShader] = useState<Shader>(() => {
@@ -1052,12 +1052,17 @@ const Editor = ({
     (nodeId: string) => {
       const active = graph.nodes.find((n) => n.id === nodeId) as SourceNode;
       addEditorTab(active.id, 'code');
-      setGlslEditorActiveNodeId(active.id);
+      // setGlslEditorActiveNodeId(active.id);
       addSelectedNodes([active.id]);
 
       setEditorTabIndex(1);
     },
-    [addSelectedNodes, graph, setGlslEditorActiveNodeId, addEditorTab]
+    [
+      addSelectedNodes,
+      graph,
+      // setGlslEditorActiveNodeId,
+      addEditorTab,
+    ]
   );
 
   const onNodeDoubleClick = useCallback(
@@ -1071,7 +1076,7 @@ const Editor = ({
         openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
       } else if (node.type === 'source') {
         addEditorTab(node.id, 'code');
-        setGlslEditorActiveNodeId(node.id);
+        // setGlslEditorActiveNodeId(node.id);
         setEditorTabIndex(1);
       }
     },
@@ -1080,7 +1085,7 @@ const Editor = ({
       graph.nodes,
       openEditorBottomPanel,
       setPrimarySelectedNodeId,
-      setGlslEditorActiveNodeId,
+      // setGlslEditorActiveNodeId,
       addEditorTab,
     ]
   );
@@ -1655,7 +1660,7 @@ const Editor = ({
           openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
         } else {
           addEditorTab(currentNode.id, 'code');
-          setGlslEditorActiveNodeId(currentNode.id);
+          // setGlslEditorActiveNodeId(currentNode.id);
           setEditorTabIndex(1);
         }
       } else if (type === NodeContextActions.DELETE_NODE_ONLY) {
@@ -1707,7 +1712,7 @@ const Editor = ({
       debouncedSetNeedsCompile,
       openEditorBottomPanel,
       setPrimarySelectedNodeId,
-      setGlslEditorActiveNodeId,
+      // setGlslEditorActiveNodeId,
       addEditorTab,
     ]
   );
@@ -2356,6 +2361,7 @@ const Editor = ({
             <GlslEditor
               graph={graph}
               engine={engine}
+              ctx={ctx as EngineContext}
               onCompile={() => {
                 compile(engine, ctx as EngineContext, graph, {
                   nodes: flowNodes,
@@ -2363,6 +2369,12 @@ const Editor = ({
                 });
               }}
               onSaveOrFork={saveOrFork}
+              onGraphChange={() => {
+                setGraph(graph);
+                const updated = graphToFlowGraph(graph);
+                setNodes(updated.nodes);
+                setEdges(updated.edges);
+              }}
             />
           </TabPanel>
           {/* Final source code tab */}

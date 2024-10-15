@@ -61,6 +61,7 @@ const TabGroup = ({
   return (
     <div {...props} className={cx('tab_tabs', className)}>
       {React.Children.map<ReactNode, ReactNode>(children, (child, index) => {
+        console.log({ child, name: childName(child) });
         if (childName(child) !== 'Tab') {
           idxOffset++;
           return child;

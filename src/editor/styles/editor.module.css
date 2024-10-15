@@ -649,6 +649,66 @@ textarea.error {
 }
 
 /*******************************************************************************
+ * Metadata shader name display
+ ******************************************************************************/
+
+.editorMetadata {
+  border-radius: 10px;
+  padding: 3px 8px 3px 3px;
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(45deg, #000, rgb(41, 41, 41));
+  z-index: 2;
+  box-shadow: 0 0 4px #000, 0 0 0 1px #9f9f9f91;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  color: #ddd;
+}
+
+.smallScreen .editorMetadata {
+  transform: none;
+  left: auto;
+  right: 0px;
+}
+
+.editorMetadata:hover {
+  color: #fff;
+}
+
+.editorMetadata svg {
+  color: #9a9;
+  position: relative;
+  top: 5px;
+}
+.editorMetadata:hover svg {
+  color: rgb(169, 255, 108);
+}
+
+.metadataName {
+  position: relative;
+  top: 2px;
+}
+.editorMetadata:hover .metadataName {
+  text-decoration: underline;
+}
+
+.imagePreview {
+  height: 22px;
+  width: 22px;
+  border-radius: 7px;
+  background: #1f1f1f;
+  overflow: hidden;
+}
+.imagePreview img {
+  width: 100%;
+  /* margin-top: -50px; */
+  object-fit: contain;
+}
+
+/*******************************************************************************
  * File Tree Viewer - see also global.css
  ******************************************************************************/
 

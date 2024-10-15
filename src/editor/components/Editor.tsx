@@ -57,8 +57,6 @@ import {
   sourceNode,
   TextureNode,
   computeGrindex,
-  findLinkedNode,
-  ShaderStage,
 } from '@core/graph';
 
 import FlowEditor, {
@@ -71,8 +69,6 @@ import { Engine, EngineContext } from '@core/engine';
 
 import useThrottle from '../hooks/useThrottle';
 
-import { useAsyncExtendedState } from '../hooks/useAsyncExtendedState';
-
 import {
   FlowNodeSourceData,
   FlowNodeDataData,
@@ -80,12 +76,10 @@ import {
 } from './flow/FlowNode';
 
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
-import CodeEditor from './CodeEditor';
 import ConfigEditor from './ConfigEditor';
 
 import { Hoisty } from '../hoistedRefContext';
 import { UICompileGraphResult } from '../uICompileGraphResult';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 import { ensure } from '../../util/ensure';
 
 import { count, makeId } from '../../util/id';
@@ -144,8 +138,14 @@ import { texture2DStrategy, uniformStrategy } from '@/core';
 import { generate, parser } from '@shaderfrog/glsl-parser';
 import { Program } from '@shaderfrog/glsl-parser/ast';
 import { xor } from '@shaderfrog/glsl-parser/parser/utils';
-import { capitalize } from '@/util/string';
 import GlslEditor from './GlslEditor';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faCode,
+  faDiagramProject,
+  faPencil,
+} from '@fortawesome/free-solid-svg-icons';
+import MetadataEditor from './MetadataEditor';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
@@ -251,13 +251,6 @@ const ConvertModal = ({
 
 const guessIfColorName = (name: string) =>
   /col|foreground|background/i.test(name);
-
-type TreeData = {
-  id: string;
-  name: string;
-  children?: TreeData[];
-  stage?: ShaderStage;
-};
 
 const Editor = ({
   assetPrefix,
@@ -392,87 +385,17 @@ const Editor = ({
   const [sceneConfig, setSceneConfig] =
     useState<AnySceneConfig>(initialSceneConfig);
 
-  const [graph, setGraph] = useLocalStorage<Graph>('graph', initialGraph);
+  const [graph, setGraph] = useState(initialGraph);
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
 
   const primarySelectedNode = primarySelectedNodeId
     ? grindex.nodes[primarySelectedNodeId]
     : undefined;
 
-  /**
-   * Compare the react-flow graph to the core graph, look for discrepancies.
-   * Could be expanded to include any kind of invariant checking.
-   */
-  const graphIntegrity = useMemo(() => {
-    const flowNodesById = new Set<string>(flowNodes.map((node) => node.id));
-    const graphNodesById = new Set<string>(graph.nodes.map((node) => node.id));
-    let errors: string[] = [];
-    errors = errors.concat(
-      graph.edges
-        .filter(
-          (edge) =>
-            !graphNodesById.has(edge.to) || !graphNodesById.has(edge.from)
-        )
-        .map(
-          (edge) =>
-            `Edge "${edge.id}" is linked ${
-              !graphNodesById.has(edge.to)
-                ? `to id "${edge.to}"`
-                : `from id "${edge.from}"`
-            } which does not exist!`
-        )
-    );
-    const allIds = new Set<string>([...flowNodesById, ...graphNodesById]);
-    errors = errors.concat(
-      Array.from(allIds).reduce<string[]>((acc, id) => {
-        if (!graphNodesById.has(id)) {
-          const flowNode = getNode(id);
-          const stage = (flowNode?.data as FlowNodeSourceData)?.stage;
-          return [
-            ...acc,
-            `Node ${flowNode?.data?.label} (${
-              stage ? stage + ', ' : ''
-            }id "${id}") found in flow graph but not graph`,
-          ];
-        } else if (!flowNodesById.has(id)) {
-          const node = graph.nodes.find((n) => id === n.id);
-          const stage = (node as SourceNode)?.stage;
-          return [
-            ...acc,
-            `Node "${node?.name}" (${
-              stage ? stage + ', ' : ''
-            }id "${id}") found in graph but not flow graph`,
-          ];
-        }
-        return acc;
-      }, [])
-    );
-
-    return errors;
-  }, [flowNodes, getNode, graph]);
-
-  const tryToUnEffTheGraph = () => {
-    setGraph((graph) => {
-      const orphanedEdgeIds = graph.edges
-        .filter(
-          (edge) => !(edge.to in grindex.nodes) || !(edge.from in grindex.nodes)
-        )
-        .reduce<Set<string>>((edges, edge) => {
-          edges.add(edge.id);
-          return edges;
-        }, new Set<string>());
-      log('Pruning', orphanedEdgeIds);
-      return {
-        ...graph,
-        edges: graph.edges.filter((edge) => !orphanedEdgeIds.has(edge.id)),
-      };
-    });
-  };
-
   const sceneWrapRef = useRef<HTMLDivElement>(null);
 
   // tabIndex may still be needed to pause rendering
-  const [sceneTabIndex, setSceneTabIndex] = useState<number>(0);
+  const [isMetadataOpen, setMetadataOpen] = useState<boolean>(false);
   const [editorTabIndex, setEditorTabIndex] = useState<number>(0);
   const [smallScreenEditorTabIndex, setSmallScreenEditorTabIndex] =
     useState<number>(0);
@@ -560,22 +483,6 @@ const Editor = ({
     () => debounce(setFragmentOverride, 1000),
     [setFragmentOverride]
   );
-
-  // const [uiState, , extendUiState] = useAsyncExtendedState<{
-  //   fragError: string | null;
-  //   vertError: string | null;
-  //   programError: string | null;
-  //   compileMs: string | null;
-  //   sceneWidth: number;
-  //   sceneHeight: number;
-  // }>({
-  //   fragError: null,
-  //   vertError: null,
-  //   programError: null,
-  //   compileMs: null,
-  //   sceneWidth: 0,
-  //   sceneHeight: 0,
-  // });
 
   const updateFlowNode = useCallback(
     (nodeId: string, data: Partial<FlowNodeData>) => {
@@ -2097,66 +2004,7 @@ const Editor = ({
   const [isShowingImport, setShowImport] = useState(false);
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [canDelete, setCanDelete] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
-
-  const treeData = useMemo(() => {
-    const fragmentFolders = graph.nodes
-      .filter(
-        (node): node is SourceNode =>
-          'stage' in node && node.stage === 'fragment'
-      )
-      .reduce(
-        (acc, node) => ({
-          ...acc,
-          [node.id]: {
-            id: `${node.id}_folder`,
-            name: node.name,
-            children: [
-              {
-                id: node.id,
-                name: node.stage ? capitalize(node.stage) : node.name,
-                stage: node.stage,
-              },
-            ],
-          },
-        }),
-        {} as Record<string, TreeData>
-      );
-
-    return graph.nodes
-      .filter(
-        (node) =>
-          node.type === 'source' &&
-          (!('stage' in node) || node.stage !== 'fragment')
-      )
-      .reduce((acc, node) => {
-        const linked = findLinkedNode(graph, node.id);
-        const stage = 'stage' in node ? node.stage : undefined;
-        if (linked && linked.id in acc) {
-          return {
-            ...acc,
-            [linked.id]: {
-              ...acc[linked.id],
-              children: (acc[linked.id].children || []).concat({
-                id: node.id,
-                name: stage ? capitalize(stage) : node.name,
-                stage: (node as SourceNode).stage,
-              }),
-            },
-          };
-        }
-        return {
-          ...acc,
-          [node.id]: {
-            id: node.id,
-            name: node.name,
-            stage,
-            children: [],
-          },
-        };
-      }, fragmentFolders);
-  }, [graph]);
 
   const editorElements = (
     <>
@@ -2220,20 +2068,39 @@ const Editor = ({
       ) : (
         <div className={styles.tabControls}>Log in to save</div>
       )}
+
+      <div
+        className={styles.editorMetadata}
+        onClick={() => setMetadataOpen(true)}
+      >
+        <div className="grid shrinkGrowShrink gap-5">
+          <div className={styles.imagePreview}>
+            {screenshotData && (
+              <img src={screenshotData} alt={`${shader.name} screenshot`} />
+            )}
+          </div>
+          <span className={styles.metadataName}>{shader?.name}</span>
+          <FontAwesomeIcon icon={faPencil} />
+        </div>
+      </div>
+
       <Tabs
         onTabSelect={setEditorTabIndex}
         selected={editorTabIndex}
         className={styles.shrinkGrowRows}
       >
         <TabGroup className={styles.tabBar}>
-          <Tab>Graph</Tab>
-          <Tab>GLSL Editor</Tab>
-          <Tab
-            className={{
-              [styles.errored]: compileInfo.fragError || compileInfo.vertError,
-            }}
-          >
-            Shader
+          <Tab>
+            <FontAwesomeIcon
+              icon={faDiagramProject}
+              color="#aca"
+              className="m-right-5"
+            />{' '}
+            Graph
+          </Tab>
+          <Tab>
+            <FontAwesomeIcon icon={faCode} color="#aca" className="m-right-5" />
+            GLSL Editor
           </Tab>
         </TabGroup>
         <TabPanels>
@@ -2388,118 +2255,6 @@ const Editor = ({
               }}
             />
           </TabPanel>
-          {/* Shader metadata tab */}
-          <TabPanel>
-            <div className={cx(styles.uiGroup, 'm0')}>
-              <div className="grid col2 gap50">
-                <div>
-                  <h2 className={cx(styles.uiHeader)}>
-                    Screenshot
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        takeScreenshot();
-                      }}
-                      className="buttonauto formbutton size2 m-left-15"
-                    >
-                      Update
-                    </button>
-                  </h2>
-                  {screenshotData ? (
-                    <img
-                      src={screenshotData}
-                      alt={`${shader.name} screenshot`}
-                    />
-                  ) : null}
-                </div>
-                <div>
-                  <h2 className={styles.uiHeader}>Shader Name</h2>
-                  <input
-                    className="textinput"
-                    type="text"
-                    value={shader?.name}
-                    onChange={(e) => {
-                      setShader({
-                        ...shader,
-                        name: e.target.value,
-                      });
-                    }}
-                  ></input>
-                  <h2 className={cx(styles.uiHeader, 'm-top-25')}>
-                    Description
-                  </h2>
-                  <textarea
-                    className="textinput"
-                    value={shader?.description || ''}
-                    onChange={(e) => {
-                      setShader({
-                        ...shader,
-                        description: e.target.value,
-                      });
-                    }}
-                  ></textarea>
-                  <h2 className={cx(styles.uiHeader, 'm-top-25')}>
-                    Graph Integrity
-                  </h2>
-                  <div className="m-top-15">
-                    {graphIntegrity.length ? (
-                      <div>
-                        {graphIntegrity.map((t) => (
-                          <div className="errorText px12 m-top-5" key={t}>
-                            {t}
-                          </div>
-                        ))}
-                        <div className="m-top-10">
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              tryToUnEffTheGraph();
-                            }}
-                            className="buttonauto formbutton size2"
-                          >
-                            Attempt graph fix
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>✅ Integrity check passed</>
-                    )}
-                  </div>
-
-                  {shader?.id && isOwnShader ? (
-                    <div className="m-top-25">
-                      <h2 className={cx(styles.uiHeader)}>Delete</h2>
-                      <div className="m-top-15">
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            onDeleteShader && onDeleteShader(shader.id!);
-                          }}
-                        >
-                          <input
-                            disabled={isDeleting}
-                            className="textinput"
-                            type="text"
-                            onChange={(e) => {
-                              setCanDelete(e.target.value === 'Delete');
-                            }}
-                            placeholder="Type 'Delete' to delete"
-                          ></input>
-                          <button
-                            disabled={!canDelete || isDeleting}
-                            className="buttonauto formbutton size2 m-top-10"
-                            type="submit"
-                          >
-                            Delete Shader
-                          </button>
-                        </form>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </TabPanel>
         </TabPanels>
       </Tabs>
     </>
@@ -2553,6 +2308,22 @@ const Editor = ({
         onClick={onContainerClick}
         onMouseMove={onMouseMove}
       >
+        {isMetadataOpen ? (
+          <Modal onClose={() => setMetadataOpen(false)}>
+            <MetadataEditor
+              shader={shader}
+              graph={graph}
+              setGraph={setGraph}
+              flowNodes={flowNodes}
+              setShader={setShader}
+              isOwnShader={isOwnShader}
+              isDeleting={isDeleting}
+              onDeleteShader={onDeleteShader}
+              takeScreenshot={takeScreenshot}
+              screenshotData={screenshotData}
+            />
+          </Modal>
+        ) : null}
         {isSmallScreen ? (
           <Tabs
             onTabSelect={setSmallScreenEditorTabIndex}

@@ -129,12 +129,34 @@ a:hover {
   text-decoration: underline;
 }
 
+.y-scroll {
+  overflow-y: scroll;
+}
+
 /*******************************************************************************
  * Spacing Utility Classes
  ******************************************************************************/
 
 .m0 {
   margin: 0 !important;
+}
+.m-5 {
+  margin: 5px !important;
+}
+.m-10 {
+  margin: 10px !important;
+}
+.m-15 {
+  margin: 15px !important;
+}
+.m-20 {
+  margin: 20px !important;
+}
+.m-25 {
+  margin: 25px !important;
+}
+.m-50 {
+  margin: 50px !important;
 }
 .m-top-5 {
   margin-top: 5px !important;
@@ -236,6 +258,9 @@ a:hover {
   margin-left: 200px !important;
 }
 
+.p-5-10 {
+  padding: 5px 10px !important;
+}
 .p-10-20 {
   padding: 10px 20px !important;
 }
@@ -330,4 +355,55 @@ a:hover {
     grid-auto-flow: row;
     grid-template-columns: auto;
   }
+}
+
+/*******************************************************************************
+ * File Tree Viewer - see also editor.module.css
+ ******************************************************************************/
+
+/* What a bad library! */
+div[role='tree'],
+div[role='tree'] > div {
+  width: auto !important;
+  min-width: auto !important;
+  height: auto !important;
+}
+
+div[role='treeitem'] {
+  cursor: pointer;
+  color: #ccc;
+  font-size: 14px;
+  padding: 4px 8px;
+  height: auto !important;
+  border-radius: 8px;
+}
+
+div[role='treeitem'][aria-level='2']:before {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 1em;
+  bottom: 0;
+  top: 0px;
+  width: 1px;
+  border-left: 1px solid #666;
+}
+
+div[role='treeitem']:hover,
+div[role='treeitem'][aria-selected='true'] {
+  color: #fff;
+}
+
+div[role='treeitem'][aria-selected='true'] {
+  background: rgba(0, 30, 74, 0.769);
+  box-shadow: inset 0 0 5px rgba(41, 126, 255, 0.685);
+}
+
+div[role='treeitem'][aria-level='2'][aria-selected='true']:before {
+  display: none;
+}
+
+div[role='treeitem']:has(> .opened) {
+  background: rgba(68, 75, 86, 0.505);
+  box-shadow: inset 0 0 5px rgba(87, 117, 163, 0.301);
 }

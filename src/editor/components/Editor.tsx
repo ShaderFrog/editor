@@ -51,13 +51,11 @@ import {
   computeAllContexts,
   computeContextForNodes,
   isDataNode,
-  NodeType,
   makeEdge,
   resetGraphIds,
   isError,
-  NodeErrors,
-  sourceNode,
   TextureNode,
+  computeGrindex,
 } from '@core/graph';
 
 import FlowEditor, {
@@ -70,8 +68,6 @@ import { Engine, EngineContext } from '@core/engine';
 
 import useThrottle from '../hooks/useThrottle';
 
-import { useAsyncExtendedState } from '../hooks/useAsyncExtendedState';
-
 import {
   FlowNodeSourceData,
   FlowNodeDataData,
@@ -79,15 +75,13 @@ import {
 } from './flow/FlowNode';
 
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
-import CodeEditor from './CodeEditor';
 import ConfigEditor from './ConfigEditor';
 
 import { Hoisty } from '../hoistedRefContext';
 import { UICompileGraphResult } from '../uICompileGraphResult';
-import { useLocalStorage } from '../hooks/useLocalStorage';
 import { ensure } from '../../util/ensure';
 
-import { count, makeId } from '../../util/id';
+import { makeId } from '../../util/id';
 import { hasParent } from '../../util/hasParent';
 import { SMALL_SCREEN_WIDTH, useWindowSize } from '../hooks/useWindowSize';
 
@@ -118,9 +112,7 @@ import {
   compileGraphAsync,
   createGraphNode,
   expandUniformDataNodes,
-  linkNodes,
 } from './useGraph';
-import StrategyEditor from './StrategyEditor';
 import { FlowGraphContext } from '@editor/editor/flowGraphContext';
 import { findNodeAndData, findNodeTree } from './flow/graph-helpers';
 import { isMacintosh } from '@editor/util/platform';
@@ -140,112 +132,19 @@ import { Shader } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
 import { EDITOR_BOTTOM_PANEL, useEditorStore } from './flow/useEditorStore';
 import Modal from './Modal';
-import { texture2DStrategy, uniformStrategy } from '@/core';
-import { generate, parser } from '@shaderfrog/glsl-parser';
-import { Program } from '@shaderfrog/glsl-parser/ast';
 import { xor } from '@shaderfrog/glsl-parser/parser/utils';
+import GlslEditor from './GlslEditor';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faCode,
+  faDiagramProject,
+  faPencil,
+} from '@fortawesome/free-solid-svg-icons';
+import MetadataEditor from './MetadataEditor';
+import ConvertShadertoy from './ConvertShadertoy';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
-
-const ConvertModal = ({
-  engine,
-  onImport,
-  onClose,
-}: {
-  engine: Engine;
-  onImport: (n: GraphNode[], e: Edge[]) => void;
-  onClose: () => void;
-}) => {
-  const [importError, setImportError] = useState<string | null>(null);
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
-
-  return (
-    <Modal onClose={onClose}>
-      <h2 className={cx(styles.uiHeader)}>
-        Import from Shadertoy (experimental)
-      </h2>
-      <p className="blerfiarie">
-        Paste your Shadertoy code below. The following are <b>not</b> currently
-        supported:
-      </p>
-      <ul className="blerfiarie">
-        <li>Multiple buffers</li>
-        <li>Mouse input</li>
-        <li>Audio input</li>
-      </ul>
-      <textarea
-        ref={textAreaRef}
-        className="textinput"
-        placeholder="Paste your ShaderToy GLSL here"
-      ></textarea>
-      {importError ? (
-        <div className={cx(styles.errored, `m-top-10`)}>{importError}</div>
-      ) : null}
-      <div className="m-top-10">
-        <button
-          className="buttonauto formbutton size2"
-          onClick={(e) => {
-            e.preventDefault();
-            let ast: Program;
-
-            try {
-              const value = textAreaRef.current!.value;
-              // SAD HACK to catch variables in preprocessor lines
-              ast = parser.parse(
-                value
-                  .replace(/\biTime\b/g, 'time')
-                  .replace(/\biResolution\b/g, 'renderResolution')
-              );
-              engine.importers.shadertoy.convertAst(ast);
-            } catch (e) {
-              console.error('Error importing shader', e);
-              setImportError(
-                'Error importing shader! Check the console log, and please use the link at the top right to file a bug.'
-              );
-              return;
-            }
-
-            const c = count();
-            const fragment = sourceNode(
-              makeId(),
-              'Shadertoy Import ' + c,
-              { x: 0, y: 0 },
-              {
-                version: 2,
-                preprocess: true,
-                strategies: [uniformStrategy(), texture2DStrategy()],
-                uniforms: [],
-              },
-              generate(ast),
-              'fragment',
-              engine.name
-            );
-            const vertex = sourceNode(
-              makeId(),
-              'Shadertoy Import ' + c,
-              { x: 0, y: 299 },
-              {
-                version: 2,
-                preprocess: true,
-                strategies: [uniformStrategy()],
-                uniforms: [],
-              },
-              engine.importers.shadertoy.code!.defaultShadertoyVertex,
-              'vertex',
-              engine.name
-            );
-            const [newEdges, newGns] = linkNodes(fragment, vertex);
-            onImport(newGns, newEdges);
-          }}
-          title="Import"
-        >
-          Import
-        </button>
-      </div>
-    </Modal>
-  );
-};
 
 const guessIfColorName = (name: string) =>
   /col|foreground|background/i.test(name);
@@ -281,6 +180,14 @@ const Editor = ({
     bottomPanelType,
     openEditorBottomPanel,
     closeEditorBottomPanel,
+    primarySelectedNodeId,
+    setPrimarySelectedNodeId,
+    addEditorTab,
+    setNodeErrors,
+    clearNodeErrors,
+    setUi,
+    setCompileInfo,
+    ui,
   } = useEditorStore();
 
   const [shader, setShader] = useState<Shader>(() => {
@@ -373,85 +280,17 @@ const Editor = ({
   const [sceneConfig, setSceneConfig] =
     useState<AnySceneConfig>(initialSceneConfig);
 
-  const [graph, setGraph] = useLocalStorage<Graph>('graph', initialGraph);
-  const [nodeErrors, setNodeErrors] = useState<Record<string, NodeErrors>>({});
+  const [graph, setGraph] = useState(initialGraph);
+  const grindex = useMemo(() => computeGrindex(graph), [graph]);
 
-  /**
-   * Compare the react-flow graph to the core graph, look for discrepancies.
-   * Could be expanded to include any kind of invariant checking.
-   */
-  const graphIntegrity = useMemo(() => {
-    const flowNodesById = new Set<string>(flowNodes.map((node) => node.id));
-    const graphNodesById = new Set<string>(graph.nodes.map((node) => node.id));
-    let errors: string[] = [];
-    errors = errors.concat(
-      graph.edges
-        .filter(
-          (edge) =>
-            !graphNodesById.has(edge.to) || !graphNodesById.has(edge.from)
-        )
-        .map(
-          (edge) =>
-            `Edge "${edge.id}" is linked ${
-              !graphNodesById.has(edge.to)
-                ? `to id "${edge.to}"`
-                : `from id "${edge.from}"`
-            } which does not exist!`
-        )
-    );
-    const allIds = new Set<string>([...flowNodesById, ...graphNodesById]);
-    errors = errors.concat(
-      Array.from(allIds).reduce<string[]>((acc, id) => {
-        if (!graphNodesById.has(id)) {
-          const flowNode = getNode(id);
-          const stage = (flowNode?.data as FlowNodeSourceData)?.stage;
-          return [
-            ...acc,
-            `Node ${flowNode?.data?.label} (${
-              stage ? stage + ', ' : ''
-            }id "${id}") found in flow graph but not graph`,
-          ];
-        } else if (!flowNodesById.has(id)) {
-          const node = graph.nodes.find((n) => id === n.id);
-          const stage = (node as SourceNode)?.stage;
-          return [
-            ...acc,
-            `Node "${node?.name}" (${
-              stage ? stage + ', ' : ''
-            }id "${id}") found in graph but not flow graph`,
-          ];
-        }
-        return acc;
-      }, [])
-    );
-
-    return errors;
-  }, [flowNodes, getNode, graph]);
-
-  const tryToUnEffTheGraph = () => {
-    setGraph((graph) => {
-      const nodesById = graph.nodes.reduce<Record<string, GraphNode>>(
-        (acc, node) => ({ ...acc, [node.id]: node }),
-        {}
-      );
-      const orphanedEdgeIds = graph.edges
-        .filter((edge) => !(edge.to in nodesById) || !(edge.from in nodesById))
-        .reduce<Set<string>>((edges, edge) => {
-          edges.add(edge.id);
-          return edges;
-        }, new Set<string>());
-      log('Pruning', orphanedEdgeIds);
-      return {
-        ...graph,
-        edges: graph.edges.filter((edge) => !orphanedEdgeIds.has(edge.id)),
-      };
-    });
-  };
+  const primarySelectedNode = primarySelectedNodeId
+    ? grindex.nodes[primarySelectedNodeId]
+    : undefined;
 
   const sceneWrapRef = useRef<HTMLDivElement>(null);
 
   // tabIndex may still be needed to pause rendering
-  const [sceneTabIndex, setSceneTabIndex] = useState<number>(0);
+  const [isMetadataOpen, setMetadataOpen] = useState<boolean>(false);
   const [editorTabIndex, setEditorTabIndex] = useState<number>(0);
   const [smallScreenEditorTabIndex, setSmallScreenEditorTabIndex] =
     useState<number>(0);
@@ -459,19 +298,6 @@ const Editor = ({
   const [compiling, setCompiling] = useState<boolean>(false);
   const [guiError, setGuiError] = useState<string>('');
 
-  // Which node is active in the GLSL editor tab
-  const [activeEditingNode, setActiveEditingNode] = useState<SourceNode>(
-    (graph.nodes.find((n) => n.type === 'source') ||
-      graph.nodes[0]) as SourceNode
-  );
-
-  // Which node has the primary focus in the graph editor. Used for replacing
-  // the current selected node with another graph, used for the texture browser
-  // to replace the seleted node's texture value. This is different than the
-  // react-flow selection, which can select multiple nodes.
-  const [selectedNode, setSelectedNode] = useState<GraphNode | undefined>(
-    activeEditingNode
-  );
   const [replacingNode, setReplacingNode] = useState<FlowNode | null>(null);
 
   const [compileResult, setCompileResult] = useState<UICompileGraphResult>();
@@ -553,22 +379,6 @@ const Editor = ({
     [setFragmentOverride]
   );
 
-  const [uiState, , extendUiState] = useAsyncExtendedState<{
-    fragError: string | null;
-    vertError: string | null;
-    programError: string | null;
-    compileMs: string | null;
-    sceneWidth: number;
-    sceneHeight: number;
-  }>({
-    fragError: null,
-    vertError: null,
-    programError: null,
-    compileMs: null,
-    sceneWidth: 0,
-    sceneHeight: 0,
-  });
-
   const updateFlowNode = useCallback(
     (nodeId: string, data: Partial<FlowNodeData>) => {
       setNodes((nodes) => updateFlowNodesData(nodes, nodeId, data));
@@ -605,10 +415,7 @@ const Editor = ({
       compileGraphAsync(graph, engine, ctx)
         .then((result) => {
           if (isError(result)) {
-            setNodeErrors((nodeErrors) => ({
-              ...nodeErrors,
-              [result.nodeId]: result,
-            }));
+            setNodeErrors(result.nodeId, result);
             updateFlowNode(result.nodeId, { glslError: true });
             return;
           }
@@ -617,7 +424,7 @@ const Editor = ({
             compileResult: result,
           });
 
-          setNodeErrors({});
+          clearNodeErrors();
           setGuiError('');
           setCompileResult(result);
 
@@ -664,7 +471,14 @@ const Editor = ({
           setContexting(false);
         });
     },
-    [updateNodeInternals, setEdges, setNodes, updateFlowNode]
+    [
+      updateNodeInternals,
+      setEdges,
+      setNodes,
+      updateFlowNode,
+      clearNodeErrors,
+      setNodeErrors,
+    ]
   );
 
   // Let child components call compile after, say, their lighting has finished
@@ -687,9 +501,9 @@ const Editor = ({
       vertError: string;
       programError: string;
     }) => {
-      extendUiState(result);
+      setCompileInfo(result);
     },
-    [extendUiState]
+    [setCompileInfo]
   );
 
   // Computes and recompiles an entirely new graph
@@ -700,10 +514,7 @@ const Editor = ({
         try {
           const result = await computeAllContexts(newCtx, engine, graph);
           if (isError(result)) {
-            setNodeErrors((nodeErrors) => ({
-              ...nodeErrors,
-              [result.nodeId]: result,
-            }));
+            setNodeErrors(result.nodeId, result);
             setNodes((nodes) =>
               updateFlowNodesData(nodes, result.nodeId, { glslError: true })
             );
@@ -729,7 +540,7 @@ const Editor = ({
             nodes.map((node) => updateFlowNodeData(node, { glslError: false }))
           );
 
-          setNodeErrors({});
+          clearNodeErrors();
           compile(engine, newCtx, graph, initialElements);
         } catch (error: any) {
           setContexting(false);
@@ -742,7 +553,7 @@ const Editor = ({
         }
       }, 0);
     },
-    [compile, engine, setNodes, setEdges]
+    [compile, engine, setNodes, setEdges, setNodeErrors, clearNodeErrors]
   );
 
   // Once we receive a new engine context, re-initialize the graph. This method
@@ -817,41 +628,6 @@ const Editor = ({
     [setGraph, setNodes, debouncedSetNeedsCompile]
   );
 
-  // TODO: Might be able to get rid of all of this, need to test running the
-  // editor standalone to see how examples are used, if at all
-  const previousExample = usePrevious(currentExample);
-  useEffect(() => {
-    if (currentExample !== previousExample && previousExample !== undefined) {
-      log('🧶 Loading new example!', currentExample);
-      const [graph, sceneConfig] = makeExampleGraph(
-        // @ts-ignore
-        currentExample || examples.DEFAULT
-      );
-      const newGraph = expandUniformDataNodes(graph);
-      setGraph(newGraph);
-      setSceneConfig(sceneConfig);
-      setActiveEditingNode(newGraph.nodes[0] as SourceNode);
-      addSelectedNodes([newGraph.nodes[0].id]);
-
-      if (ctx) {
-        const initFlowElements = graphToFlowGraph(newGraph);
-        initializeGraph(initFlowElements, ctx, newGraph);
-      } else {
-        log('NOT Running initializeGraph from example change!');
-      }
-    }
-  }, [
-    addSelectedNodes,
-    currentExample,
-    previousExample,
-    setGraph,
-    ctx,
-    initializeGraph,
-    examples,
-    makeExampleGraph,
-    onInputBakedToggle,
-  ]);
-
   /**
    * Split state mgmt
    */
@@ -877,7 +653,7 @@ const Editor = ({
   const syncSceneSize = useThrottle(() => {
     if (sceneWrapRef.current) {
       const { width, height } = sceneWrapRef.current.getBoundingClientRect();
-      extendUiState({ sceneWidth: width, sceneHeight: height });
+      setUi({ sceneWidth: width, sceneHeight: height });
     }
   }, 100);
 
@@ -1041,13 +817,12 @@ const Editor = ({
   const openNodeEditor = useCallback(
     (nodeId: string) => {
       const active = graph.nodes.find((n) => n.id === nodeId) as SourceNode;
-      setActiveEditingNode(active);
+      addEditorTab(active.id, 'code');
       addSelectedNodes([active.id]);
-      setSelectedNode(active);
 
       setEditorTabIndex(1);
     },
-    [addSelectedNodes, graph]
+    [addSelectedNodes, graph, addEditorTab]
   );
 
   const onNodeDoubleClick = useCallback(
@@ -1055,16 +830,22 @@ const Editor = ({
       const node = graph.nodes.find((n) => n.id === flowNode.id) as SourceNode;
 
       addSelectedNodes([node.id]);
-      setSelectedNode(node);
+      setPrimarySelectedNodeId(node.id);
 
       if (isDataNode(node)) {
         openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
-      } else {
-        setActiveEditingNode(node);
+      } else if (node.type === 'source') {
+        addEditorTab(node.id, 'code');
         setEditorTabIndex(1);
       }
     },
-    [addSelectedNodes, graph.nodes, openEditorBottomPanel]
+    [
+      addSelectedNodes,
+      graph.nodes,
+      openEditorBottomPanel,
+      setPrimarySelectedNodeId,
+      addEditorTab,
+    ]
   );
 
   const onSelectionChange = useCallback<OnSelectionChangeFunc>(
@@ -1072,12 +853,12 @@ const Editor = ({
       const node = nodes?.[0];
       if (node) {
         const selected = graph.nodes.find((n) => n.id === node.id) as GraphNode;
-        setSelectedNode(selected);
+        setPrimarySelectedNodeId(selected.id);
       } else {
-        setSelectedNode(undefined);
+        setPrimarySelectedNodeId(undefined);
       }
     },
-    [graph]
+    [graph, setPrimarySelectedNodeId]
   );
 
   const setValidHandleTargets = useCallback(
@@ -1566,7 +1347,7 @@ const Editor = ({
     setGraph(newGraph);
 
     if (incomingOutFragNode) {
-      setActiveEditingNode(incomingOutFragNode as SourceNode);
+      setPrimarySelectedNodeId(incomingOutFragNode.id);
 
       // Flakey: Select the node visually in the graph. Don't know why flakey
       // so added timeout
@@ -1631,12 +1412,12 @@ const Editor = ({
       ) as SourceNode;
       if (type === NodeContextActions.EDIT_SOURCE) {
         addSelectedNodes([currentNode.id]);
-        setSelectedNode(currentNode);
+        setPrimarySelectedNodeId(currentNode.id);
 
         if (isDataNode(currentNode)) {
           openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
         } else {
-          setActiveEditingNode(currentNode);
+          addEditorTab(currentNode.id, 'code');
           setEditorTabIndex(1);
         }
       } else if (type === NodeContextActions.DELETE_NODE_ONLY) {
@@ -1682,13 +1463,13 @@ const Editor = ({
       setGraph,
       setEdges,
       setNodes,
-      setActiveEditingNode,
       addSelectedNodes,
-      setSelectedNode,
       setEditorTabIndex,
       hideMenu,
       debouncedSetNeedsCompile,
       openEditorBottomPanel,
+      setPrimarySelectedNodeId,
+      addEditorTab,
     ]
   );
 
@@ -2068,8 +1849,8 @@ const Editor = ({
   const [isShowingImport, setShowImport] = useState(false);
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [canDelete, setCanDelete] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
+
   const editorElements = (
     <>
       {isSmallScreen ? null : isAuthenticated ? (
@@ -2132,20 +1913,39 @@ const Editor = ({
       ) : (
         <div className={styles.tabControls}>Log in to save</div>
       )}
+
+      <div
+        className={styles.editorMetadata}
+        onClick={() => setMetadataOpen(true)}
+      >
+        <div className="grid shrinkGrowShrink gap-5">
+          <div className={styles.imagePreview}>
+            {screenshotData && (
+              <img src={screenshotData} alt={`${shader.name} screenshot`} />
+            )}
+          </div>
+          <span className={styles.metadataName}>{shader?.name}</span>
+          <FontAwesomeIcon icon={faPencil} />
+        </div>
+      </div>
+
       <Tabs
         onTabSelect={setEditorTabIndex}
         selected={editorTabIndex}
         className={styles.shrinkGrowRows}
       >
         <TabGroup className={styles.tabBar}>
-          <Tab>Graph</Tab>
-          <Tab>GLSL Editor</Tab>
-          <Tab
-            className={{
-              [styles.errored]: uiState.fragError || uiState.vertError,
-            }}
-          >
-            Shader
+          <Tab>
+            <FontAwesomeIcon
+              icon={faDiagramProject}
+              color="#aca"
+              className="m-right-5"
+            />{' '}
+            Graph
+          </Tab>
+          <Tab>
+            <FontAwesomeIcon icon={faCode} color="#aca" className="m-right-5" />
+            GLSL Editor
           </Tab>
         </TabGroup>
         <TabPanels>
@@ -2162,40 +1962,20 @@ const Editor = ({
               >
                 <EffectSearch
                   engine={engine.name}
-                  activeNode={selectedNode as SourceNode}
+                  activeNode={primarySelectedNode as SourceNode}
                   onSelect={(selection) =>
-                    onSelectGroup(selectedNode, selection)
+                    onSelectGroup(primarySelectedNode, selection)
                   }
                 />
               </div>
               <div className={styles.splitInner} ref={reactFlowWrapper}>
-                {isShowingImport ? (
-                  <ConvertModal
-                    engine={engine}
-                    onClose={() => setShowImport(false)}
-                    onImport={(newNodes, newEdges) => {
-                      const newGraph: Graph = {
-                        nodes: graph.nodes.concat(newNodes).flat(2),
-                        edges: graph.edges.concat(newEdges).flat(2),
-                      };
-
-                      const newFlowGraph = graphToFlowGraph(newGraph);
-
-                      setNodes(newFlowGraph.nodes);
-                      setEdges(newFlowGraph.edges);
-                      setGraph(newGraph);
-
-                      setShowImport(false);
-                    }}
-                  />
-                ) : null}
                 {bottomPanelType === EDITOR_BOTTOM_PANEL.TEXTURE_BROWSER ? (
                   <BottomModal onClose={() => closeEditorBottomPanel()}>
                     <TextureBrowser
                       onSelect={(av) => {
-                        if (selectedNode?.type === 'texture') {
-                          const sn = selectedNode as TextureNode;
-                          onNodeValueChange(selectedNode.id, {
+                        if (primarySelectedNode?.type === 'texture') {
+                          const sn = primarySelectedNode as TextureNode;
+                          onNodeValueChange(primarySelectedNode.id, {
                             ...sn.value,
                             ...av,
                             properties: {
@@ -2208,18 +1988,19 @@ const Editor = ({
                     />
                   </BottomModal>
                 ) : bottomPanelType ===
-                    EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR && selectedNode ? (
+                    EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR &&
+                  primarySelectedNode ? (
                   <BottomModal onClose={() => closeEditorBottomPanel()}>
                     <ConfigEditor
-                      node={selectedNode}
+                      node={primarySelectedNode}
                       onChange={(change) => {
-                        updateGraphNode(selectedNode.id, change);
+                        updateGraphNode(primarySelectedNode.id, change);
                         if ('name' in change) {
-                          updateFlowNode(selectedNode.id, {
+                          updateFlowNode(primarySelectedNode.id, {
                             label: change.name,
                           });
                         } else {
-                          updateFlowNodeConfig(selectedNode.id, change);
+                          updateFlowNodeConfig(primarySelectedNode.id, change);
                         }
                       }}
                     />
@@ -2273,265 +2054,31 @@ const Editor = ({
           </TabPanel>
           {/* Main code editor tab */}
           <TabPanel className="relative">
-            <SplitPane split="horizontal">
-              {/* Monaco split */}
-              <div className={cx(styles.shrinkGrowRows, 'wFull')}>
-                <div className={styles.editorControls}>
-                  <select
-                    className="select auto size2 m-right-5"
-                    onChange={(event) => {
-                      const node = graph.nodes.find(
-                        (n) => n.id === event.target.value
-                      ) as SourceNode;
-                      setActiveEditingNode(node);
-                      addSelectedNodes([node.id]);
-                    }}
-                    value={activeEditingNode.id}
-                  >
-                    {graph.nodes
-                      .filter(
-                        (n) => !isDataNode(n) && n.type !== NodeType.OUTPUT
-                      )
-                      .map((n) => (
-                        <option key={n.id} value={n.id}>
-                          {n.name} ({(n as SourceNode).stage})
-                        </option>
-                      ))}
-                  </select>
-                  {activeEditingNode.config?.properties?.length ||
-                  activeEditingNode.engine ? (
-                    <div className={styles.infoMsg}>
-                      Read-only: This node&apos;s source code is generated by{' '}
-                      {engine.displayName}, and can&apos;t be edited directly.
-                    </div>
-                  ) : (
-                    <button
-                      className="buttonauto formbutton size2"
-                      onClick={() =>
-                        compile(engine, ctx as EngineContext, graph, {
-                          nodes: flowNodes,
-                          edges: flowEdges,
-                        })
-                      }
-                      title={`${isMacintosh() ? `⌘-'` : `Ctrl+'`}`}
-                    >
-                      Compile
-                    </button>
-                  )}
-                </div>
-                <CodeEditor
-                  engine={engine}
-                  identity={activeEditingNode.id}
-                  defaultValue={activeEditingNode.source}
-                  errors={nodeErrors[activeEditingNode.id]}
-                  onSave={() => {
-                    saveOrFork();
-                  }}
-                  onCompile={() => {
-                    compile(engine, ctx as EngineContext, graph, {
-                      nodes: flowNodes,
-                      edges: flowEdges,
-                    });
-                  }}
-                  onChange={(value, event) => {
-                    if (value) {
-                      (
-                        graph.nodes.find(
-                          ({ id }) => id === activeEditingNode.id
-                        ) as SourceNode
-                      ).source = value;
-                    }
-                  }}
-                />
-              </div>
-              {/* Strategy editor split */}
-              <div className={cx(styles.splitInner, styles.nodeEditorPanel)}>
-                <StrategyEditor
-                  ctx={ctx}
-                  node={activeEditingNode}
-                  graph={graph}
-                  onSave={() =>
-                    compile(engine, ctx as EngineContext, graph, {
-                      nodes: flowNodes,
-                      edges: flowEdges,
-                    })
-                  }
-                  onGraphChange={() => {
-                    setGraph(graph);
-                    const updated = graphToFlowGraph(graph);
-                    setNodes(updated.nodes);
-                    setEdges(updated.edges);
-                  }}
-                ></StrategyEditor>
-              </div>
-            </SplitPane>
-          </TabPanel>
-          {/* Final source code tab */}
-          <TabPanel>
-            <Tabs
-              onTabSelect={setSceneTabIndex}
-              selected={sceneTabIndex}
-              className={styles.shrinkGrowRows}
-            >
-              <TabGroup className={styles.secondary}>
-                <Tab>Metadata</Tab>
-                <Tab className={{ [styles.errored]: uiState.fragError }}>
-                  Fragment
-                </Tab>
-                <Tab className={{ [styles.errored]: uiState.vertError }}>
-                  Vertex
-                </Tab>
-              </TabGroup>
-              <TabPanels>
-                {/* final fragment shader subtab */}
-                <TabPanel className="relative">
-                  <div className="fullScroll">
-                    <div className={cx(styles.uiGroup, 'm0')}>
-                      <div className="grid col2 gap50">
-                        <div>
-                          <h2 className={cx(styles.uiHeader)}>
-                            Screenshot
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                takeScreenshot();
-                              }}
-                              className="buttonauto formbutton size2 m-left-15"
-                            >
-                              Update
-                            </button>
-                          </h2>
-                          {screenshotData ? (
-                            <img
-                              src={screenshotData}
-                              alt={`${shader.name} screenshot`}
-                            />
-                          ) : null}
-                        </div>
-                        <div>
-                          <h2 className={styles.uiHeader}>Shader Name</h2>
-                          <input
-                            className="textinput"
-                            type="text"
-                            value={shader?.name}
-                            onChange={(e) => {
-                              setShader({
-                                ...shader,
-                                name: e.target.value,
-                              });
-                            }}
-                          ></input>
-                          <h2 className={cx(styles.uiHeader, 'm-top-25')}>
-                            Description
-                          </h2>
-                          <textarea
-                            className="textinput"
-                            value={shader?.description || ''}
-                            onChange={(e) => {
-                              setShader({
-                                ...shader,
-                                description: e.target.value,
-                              });
-                            }}
-                          ></textarea>
-                          <h2 className={cx(styles.uiHeader, 'm-top-25')}>
-                            Graph Integrity
-                          </h2>
-                          <div className="m-top-15">
-                            {graphIntegrity.length ? (
-                              <div>
-                                {graphIntegrity.map((t) => (
-                                  <div
-                                    className="errorText px12 m-top-5"
-                                    key={t}
-                                  >
-                                    {t}
-                                  </div>
-                                ))}
-                                <div className="m-top-10">
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      tryToUnEffTheGraph();
-                                    }}
-                                    className="buttonauto formbutton size2"
-                                  >
-                                    Attempt graph fix
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>✅ Integrity check passed</>
-                            )}
-                          </div>
-
-                          {shader?.id && isOwnShader ? (
-                            <div className="m-top-25">
-                              <h2 className={cx(styles.uiHeader)}>Delete</h2>
-                              <div className="m-top-15">
-                                <form
-                                  onSubmit={(e) => {
-                                    e.preventDefault();
-                                    onDeleteShader &&
-                                      onDeleteShader(shader.id!);
-                                  }}
-                                >
-                                  <input
-                                    disabled={isDeleting}
-                                    className="textinput"
-                                    type="text"
-                                    onChange={(e) => {
-                                      setCanDelete(e.target.value === 'Delete');
-                                    }}
-                                    placeholder="Type 'Delete' to delete"
-                                  ></input>
-                                  <button
-                                    disabled={!canDelete || isDeleting}
-                                    className="buttonauto formbutton size2 m-top-10"
-                                    type="submit"
-                                  >
-                                    Delete Shader
-                                  </button>
-                                </form>
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabPanel>
-                <TabPanel>
-                  {uiState.fragError && (
-                    <div className={styles.codeError} title={uiState.fragError}>
-                      {(uiState.fragError || '').substring(0, 500)}
-                    </div>
-                  )}
-                  <CodeEditor
-                    engine={engine}
-                    value={compileResult?.fragmentResult}
-                    onChange={(value, event) => {
-                      debouncedSetFragmentOverride(value);
-                    }}
-                  />
-                </TabPanel>
-                {/* final vertex shader subtab */}
-                <TabPanel>
-                  {uiState.vertError && (
-                    <div className={styles.codeError} title={uiState.vertError}>
-                      {(uiState.vertError || '').substring(0, 500)}
-                    </div>
-                  )}
-                  <CodeEditor
-                    engine={engine}
-                    value={compileResult?.vertexResult}
-                    onChange={(value, event) => {
-                      debouncedSetVertexOverride(value);
-                    }}
-                  />
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+            <GlslEditor
+              graph={graph}
+              engine={engine}
+              ctx={ctx as EngineContext}
+              compileResult={compileResult}
+              onCompile={() => {
+                compile(engine, ctx as EngineContext, graph, {
+                  nodes: flowNodes,
+                  edges: flowEdges,
+                });
+              }}
+              onSaveOrFork={saveOrFork}
+              onGraphChange={() => {
+                setGraph(graph);
+                const updated = graphToFlowGraph(graph);
+                setNodes(updated.nodes);
+                setEdges(updated.edges);
+              }}
+              setFragmentOverride={(value) => {
+                debouncedSetFragmentOverride(value);
+              }}
+              setVertexOverride={(value) => {
+                debouncedSetVertexOverride(value);
+              }}
+            />
           </TabPanel>
         </TabPanels>
       </Tabs>
@@ -2562,8 +2109,8 @@ const Editor = ({
           compile={childCompile}
           compileResult={compileResult}
           setGlResult={setGlResult}
-          width={uiState.sceneWidth}
-          height={uiState.sceneHeight}
+          width={ui.sceneWidth}
+          height={ui.sceneHeight}
           assetPrefix={assetPrefix}
           takeScreenshotRef={takeScreenshotRef}
         />
@@ -2586,6 +2133,43 @@ const Editor = ({
         onClick={onContainerClick}
         onMouseMove={onMouseMove}
       >
+        {isShowingImport ? (
+          <Modal onClose={() => setShowImport(false)}>
+            <ConvertShadertoy
+              engine={engine}
+              onImport={(newNodes, newEdges) => {
+                const newGraph: Graph = {
+                  nodes: graph.nodes.concat(newNodes).flat(2),
+                  edges: graph.edges.concat(newEdges).flat(2),
+                };
+
+                const newFlowGraph = graphToFlowGraph(newGraph);
+
+                setNodes(newFlowGraph.nodes);
+                setEdges(newFlowGraph.edges);
+                setGraph(newGraph);
+
+                setShowImport(false);
+              }}
+            />
+          </Modal>
+        ) : null}
+        {isMetadataOpen ? (
+          <Modal onClose={() => setMetadataOpen(false)}>
+            <MetadataEditor
+              shader={shader}
+              graph={graph}
+              setGraph={setGraph}
+              flowNodes={flowNodes}
+              setShader={setShader}
+              isOwnShader={isOwnShader}
+              isDeleting={isDeleting}
+              onDeleteShader={onDeleteShader}
+              takeScreenshot={takeScreenshot}
+              screenshotData={screenshotData}
+            />
+          </Modal>
+        ) : null}
         {isSmallScreen ? (
           <Tabs
             onTabSelect={setSmallScreenEditorTabIndex}

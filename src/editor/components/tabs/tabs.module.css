@@ -1,12 +1,13 @@
 .tab_tabs {
-  display: grid;
+  /* display: grid; */
   background: linear-gradient(#222, #111);
-  grid-auto-flow: column;
+  /* grid-auto-flow: column; */
   color: #fff;
-  grid-auto-columns: max-content;
+  /* grid-auto-columns: max-content; */
   border-bottom: 1px solid #000;
 }
 .tab_tab {
+  display: inline-block;
   user-select: none;
   max-height: 28px;
   border-radius: 6px 6px 0 0;
@@ -29,4 +30,18 @@
 }
 .tab_selected:hover {
   background: linear-gradient(rgb(68, 136, 8), rgb(32, 94, 4));
+}
+
+.tab_tab :global(.close) {
+  margin-left: 6px;
+  color: rgb(240, 216, 216);
+  opacity: 0.1;
+}
+
+.tab_tab:hover :global(.close) {
+  opacity: 1;
+}
+
+.tab_tab:hover :global(.close):hover {
+  color: rgb(255, 58, 58);
 }

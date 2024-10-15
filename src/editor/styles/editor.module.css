@@ -379,13 +379,17 @@ textarea.error {
   color: #d1f72a;
 }
 
-.infoMsg {
+.readOnlyMsg {
   font-size: 14px;
   border-radius: 6px;
-  padding: 4px 10px;
-  background: rgba(87, 87, 87, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.403);
+  padding: 4px 12px;
+  background: rgb(44, 44, 44);
+  border: 1px solid rgba(255, 255, 255, 0.212);
   color: #fff;
+}
+.readOnlyMsg svg {
+  color: #aaa;
+  margin-right: 0.5em;
 }
 
 .errorPill {

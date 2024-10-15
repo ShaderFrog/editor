@@ -6,6 +6,7 @@ import { Draft, produce as immerProduce, enableMapSet } from 'immer';
 import { makeId } from '@/core/util/id';
 import { NodeErrors } from '@/core';
 
+// Required for immer to work with Map and Set
 enableMapSet();
 
 /**
@@ -18,6 +19,10 @@ export function produce<T>(cb: (value: Draft<T>) => void): (value: T) => T {
   return immerProduce(cb);
 }
 
+export type LiveEditPane = {
+  type: 'live_edit';
+  nodeId: string;
+};
 export type CodePane = {
   type: 'code';
   nodeId: string;
@@ -30,10 +35,10 @@ export type ConfigPane = {
 export type PaneState = {
   type: 'pane';
   id: string;
-  contents: CodePane | ConfigPane;
+  contents: LiveEditPane | CodePane | ConfigPane;
 };
 
-export type PaneType = CodePane['type'] | ConfigPane['type'];
+export type PaneType = PaneState['contents']['type'];
 
 // I also realize that right now this does not support vscode's concept where
 // each split can itself have its own tabs. This assumes that the top level
@@ -45,6 +50,18 @@ export type SplitPaneState = {
   sizes: number[];
   startSplit: PaneState;
   endSplit: PaneState;
+};
+
+export type UiState = {
+  sceneWidth: number;
+  sceneHeight: number;
+};
+
+export type CompileInfo = {
+  fragError: string | null;
+  vertError: string | null;
+  programError: string | null;
+  compileMs: number | null;
 };
 
 /**
@@ -75,12 +92,18 @@ interface EditorState {
   glslEditorTabs: (PaneState | SplitPaneState)[];
   addEditorTab: (nodeId: string, type: PaneType) => void;
   removeEditorTabPaneId: (paneId: string) => void;
-  removeEditorTabByNodeId: (nodeId: string) => void;
+  // removeEditorTabByNodeId: (nodeId: string) => void;
 
   // Node errors state
   nodeErrors: Record<string, NodeErrors>;
   setNodeErrors: (nodeId: string, errors: NodeErrors) => void;
   clearNodeErrors: () => void;
+
+  setCompileInfo: (compileInfo: Partial<CompileInfo>) => void;
+  compileInfo: CompileInfo;
+
+  setUi: (ui: Partial<UiState>) => void;
+  ui: UiState;
 }
 
 export enum ContextMenuType {
@@ -110,9 +133,9 @@ export const useEditorStore = create<EditorState>((set) => ({
   addEditorTab: (nodeId, type) =>
     set(
       produce((state) => {
+        console.log('hi');
         const existing = findPaneForNodeId(state.glslEditorTabs, nodeId, type);
         if (existing) {
-          console.log('FOUND EXISTING PANE');
           state.glslEditorActivePaneId = existing.id;
         } else {
           const id = makeId();
@@ -121,42 +144,43 @@ export const useEditorStore = create<EditorState>((set) => ({
             id,
             contents: { type, nodeId },
           });
-          console.log('ADDING PANE', state.glslEditorTabs);
           state.glslEditorActivePaneId = id;
         }
       })
     ),
   removeEditorTabPaneId: (paneId) =>
-    set(
-      produce((state) => {
-        const pane = state.glslEditorTabs.find((tab) => tab.id === paneId)!;
-        state.glslEditorTabs = state.glslEditorTabs.filter(
-          ({ id }) => id !== paneId
-        );
-      })
-    ),
+    set(({ glslEditorTabs, glslEditorActivePaneId }) => {
+      const filtered = glslEditorTabs.filter(({ id }) => id !== paneId);
+      return {
+        glslEditorTabs: filtered,
+        glslEditorActivePaneId:
+          glslEditorActivePaneId === paneId
+            ? filtered[0]?.id
+            : glslEditorActivePaneId,
+      };
+    }),
 
-  removeEditorTabByNodeId: (nodeId: string) =>
-    set(
-      produce((state) => {
-        const pane = state.glslEditorTabs.find(
-          (tab) => (tab as PaneState).contents.nodeId === nodeId
-        );
-        if (pane) {
-          // console.log('old tabs', state.glslEditorTabs);
-          state.glslEditorTabs = (state.glslEditorTabs as PaneState[]).filter(
-            (pane) => {
-              // console.log('comparing', { pane: pane.nodeId, nodeId });
-              return (pane as PaneState).contents.nodeId !== nodeId;
-            }
-            // ({ nodeId }) => nodeId !== nodeId
-          );
-          // console.log('new tabs', state.glslEditorTabs);
-        } else {
-          console.warn('Could not find tab to remove for node', nodeId);
-        }
-      })
-    ),
+  // removeEditorTabByNodeId: (nodeId: string) =>
+  //   set(
+  //     produce((state) => {
+  //       const pane = state.glslEditorTabs.find(
+  //         (tab) => (tab as PaneState).contents.nodeId === nodeId
+  //       );
+  //       if (pane) {
+  //         // console.log('old tabs', state.glslEditorTabs);
+  //         state.glslEditorTabs = (state.glslEditorTabs as PaneState[]).filter(
+  //           (pane) => {
+  //             // console.log('comparing', { pane: pane.nodeId, nodeId });
+  //             return (pane as PaneState).contents.nodeId !== nodeId;
+  //           }
+  //           // ({ nodeId }) => nodeId !== nodeId
+  //         );
+  //         // console.log('new tabs', state.glslEditorTabs);
+  //       } else {
+  //         console.warn('Could not find tab to remove for node', nodeId);
+  //       }
+  //     })
+  //   ),
   setPrimarySelectedNodeId: (primarySelectedNodeId) =>
     set(() => ({ primarySelectedNodeId })),
   setMenu: (menu, position) => set(() => ({ menu: { menu, position } })),
@@ -170,6 +194,21 @@ export const useEditorStore = create<EditorState>((set) => ({
   clearNodeErrors: () => set(() => ({ nodeErrors: {} })),
 
   closeEditorBottomPanel: () => set(() => ({ bottomPanelType: undefined })),
+
+  setCompileInfo: (updated) =>
+    set(({ compileInfo }) => ({ compileInfo: { ...compileInfo, updated } })),
+  compileInfo: {
+    fragError: null,
+    vertError: null,
+    programError: null,
+    compileMs: null,
+  },
+
+  setUi: (updated) => set(({ ui }) => ({ ui: { ...ui, updated } })),
+  ui: {
+    sceneWidth: 0,
+    sceneHeight: 0,
+  },
 }));
 
 // Will need to look into this again once I include tabs that can contain node

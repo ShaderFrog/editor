@@ -296,6 +296,10 @@ const Editor = ({
     setNodeErrors,
     clearNodeErrors,
     // setGlslEditorActiveNodeId,
+    setUi,
+    setCompileInfo,
+    compileInfo,
+    ui,
   } = useEditorStore();
 
   const [shader, setShader] = useState<Shader>(() => {
@@ -557,21 +561,21 @@ const Editor = ({
     [setFragmentOverride]
   );
 
-  const [uiState, , extendUiState] = useAsyncExtendedState<{
-    fragError: string | null;
-    vertError: string | null;
-    programError: string | null;
-    compileMs: string | null;
-    sceneWidth: number;
-    sceneHeight: number;
-  }>({
-    fragError: null,
-    vertError: null,
-    programError: null,
-    compileMs: null,
-    sceneWidth: 0,
-    sceneHeight: 0,
-  });
+  // const [uiState, , extendUiState] = useAsyncExtendedState<{
+  //   fragError: string | null;
+  //   vertError: string | null;
+  //   programError: string | null;
+  //   compileMs: string | null;
+  //   sceneWidth: number;
+  //   sceneHeight: number;
+  // }>({
+  //   fragError: null,
+  //   vertError: null,
+  //   programError: null,
+  //   compileMs: null,
+  //   sceneWidth: 0,
+  //   sceneHeight: 0,
+  // });
 
   const updateFlowNode = useCallback(
     (nodeId: string, data: Partial<FlowNodeData>) => {
@@ -695,9 +699,9 @@ const Editor = ({
       vertError: string;
       programError: string;
     }) => {
-      extendUiState(result);
+      setCompileInfo(result);
     },
-    [extendUiState]
+    [setCompileInfo]
   );
 
   // Computes and recompiles an entirely new graph
@@ -887,7 +891,7 @@ const Editor = ({
   const syncSceneSize = useThrottle(() => {
     if (sceneWrapRef.current) {
       const { width, height } = sceneWrapRef.current.getBoundingClientRect();
-      extendUiState({ sceneWidth: width, sceneHeight: height });
+      setUi({ sceneWidth: width, sceneHeight: height });
     }
   }, 100);
 
@@ -2226,7 +2230,7 @@ const Editor = ({
           <Tab>GLSL Editor</Tab>
           <Tab
             className={{
-              [styles.errored]: uiState.fragError || uiState.vertError,
+              [styles.errored]: compileInfo.fragError || compileInfo.vertError,
             }}
           >
             Shader
@@ -2362,6 +2366,7 @@ const Editor = ({
               graph={graph}
               engine={engine}
               ctx={ctx as EngineContext}
+              compileResult={compileResult}
               onCompile={() => {
                 compile(engine, ctx as EngineContext, graph, {
                   nodes: flowNodes,
@@ -2375,174 +2380,125 @@ const Editor = ({
                 setNodes(updated.nodes);
                 setEdges(updated.edges);
               }}
+              setFragmentOverride={(value) => {
+                debouncedSetFragmentOverride(value);
+              }}
+              setVertexOverride={(value) => {
+                debouncedSetVertexOverride(value);
+              }}
             />
           </TabPanel>
-          {/* Final source code tab */}
+          {/* Shader metadata tab */}
           <TabPanel>
-            <Tabs
-              onTabSelect={setSceneTabIndex}
-              selected={sceneTabIndex}
-              className={styles.shrinkGrowRows}
-            >
-              <TabGroup className={styles.secondary}>
-                <Tab>Metadata</Tab>
-                <Tab className={{ [styles.errored]: uiState.fragError }}>
-                  Fragment
-                </Tab>
-                <Tab className={{ [styles.errored]: uiState.vertError }}>
-                  Vertex
-                </Tab>
-              </TabGroup>
-              <TabPanels>
-                {/* final fragment shader subtab */}
-                <TabPanel className="relative">
-                  <div className="fullScroll">
-                    <div className={cx(styles.uiGroup, 'm0')}>
-                      <div className="grid col2 gap50">
-                        <div>
-                          <h2 className={cx(styles.uiHeader)}>
-                            Screenshot
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                takeScreenshot();
-                              }}
-                              className="buttonauto formbutton size2 m-left-15"
-                            >
-                              Update
-                            </button>
-                          </h2>
-                          {screenshotData ? (
-                            <img
-                              src={screenshotData}
-                              alt={`${shader.name} screenshot`}
-                            />
-                          ) : null}
-                        </div>
-                        <div>
-                          <h2 className={styles.uiHeader}>Shader Name</h2>
-                          <input
-                            className="textinput"
-                            type="text"
-                            value={shader?.name}
-                            onChange={(e) => {
-                              setShader({
-                                ...shader,
-                                name: e.target.value,
-                              });
-                            }}
-                          ></input>
-                          <h2 className={cx(styles.uiHeader, 'm-top-25')}>
-                            Description
-                          </h2>
-                          <textarea
-                            className="textinput"
-                            value={shader?.description || ''}
-                            onChange={(e) => {
-                              setShader({
-                                ...shader,
-                                description: e.target.value,
-                              });
-                            }}
-                          ></textarea>
-                          <h2 className={cx(styles.uiHeader, 'm-top-25')}>
-                            Graph Integrity
-                          </h2>
-                          <div className="m-top-15">
-                            {graphIntegrity.length ? (
-                              <div>
-                                {graphIntegrity.map((t) => (
-                                  <div
-                                    className="errorText px12 m-top-5"
-                                    key={t}
-                                  >
-                                    {t}
-                                  </div>
-                                ))}
-                                <div className="m-top-10">
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      tryToUnEffTheGraph();
-                                    }}
-                                    className="buttonauto formbutton size2"
-                                  >
-                                    Attempt graph fix
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>✅ Integrity check passed</>
-                            )}
+            <div className={cx(styles.uiGroup, 'm0')}>
+              <div className="grid col2 gap50">
+                <div>
+                  <h2 className={cx(styles.uiHeader)}>
+                    Screenshot
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        takeScreenshot();
+                      }}
+                      className="buttonauto formbutton size2 m-left-15"
+                    >
+                      Update
+                    </button>
+                  </h2>
+                  {screenshotData ? (
+                    <img
+                      src={screenshotData}
+                      alt={`${shader.name} screenshot`}
+                    />
+                  ) : null}
+                </div>
+                <div>
+                  <h2 className={styles.uiHeader}>Shader Name</h2>
+                  <input
+                    className="textinput"
+                    type="text"
+                    value={shader?.name}
+                    onChange={(e) => {
+                      setShader({
+                        ...shader,
+                        name: e.target.value,
+                      });
+                    }}
+                  ></input>
+                  <h2 className={cx(styles.uiHeader, 'm-top-25')}>
+                    Description
+                  </h2>
+                  <textarea
+                    className="textinput"
+                    value={shader?.description || ''}
+                    onChange={(e) => {
+                      setShader({
+                        ...shader,
+                        description: e.target.value,
+                      });
+                    }}
+                  ></textarea>
+                  <h2 className={cx(styles.uiHeader, 'm-top-25')}>
+                    Graph Integrity
+                  </h2>
+                  <div className="m-top-15">
+                    {graphIntegrity.length ? (
+                      <div>
+                        {graphIntegrity.map((t) => (
+                          <div className="errorText px12 m-top-5" key={t}>
+                            {t}
                           </div>
-
-                          {shader?.id && isOwnShader ? (
-                            <div className="m-top-25">
-                              <h2 className={cx(styles.uiHeader)}>Delete</h2>
-                              <div className="m-top-15">
-                                <form
-                                  onSubmit={(e) => {
-                                    e.preventDefault();
-                                    onDeleteShader &&
-                                      onDeleteShader(shader.id!);
-                                  }}
-                                >
-                                  <input
-                                    disabled={isDeleting}
-                                    className="textinput"
-                                    type="text"
-                                    onChange={(e) => {
-                                      setCanDelete(e.target.value === 'Delete');
-                                    }}
-                                    placeholder="Type 'Delete' to delete"
-                                  ></input>
-                                  <button
-                                    disabled={!canDelete || isDeleting}
-                                    className="buttonauto formbutton size2 m-top-10"
-                                    type="submit"
-                                  >
-                                    Delete Shader
-                                  </button>
-                                </form>
-                              </div>
-                            </div>
-                          ) : null}
+                        ))}
+                        <div className="m-top-10">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              tryToUnEffTheGraph();
+                            }}
+                            className="buttonauto formbutton size2"
+                          >
+                            Attempt graph fix
+                          </button>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <>✅ Integrity check passed</>
+                    )}
                   </div>
-                </TabPanel>
-                <TabPanel>
-                  {uiState.fragError && (
-                    <div className={styles.codeError} title={uiState.fragError}>
-                      {(uiState.fragError || '').substring(0, 500)}
+
+                  {shader?.id && isOwnShader ? (
+                    <div className="m-top-25">
+                      <h2 className={cx(styles.uiHeader)}>Delete</h2>
+                      <div className="m-top-15">
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            onDeleteShader && onDeleteShader(shader.id!);
+                          }}
+                        >
+                          <input
+                            disabled={isDeleting}
+                            className="textinput"
+                            type="text"
+                            onChange={(e) => {
+                              setCanDelete(e.target.value === 'Delete');
+                            }}
+                            placeholder="Type 'Delete' to delete"
+                          ></input>
+                          <button
+                            disabled={!canDelete || isDeleting}
+                            className="buttonauto formbutton size2 m-top-10"
+                            type="submit"
+                          >
+                            Delete Shader
+                          </button>
+                        </form>
+                      </div>
                     </div>
-                  )}
-                  <CodeEditor
-                    engine={engine}
-                    value={compileResult?.fragmentResult}
-                    onChange={(value, event) => {
-                      debouncedSetFragmentOverride(value);
-                    }}
-                  />
-                </TabPanel>
-                {/* final vertex shader subtab */}
-                <TabPanel>
-                  {uiState.vertError && (
-                    <div className={styles.codeError} title={uiState.vertError}>
-                      {(uiState.vertError || '').substring(0, 500)}
-                    </div>
-                  )}
-                  <CodeEditor
-                    engine={engine}
-                    value={compileResult?.vertexResult}
-                    onChange={(value, event) => {
-                      debouncedSetVertexOverride(value);
-                    }}
-                  />
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+                  ) : null}
+                </div>
+              </div>
+            </div>
           </TabPanel>
         </TabPanels>
       </Tabs>
@@ -2573,8 +2529,8 @@ const Editor = ({
           compile={childCompile}
           compileResult={compileResult}
           setGlResult={setGlResult}
-          width={uiState.sceneWidth}
-          height={uiState.sceneHeight}
+          width={ui.sceneWidth}
+          height={ui.sceneHeight}
           assetPrefix={assetPrefix}
           takeScreenshotRef={takeScreenshotRef}
         />

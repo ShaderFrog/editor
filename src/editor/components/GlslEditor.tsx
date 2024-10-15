@@ -35,12 +35,16 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChevronDown,
   faChevronRight,
+  faCircleInfo,
   faClose,
   faCode,
   faGear,
+  faLock,
 } from '@fortawesome/free-solid-svg-icons';
 import { capitalize } from '@/util/string';
 import StrategyEditor from './StrategyEditor';
+import { TreeProps } from 'react-arborist/dist/module/types/tree-props';
+import { UICompileGraphResult } from '../uICompileGraphResult';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(glsl.editor)\x1b[0m', ...args);
@@ -65,19 +69,20 @@ const TreeNode = ({
   const node = treeNode.data;
 
   const { nodeId } = node;
-  const { removeEditorTabByNodeId, glslEditorActivePaneId, glslEditorTabs } =
-    useEditorStore();
+  const {
+    removeEditorTabPaneId,
+    glslEditorActivePaneId,
+    glslEditorTabs,
+    setUi,
+    setCompileInfo,
+    compileInfo,
+    ui,
+  } = useEditorStore();
 
-  // const activePane = glslEditorTabs.find(
-  //   (tab) => tab.id === glslEditorActivePaneId
-  // ) as PaneState | undefined;
-
-  // const isSelected =
-  //   node.type === activePane?.contents?.type &&
-  //   node.nodeId === activePane?.contents?.nodeId;
-
-  // const activeNodeId =
-  //   activePane?.type === 'pane' ? activePane?.contents?.nodeId : undefined;
+  const correspondingPane = glslEditorTabs.find((pane) => {
+    const p = pane as PaneState;
+    return p.contents?.nodeId === nodeId && p.contents?.type === node.type;
+  });
 
   const opened = useIsNodeIdOpen(nodeId, node.type);
 
@@ -113,7 +118,7 @@ const TreeNode = ({
             e.preventDefault();
             // Stop click from bubbling up to tab selection click!
             e.stopPropagation();
-            removeEditorTabByNodeId(nodeId);
+            removeEditorTabPaneId(correspondingPane!.id);
           }}
         >
           <FontAwesomeIcon icon={faClose} className="close" />
@@ -123,35 +128,33 @@ const TreeNode = ({
   );
 };
 
-const nodeTabName = (node: SourceNode) => (
-  <>
-    <FontAwesomeIcon
-      icon={faCode}
-      className={cx(styles.tabIcon, {
-        [styles.tabFragment]: node.stage === 'fragment',
-        [styles.tabVertex]: node.stage === 'vertex',
-      })}
-    />
-    {node.name}
-    {'stage' in node ? (
-      <span className={styles.tabAnnotation}>({capitalize(node.stage!)})</span>
-    ) : (
-      ''
-    )}
-  </>
-);
+const tabName = (name: string, type: PaneType, stage: ShaderStage) => {
+  const isConfig = type === 'config';
+  const annotation = isConfig ? 'Config' : stage ? capitalize(stage) : '';
+  return (
+    <>
+      <FontAwesomeIcon
+        icon={isConfig ? faGear : faCode}
+        className={cx(
+          styles.tabIcon,
+          !isConfig && {
+            [styles.tabFragment]: stage === 'fragment',
+            [styles.tabVertex]: stage === 'vertex',
+          }
+        )}
+      />
+      {name}
+      {annotation ? (
+        <span className={styles.tabAnnotation}>({annotation})</span>
+      ) : (
+        ''
+      )}
+    </>
+  );
+};
 
-/**
- * GLSL Editor
- */
-interface GlslEditorProps {
-  graph: Graph;
-  engine: Engine;
-  ctx: EngineContext;
-  onCompile: () => void;
-  onSaveOrFork: () => void;
-  onGraphChange: () => void;
-}
+const nodeTabName = (node: SourceNode, type: PaneType) =>
+  tabName(node.name, type, node.stage!);
 
 const findInTree = (
   trees: TreeData[],
@@ -170,6 +173,58 @@ const findInTree = (
   }
 };
 
+const FINAL_VERTEX = 'output_vertex';
+const FINAL_FRAGMENT = 'output_fragment';
+
+const FileTree = (props: TreeProps<TreeData>) => {
+  const { addEditorTab } = useEditorStore();
+  return (
+    <Tree
+      disableDrag
+      rowHeight={28}
+      disableMultiSelection
+      {...props}
+      onSelect={(treeNodes) => {
+        if (!treeNodes.length) {
+          return;
+        }
+        // Warning: This gets called on mount! addEditorTab is idempoent
+        const treeNode = treeNodes[0];
+        let node = treeNode?.data;
+
+        if (node) {
+          addEditorTab(
+            node.nodeId,
+            node.type === 'live_edit'
+              ? 'live_edit'
+              : treeNode.children?.length
+              ? 'config'
+              : 'code'
+          );
+          // setGlslEditorActivePaneId(node.nodeId);
+        }
+      }}
+    >
+      {TreeNode}
+    </Tree>
+  );
+};
+
+/**
+ * GLSL Editor
+ */
+interface GlslEditorProps {
+  graph: Graph;
+  engine: Engine;
+  ctx: EngineContext;
+  onCompile: () => void;
+  onSaveOrFork: () => void;
+  onGraphChange: () => void;
+  setFragmentOverride: (value: string) => void;
+  setVertexOverride: (value: string) => void;
+  compileResult: UICompileGraphResult | undefined;
+}
+
 const GlslEditor = ({
   graph,
   engine,
@@ -177,6 +232,9 @@ const GlslEditor = ({
   onCompile,
   onSaveOrFork,
   onGraphChange,
+  setFragmentOverride,
+  setVertexOverride,
+  compileResult,
 }: GlslEditorProps) => {
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
   const {
@@ -188,6 +246,8 @@ const GlslEditor = ({
     glslEditorTabs,
     nodeErrors,
     removeEditorTabPaneId,
+    compileInfo,
+    ui,
   } = useEditorStore();
 
   const codeEditorTabIndex = useGlslEditorTabIndex();
@@ -197,8 +257,12 @@ const GlslEditor = ({
   );
 
   const activeNodeId =
-    activePane?.type === 'pane' ? activePane?.contents?.nodeId : undefined;
+    activePane?.type === 'pane' && activePane?.contents?.type !== 'live_edit'
+      ? activePane?.contents?.nodeId
+      : undefined;
   const primaryNode = grindex.nodes[activeNodeId!] as SourceNode;
+
+  // console.log('pane render', { activeNodeId, primaryNode, activePane });
 
   const findPaneIdAtIndex = (index: number) => {
     const pane = glslEditorTabs[index];
@@ -210,7 +274,9 @@ const GlslEditor = ({
     const fragmentFolders = graph.nodes
       .filter(
         (node): node is SourceNode =>
-          'stage' in node && node.stage === 'fragment'
+          (node.type === 'source' || ('engine' in node && node.engine)) &&
+          'stage' in node &&
+          node.stage === 'fragment'
       )
       .reduce(
         (acc, node) => ({
@@ -237,7 +303,7 @@ const GlslEditor = ({
     return graph.nodes
       .filter(
         (node) =>
-          node.type === 'source' &&
+          (node.type === 'source' || ('engine' in node && node.engine)) &&
           (!('stage' in node) || node.stage !== 'fragment')
       )
       .reduce((acc, node) => {
@@ -272,6 +338,21 @@ const GlslEditor = ({
       }, fragmentFolders);
   }, [graph]);
 
+  const finalOutput: TreeData[] = [
+    {
+      id: FINAL_VERTEX,
+      nodeId: FINAL_VERTEX,
+      name: 'Vertex Output',
+      type: 'live_edit',
+    },
+    {
+      id: FINAL_FRAGMENT,
+      nodeId: FINAL_FRAGMENT,
+      name: 'Fragment Output',
+      type: 'live_edit',
+    },
+  ];
+
   const topLevelVisiblePane = glslEditorTabs.find(
     (tab) => tab.id === glslEditorActivePaneId
   ) as PaneState;
@@ -290,6 +371,7 @@ const GlslEditor = ({
         treeNodes,
         (node) =>
           node.type === topLevelVisiblePane?.contents?.type &&
+          topLevelVisiblePane?.contents?.type !== 'live_edit' &&
           node.nodeId === topLevelVisiblePane?.contents?.nodeId
       )?.id
     : undefined;
@@ -297,31 +379,12 @@ const GlslEditor = ({
   return (
     <SplitPane split="vertical" defaultSizes={[0.2]} minSize={200}>
       <div className={styles.treePanel}>
-        <Tree
-          disableDrag
-          rowHeight={28}
-          initialData={treeNodes}
+        <FileTree initialData={treeNodes} selection={selectedTreeId} />
+        <FileTree
+          className="m-top-25"
+          initialData={finalOutput}
           selection={selectedTreeId}
-          disableMultiSelection
-          onSelect={(treeNodes) => {
-            if (!treeNodes.length) {
-              return;
-            }
-            // Warning: This gets called on mount! addEditorTab is idempoent
-            const treeNode = treeNodes[0];
-            let node = treeNode?.data;
-
-            if (node) {
-              addEditorTab(
-                node.nodeId,
-                treeNode.children?.length ? 'config' : 'code'
-              );
-              // setGlslEditorActivePaneId(node.nodeId);
-            }
-          }}
-        >
-          {TreeNode}
-        </Tree>
+        />
       </div>
       <div className="wFull relative">
         {/* Monaco split */}
@@ -338,35 +401,38 @@ const GlslEditor = ({
                 Select a node on the left to get started!
               </span>
             ) : null}
-            {glslEditorTabs.map((pane) => (
-              <Tab key={pane.id}>
-                {pane.type === 'pane'
-                  ? nodeTabName(
-                      grindex.nodes[pane.contents.nodeId] as SourceNode
-                    )
-                  : 'Split'}
-                <span
-                  title="Close tab"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // Stop click from bubbling up to tab selection click!
-                    e.stopPropagation();
-                    removeEditorTabPaneId(pane.id);
-                  }}
-                >
-                  <FontAwesomeIcon icon={faClose} className="close" />
-                </span>
-              </Tab>
-            ))}
+            {glslEditorTabs.map((p) => {
+              const pane = p as PaneState;
+              return (
+                <Tab key={pane.id}>
+                  {pane.contents.type === 'live_edit'
+                    ? pane.contents.nodeId === FINAL_VERTEX
+                      ? tabName('Vertex Output', 'live_edit', 'vertex')
+                      : tabName('Fragment Output', 'live_edit', 'fragment')
+                    : pane.type === 'pane'
+                    ? nodeTabName(
+                        grindex.nodes[pane.contents.nodeId] as SourceNode,
+                        pane.contents.type
+                      )
+                    : 'Split'}
+                  <span
+                    title="Close tab"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      // Stop click from bubbling up to tab selection click!
+                      e.stopPropagation();
+                      removeEditorTabPaneId(pane.id);
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faClose} className="close" />
+                  </span>
+                </Tab>
+              );
+            })}
 
             <div className={styles.tabControls}>
               {primaryNode?.config?.properties?.length ||
-              primaryNode?.engine ? (
-                <div className={styles.infoMsg}>
-                  Read-only: This node&apos;s source code is generated by{' '}
-                  {engine.displayName}, and can&apos;t be edited directly.
-                </div>
-              ) : (
+              primaryNode?.engine ? null : (
                 <button
                   className="buttonauto formbutton size2"
                   onClick={() => onCompile()}
@@ -378,48 +444,99 @@ const GlslEditor = ({
             </div>
           </TabGroup>
           <TabPanels>
-            {glslEditorTabs.map((pane) => (
-              <TabPanel
-                key={pane.id}
-                className={
-                  (pane as PaneState).contents?.type === 'config'
-                    ? 'y-scroll'
-                    : ''
-                }
-              >
-                {primaryNode ? (
-                  (pane as PaneState).contents?.type === 'code' ? (
+            {glslEditorTabs.map((p) => {
+              const pane = p as PaneState;
+              let tabContents;
+
+              if (pane.contents?.type === 'live_edit') {
+                const error =
+                  pane.contents.nodeId === FINAL_VERTEX
+                    ? compileInfo.vertError
+                    : compileInfo.fragError;
+                const result =
+                  pane.contents.nodeId === FINAL_VERTEX
+                    ? compileResult?.vertexResult
+                    : compileResult?.fragmentResult;
+                const override =
+                  pane.contents.nodeId === FINAL_VERTEX
+                    ? setVertexOverride
+                    : setFragmentOverride;
+
+                tabContents = (
+                  <div className={styles.shrinkGrowRows}>
+                    <div>
+                      <div className={cx(styles.readOnlyMsg, 'm-5')}>
+                        <FontAwesomeIcon icon={faCircleInfo} />
+                        This is the final generated GLSL code. You can edit the
+                        code live, but it will be overwritten when you compile
+                        the graph.
+                      </div>
+
+                      {error && (
+                        <div className={styles.codeError} title={error}>
+                          {(error || '').substring(0, 500)}
+                        </div>
+                      )}
+                    </div>
                     <CodeEditor
                       engine={engine}
-                      identity={primaryNode.id}
-                      defaultValue={primaryNode.source}
-                      errors={nodeErrors[primaryNode.id]}
-                      onSave={onSaveOrFork}
-                      onCompile={onCompile}
-                      onChange={(value) => {
-                        if (value) {
-                          (grindex.nodes[primaryNode.id] as SourceNode).source =
-                            value;
-                        }
-                      }}
+                      value={result}
+                      onChange={(value) => override(value)}
                     />
-                  ) : (
-                    <StrategyEditor
-                      ctx={ctx}
-                      node={primaryNode}
-                      graph={graph}
-                      onSave={onCompile}
-                      onGraphChange={onGraphChange}
-                    ></StrategyEditor>
-                  )
-                ) : (
-                  <>
-                    No node selected for activeNodeId &quot;{activeNodeId}
-                    &quot;. This should not happen!
-                  </>
-                )}
-              </TabPanel>
-            ))}
+                  </div>
+                );
+              } else if (pane.contents?.type === 'code' && primaryNode) {
+                tabContents = (
+                  <CodeEditor
+                    engine={engine}
+                    identity={primaryNode.id}
+                    defaultValue={primaryNode.source}
+                    errors={nodeErrors[primaryNode.id]}
+                    onSave={onSaveOrFork}
+                    onCompile={onCompile}
+                    onChange={(value) => {
+                      if (value) {
+                        (grindex.nodes[primaryNode.id] as SourceNode).source =
+                          value;
+                      }
+                    }}
+                  />
+                );
+                if (
+                  primaryNode?.config?.properties?.length ||
+                  primaryNode?.engine
+                ) {
+                  tabContents = (
+                    <div className={styles.shrinkGrowRows}>
+                      <div className={cx(styles.readOnlyMsg, 'm-5')}>
+                        <FontAwesomeIcon icon={faLock} />
+                        Read-only: This node&apos;s source code is generated by{' '}
+                        {engine.displayName}, and can&apos;t be edited directly.
+                      </div>
+                      {tabContents}
+                    </div>
+                  );
+                }
+              } else {
+                tabContents = (
+                  <StrategyEditor
+                    ctx={ctx}
+                    node={primaryNode}
+                    graph={graph}
+                    onSave={onCompile}
+                    onGraphChange={onGraphChange}
+                  ></StrategyEditor>
+                );
+              }
+              return (
+                <TabPanel
+                  key={pane.id}
+                  className={pane.contents?.type === 'config' ? 'y-scroll' : ''}
+                >
+                  {tabContents}
+                </TabPanel>
+              );
+            })}
           </TabPanels>
         </Tabs>
       </div>

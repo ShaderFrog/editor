@@ -112,21 +112,21 @@ const MetadataEditor = ({
   return (
     <div className="grid col2 gap50">
       <div>
-        <h2 className={cx(styles.uiHeader)}>
-          Screenshot
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              takeScreenshot();
-            }}
-            className="buttonauto formbutton size2 m-left-15"
-          >
-            Update
-          </button>
-        </h2>
-        {screenshotData ? (
-          <img src={screenshotData} alt={`${shader.name} screenshot`} />
-        ) : null}
+        <h2 className={cx(styles.uiHeader)}>Screenshot</h2>
+        <div className={styles.fullScreenshot}>
+          {screenshotData && (
+            <img src={screenshotData} alt={`${shader.name} screenshot`} />
+          )}
+        </div>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            takeScreenshot();
+          }}
+          className="buttonauto formbutton size2 m-top-15 centered center"
+        >
+          Update Screenshot
+        </button>
       </div>
       <div>
         <h2 className={styles.uiHeader}>Shader Name</h2>

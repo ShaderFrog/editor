@@ -653,13 +653,12 @@ textarea.error {
  ******************************************************************************/
 
 .editorMetadata {
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 3px 8px 3px 3px;
   position: absolute;
   left: 50%;
   top: 2px;
   transform: translateX(-50%);
-  background: linear-gradient(45deg, #000, rgb(41, 41, 41));
   z-index: 2;
   box-shadow: 0 0 4px #000, 0 0 0 1px #9f9f9f91;
   cursor: pointer;
@@ -696,13 +695,26 @@ textarea.error {
 }
 
 .imagePreview {
-  height: 22px;
   width: 22px;
-  border-radius: 7px;
+  aspect-ratio: 1/1;
+  border-radius: 6px;
   background: #1f1f1f;
   overflow: hidden;
 }
 .imagePreview img {
+  width: 100%;
+  /* margin-top: -50px; */
+  object-fit: contain;
+}
+
+.fullScreenshot {
+  width: 100%;
+  aspect-ratio: 1/1;
+  border-radius: 11px;
+  background: #1f1f1f;
+  overflow: hidden;
+}
+.fullScreenshot img {
   width: 100%;
   /* margin-top: -50px; */
   object-fit: contain;

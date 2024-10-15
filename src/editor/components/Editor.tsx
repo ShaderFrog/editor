@@ -142,6 +142,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import MetadataEditor from './MetadataEditor';
 import ConvertShadertoy from './ConvertShadertoy';
+import { truncate } from '@/util/string';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
@@ -1924,7 +1925,7 @@ const Editor = ({
               <img src={screenshotData} alt={`${shader.name} screenshot`} />
             )}
           </div>
-          <span className={styles.metadataName}>{shader?.name}</span>
+          <span className={styles.metadataName}>{truncate(shader?.name)}</span>
           <FontAwesomeIcon icon={faPencil} />
         </div>
       </div>

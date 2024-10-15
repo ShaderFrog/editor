@@ -602,8 +602,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       const properties = value.properties;
       const texture = loadTexture(value as TextureNodeValueData);
       if (!texture) {
-        console.error(`Could not load texture for node ${node.id}`);
-        return new Texture();
+        return;
       }
       if (!properties || (texture as any).__properties === properties) {
         return texture;

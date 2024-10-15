@@ -1,5 +1,6 @@
 import React, {
   HTMLAttributes,
+  ReactElement,
   ReactNode,
   createContext,
   useContext,
@@ -48,7 +49,7 @@ const childName = (child: React.ReactNode) => {
   if (typeof ra.type === 'string') {
     return;
   }
-  return ra.type.name;
+  return 'displayName' in ra.type ? ra.type.displayName : null;
 };
 
 // Group of the tabs themselves
@@ -61,7 +62,6 @@ const TabGroup = ({
   return (
     <div {...props} className={cx('tab_tabs', className)}>
       {React.Children.map<ReactNode, ReactNode>(children, (child, index) => {
-        console.log({ child, name: childName(child) });
         if (childName(child) !== 'Tab') {
           idxOffset++;
           return child;
@@ -105,6 +105,9 @@ const Tab = ({
     </div>
   );
 };
+
+// Required for ignoring tab children, see childName()
+Tab.displayName = 'Tab';
 
 // Wraps all panels, shows only the selected panel
 const TabPanels = ({ children }: { children: React.ReactNode }) => {

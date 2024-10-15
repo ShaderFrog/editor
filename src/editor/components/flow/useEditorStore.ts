@@ -132,7 +132,6 @@ export const useEditorStore = create<EditorState>((set) => ({
   addEditorTab: (nodeId, type) =>
     set(
       produce((state) => {
-        console.log('hi');
         const existing = findPaneForNodeId(state.glslEditorTabs, nodeId, type);
         if (existing) {
           state.glslEditorActivePaneId = existing.id;

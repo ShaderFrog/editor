@@ -54,7 +54,6 @@ import {
   makeEdge,
   resetGraphIds,
   isError,
-  sourceNode,
   TextureNode,
   computeGrindex,
 } from '@core/graph';
@@ -82,7 +81,7 @@ import { Hoisty } from '../hoistedRefContext';
 import { UICompileGraphResult } from '../uICompileGraphResult';
 import { ensure } from '../../util/ensure';
 
-import { count, makeId } from '../../util/id';
+import { makeId } from '../../util/id';
 import { hasParent } from '../../util/hasParent';
 import { SMALL_SCREEN_WIDTH, useWindowSize } from '../hooks/useWindowSize';
 
@@ -113,7 +112,6 @@ import {
   compileGraphAsync,
   createGraphNode,
   expandUniformDataNodes,
-  linkNodes,
 } from './useGraph';
 import { FlowGraphContext } from '@editor/editor/flowGraphContext';
 import { findNodeAndData, findNodeTree } from './flow/graph-helpers';
@@ -134,9 +132,6 @@ import { Shader } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
 import { EDITOR_BOTTOM_PANEL, useEditorStore } from './flow/useEditorStore';
 import Modal from './Modal';
-import { texture2DStrategy, uniformStrategy } from '@/core';
-import { generate, parser } from '@shaderfrog/glsl-parser';
-import { Program } from '@shaderfrog/glsl-parser/ast';
 import { xor } from '@shaderfrog/glsl-parser/parser/utils';
 import GlslEditor from './GlslEditor';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -146,108 +141,10 @@ import {
   faPencil,
 } from '@fortawesome/free-solid-svg-icons';
 import MetadataEditor from './MetadataEditor';
+import ConvertShadertoy from './ConvertShadertoy';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
-
-const ConvertModal = ({
-  engine,
-  onImport,
-  onClose,
-}: {
-  engine: Engine;
-  onImport: (n: GraphNode[], e: Edge[]) => void;
-  onClose: () => void;
-}) => {
-  const [importError, setImportError] = useState<string | null>(null);
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
-
-  return (
-    <Modal onClose={onClose}>
-      <h2 className={cx(styles.uiHeader)}>
-        Import from Shadertoy (experimental)
-      </h2>
-      <p className="blerfiarie">
-        Paste your Shadertoy code below. The following are <b>not</b> currently
-        supported:
-      </p>
-      <ul className="blerfiarie">
-        <li>Multiple buffers</li>
-        <li>Mouse input</li>
-        <li>Audio input</li>
-      </ul>
-      <textarea
-        ref={textAreaRef}
-        className="textinput"
-        placeholder="Paste your ShaderToy GLSL here"
-      ></textarea>
-      {importError ? (
-        <div className={cx(styles.errored, `m-top-10`)}>{importError}</div>
-      ) : null}
-      <div className="m-top-10">
-        <button
-          className="buttonauto formbutton size2"
-          onClick={(e) => {
-            e.preventDefault();
-            let ast: Program;
-
-            try {
-              const value = textAreaRef.current!.value;
-              // SAD HACK to catch variables in preprocessor lines
-              ast = parser.parse(
-                value
-                  .replace(/\biTime\b/g, 'time')
-                  .replace(/\biResolution\b/g, 'renderResolution')
-              );
-              engine.importers.shadertoy.convertAst(ast);
-            } catch (e) {
-              console.error('Error importing shader', e);
-              setImportError(
-                'Error importing shader! Check the console log, and please use the link at the top right to file a bug.'
-              );
-              return;
-            }
-
-            const c = count();
-            const fragment = sourceNode(
-              makeId(),
-              'Shadertoy Import ' + c,
-              { x: 0, y: 0 },
-              {
-                version: 2,
-                preprocess: true,
-                strategies: [uniformStrategy(), texture2DStrategy()],
-                uniforms: [],
-              },
-              generate(ast),
-              'fragment',
-              engine.name
-            );
-            const vertex = sourceNode(
-              makeId(),
-              'Shadertoy Import ' + c,
-              { x: 0, y: 299 },
-              {
-                version: 2,
-                preprocess: true,
-                strategies: [uniformStrategy()],
-                uniforms: [],
-              },
-              engine.importers.shadertoy.code!.defaultShadertoyVertex,
-              'vertex',
-              engine.name
-            );
-            const [newEdges, newGns] = linkNodes(fragment, vertex);
-            onImport(newGns, newEdges);
-          }}
-          title="Import"
-        >
-          Import
-        </button>
-      </div>
-    </Modal>
-  );
-};
 
 const guessIfColorName = (name: string) =>
   /col|foreground|background/i.test(name);
@@ -288,10 +185,8 @@ const Editor = ({
     addEditorTab,
     setNodeErrors,
     clearNodeErrors,
-    // setGlslEditorActiveNodeId,
     setUi,
     setCompileInfo,
-    compileInfo,
     ui,
   } = useEditorStore();
 
@@ -733,46 +628,6 @@ const Editor = ({
     [setGraph, setNodes, debouncedSetNeedsCompile]
   );
 
-  /*
-  // TODO: Might be able to get rid of all of this, need to test running the
-  // editor standalone to see how examples are used, if at all
-  const previousExample = usePrevious(currentExample);
-  useEffect(() => {
-    if (currentExample !== previousExample && previousExample !== undefined) {
-      log('🧶 Loading new example!', currentExample);
-      const [graph, sceneConfig] = makeExampleGraph(
-        // @ts-ignore
-        currentExample || examples.DEFAULT
-      );
-      const newGraph = expandUniformDataNodes(graph);
-      setGraph(newGraph);
-      setSceneConfig(sceneConfig);
-      addEditorTab(newGraph.nodes[0].id);
-      setPrimarySelectedNodeId(newGraph.nodes[0].id);
-      addSelectedNodes([newGraph.nodes[0].id]);
-
-      if (ctx) {
-        const initFlowElements = graphToFlowGraph(newGraph);
-        initializeGraph(initFlowElements, ctx, newGraph);
-      } else {
-        log('NOT Running initializeGraph from example change!');
-      }
-    }
-  }, [
-    addSelectedNodes,
-    currentExample,
-    previousExample,
-    setGraph,
-    ctx,
-    initializeGraph,
-    examples,
-    makeExampleGraph,
-    onInputBakedToggle,
-    addEditorTab,
-    setPrimarySelectedNodeId,
-  ]);
-  */
-
   /**
    * Split state mgmt
    */
@@ -963,17 +818,11 @@ const Editor = ({
     (nodeId: string) => {
       const active = graph.nodes.find((n) => n.id === nodeId) as SourceNode;
       addEditorTab(active.id, 'code');
-      // setGlslEditorActiveNodeId(active.id);
       addSelectedNodes([active.id]);
 
       setEditorTabIndex(1);
     },
-    [
-      addSelectedNodes,
-      graph,
-      // setGlslEditorActiveNodeId,
-      addEditorTab,
-    ]
+    [addSelectedNodes, graph, addEditorTab]
   );
 
   const onNodeDoubleClick = useCallback(
@@ -987,7 +836,6 @@ const Editor = ({
         openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
       } else if (node.type === 'source') {
         addEditorTab(node.id, 'code');
-        // setGlslEditorActiveNodeId(node.id);
         setEditorTabIndex(1);
       }
     },
@@ -996,7 +844,6 @@ const Editor = ({
       graph.nodes,
       openEditorBottomPanel,
       setPrimarySelectedNodeId,
-      // setGlslEditorActiveNodeId,
       addEditorTab,
     ]
   );
@@ -1571,7 +1418,6 @@ const Editor = ({
           openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
         } else {
           addEditorTab(currentNode.id, 'code');
-          // setGlslEditorActiveNodeId(currentNode.id);
           setEditorTabIndex(1);
         }
       } else if (type === NodeContextActions.DELETE_NODE_ONLY) {
@@ -1623,7 +1469,6 @@ const Editor = ({
       debouncedSetNeedsCompile,
       openEditorBottomPanel,
       setPrimarySelectedNodeId,
-      // setGlslEditorActiveNodeId,
       addEditorTab,
     ]
   );
@@ -2124,26 +1969,6 @@ const Editor = ({
                 />
               </div>
               <div className={styles.splitInner} ref={reactFlowWrapper}>
-                {isShowingImport ? (
-                  <ConvertModal
-                    engine={engine}
-                    onClose={() => setShowImport(false)}
-                    onImport={(newNodes, newEdges) => {
-                      const newGraph: Graph = {
-                        nodes: graph.nodes.concat(newNodes).flat(2),
-                        edges: graph.edges.concat(newEdges).flat(2),
-                      };
-
-                      const newFlowGraph = graphToFlowGraph(newGraph);
-
-                      setNodes(newFlowGraph.nodes);
-                      setEdges(newFlowGraph.edges);
-                      setGraph(newGraph);
-
-                      setShowImport(false);
-                    }}
-                  />
-                ) : null}
                 {bottomPanelType === EDITOR_BOTTOM_PANEL.TEXTURE_BROWSER ? (
                   <BottomModal onClose={() => closeEditorBottomPanel()}>
                     <TextureBrowser
@@ -2308,6 +2133,27 @@ const Editor = ({
         onClick={onContainerClick}
         onMouseMove={onMouseMove}
       >
+        {isShowingImport ? (
+          <Modal onClose={() => setShowImport(false)}>
+            <ConvertShadertoy
+              engine={engine}
+              onImport={(newNodes, newEdges) => {
+                const newGraph: Graph = {
+                  nodes: graph.nodes.concat(newNodes).flat(2),
+                  edges: graph.edges.concat(newEdges).flat(2),
+                };
+
+                const newFlowGraph = graphToFlowGraph(newGraph);
+
+                setNodes(newFlowGraph.nodes);
+                setEdges(newFlowGraph.edges);
+                setGraph(newGraph);
+
+                setShowImport(false);
+              }}
+            />
+          </Modal>
+        ) : null}
         {isMetadataOpen ? (
           <Modal onClose={() => setMetadataOpen(false)}>
             <MetadataEditor

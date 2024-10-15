@@ -92,7 +92,6 @@ interface EditorState {
   glslEditorTabs: (PaneState | SplitPaneState)[];
   addEditorTab: (nodeId: string, type: PaneType) => void;
   removeEditorTabPaneId: (paneId: string) => void;
-  // removeEditorTabByNodeId: (nodeId: string) => void;
 
   // Node errors state
   nodeErrors: Record<string, NodeErrors>;
@@ -160,27 +159,6 @@ export const useEditorStore = create<EditorState>((set) => ({
       };
     }),
 
-  // removeEditorTabByNodeId: (nodeId: string) =>
-  //   set(
-  //     produce((state) => {
-  //       const pane = state.glslEditorTabs.find(
-  //         (tab) => (tab as PaneState).contents.nodeId === nodeId
-  //       );
-  //       if (pane) {
-  //         // console.log('old tabs', state.glslEditorTabs);
-  //         state.glslEditorTabs = (state.glslEditorTabs as PaneState[]).filter(
-  //           (pane) => {
-  //             // console.log('comparing', { pane: pane.nodeId, nodeId });
-  //             return (pane as PaneState).contents.nodeId !== nodeId;
-  //           }
-  //           // ({ nodeId }) => nodeId !== nodeId
-  //         );
-  //         // console.log('new tabs', state.glslEditorTabs);
-  //       } else {
-  //         console.warn('Could not find tab to remove for node', nodeId);
-  //       }
-  //     })
-  //   ),
   setPrimarySelectedNodeId: (primarySelectedNodeId) =>
     set(() => ({ primarySelectedNodeId })),
   setMenu: (menu, position) => set(() => ({ menu: { menu, position } })),

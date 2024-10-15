@@ -3,7 +3,6 @@ import bind from 'classnames/bind';
 const cx = bind.bind(styles);
 
 import { NodeRendererProps, Tree } from 'react-arborist';
-import { DndContext, MouseSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { useMemo } from 'react';
 
 import { SplitPane } from '@andrewray/react-multi-split-pane';
@@ -21,8 +20,6 @@ import { Engine, EngineContext } from '@core/engine';
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import CodeEditor from './CodeEditor';
 
-import { Hoisty } from '../hoistedRefContext';
-
 import { isMacintosh } from '@editor/util/platform';
 import {
   PaneState,
@@ -33,7 +30,6 @@ import {
 } from './flow/useEditorStore';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faChevronDown,
   faChevronRight,
   faCircleInfo,
   faClose,
@@ -69,15 +65,7 @@ const TreeNode = ({
   const node = treeNode.data;
 
   const { nodeId } = node;
-  const {
-    removeEditorTabPaneId,
-    glslEditorActivePaneId,
-    glslEditorTabs,
-    setUi,
-    setCompileInfo,
-    compileInfo,
-    ui,
-  } = useEditorStore();
+  const { removeEditorTabPaneId, glslEditorTabs } = useEditorStore();
 
   const correspondingPane = glslEditorTabs.find((pane) => {
     const p = pane as PaneState;
@@ -173,6 +161,7 @@ const findInTree = (
   }
 };
 
+// Hard coded fake node IDs for the final output and fragment editor panes
 const FINAL_VERTEX = 'output_vertex';
 const FINAL_FRAGMENT = 'output_fragment';
 
@@ -188,7 +177,7 @@ const FileTree = (props: TreeProps<TreeData>) => {
         if (!treeNodes.length) {
           return;
         }
-        // Warning: This gets called on mount! addEditorTab is idempoent
+        // Warning: This gets called on mount! addEditorTab() is idempoent
         const treeNode = treeNodes[0];
         let node = treeNode?.data;
 
@@ -201,7 +190,6 @@ const FileTree = (props: TreeProps<TreeData>) => {
               ? 'config'
               : 'code'
           );
-          // setGlslEditorActivePaneId(node.nodeId);
         }
       }}
     >
@@ -238,11 +226,8 @@ const GlslEditor = ({
 }: GlslEditorProps) => {
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
   const {
-    // glslEditorActiveNodeId,
-    // setGlslEditorActiveNodeId,
     setGlslEditorActivePaneId,
     glslEditorActivePaneId,
-    addEditorTab,
     glslEditorTabs,
     nodeErrors,
     removeEditorTabPaneId,
@@ -262,14 +247,12 @@ const GlslEditor = ({
       : undefined;
   const primaryNode = grindex.nodes[activeNodeId!] as SourceNode;
 
-  // console.log('pane render', { activeNodeId, primaryNode, activePane });
-
   const findPaneIdAtIndex = (index: number) => {
     const pane = glslEditorTabs[index];
     return pane.id;
   };
 
-  // Calculate the left sidebar entries based on the graph nodes
+  // Calculate the file tree entries based on the graph nodes
   const treeData = useMemo(() => {
     const fragmentFolders = graph.nodes
       .filter(
@@ -356,22 +339,14 @@ const GlslEditor = ({
   const topLevelVisiblePane = glslEditorTabs.find(
     (tab) => tab.id === glslEditorActivePaneId
   ) as PaneState;
-  // const selectedTreeId =
-  //   topLevelVisiblePane?.type === 'pane'
-  //     ? topLevelVisiblePane?.contents?.type === 'config'
-  //       ? `${topLevelVisiblePane.contents.nodeId}_folder`
-  //       : topLevelVisiblePane.contents.nodeId
-  //     : undefined;
 
   const treeNodes = Object.values(treeData);
 
-  // console.log({ glslEditorActivePaneId, topLevelVisiblePane, selectedTreeId });
   const selectedTreeId = topLevelVisiblePane
     ? findInTree(
         treeNodes,
         (node) =>
           node.type === topLevelVisiblePane?.contents?.type &&
-          topLevelVisiblePane?.contents?.type !== 'live_edit' &&
           node.nodeId === topLevelVisiblePane?.contents?.nodeId
       )?.id
     : undefined;
@@ -544,23 +519,4 @@ const GlslEditor = ({
   );
 };
 
-const GlslEditorWithProviders = (props: GlslEditorProps) => {
-  // For dragging shaders into the graph, make sure the mouse has to travel,
-  // to avoid clicking on a siderbar shader causing a drag state
-  const mouseSensor = useSensor(MouseSensor, {
-    activationConstraint: {
-      distance: 10,
-    },
-  });
-  const sensors = useSensors(mouseSensor);
-
-  return (
-    <DndContext sensors={sensors}>
-      <Hoisty>
-        <GlslEditor {...props} />
-      </Hoisty>
-    </DndContext>
-  );
-};
-
-export default GlslEditorWithProviders;
+export default GlslEditor;

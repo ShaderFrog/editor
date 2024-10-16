@@ -5,7 +5,7 @@ import {
   ConnectionLineComponentProps,
   getBezierPath,
   Position,
-} from 'reactflow';
+} from '@xyflow/react';
 
 const ConnectionLine = ({
   fromX,

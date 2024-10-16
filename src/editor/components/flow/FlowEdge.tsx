@@ -5,7 +5,7 @@ import {
   getStraightPath,
   // getEdgeCenter,
   // getMarkerEnd,
-} from 'reactflow';
+} from '@xyflow/react';
 import { EdgeLink, EdgeType } from '@core/graph';
 
 export type LinkEdgeData = {

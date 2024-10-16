@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import classnames from 'classnames/bind';
 import groupBy from 'lodash.groupby';
-import { Handle, Position, useReactFlow } from 'reactflow';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGear,
@@ -42,7 +42,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { NODRAG_CLASS } from '../editorTypes';
 import LabeledInput from '../LabeledInput';
 import clamp from '@editor/util/clamp';
-import { EDITOR_BOTTOM_PANEL, useEditorStore } from './useEditorStore';
+import { EDITOR_BOTTOM_PANEL, useEditorStore } from './editor-store';
 const cx = classnames.bind(styles);
 
 const headerHeight = 30;
@@ -80,18 +80,19 @@ export const flowOutput = (name: string, id?: string): OutputNodeHandle => ({
   name,
 });
 
-export interface CoreFlowNode {
+export type CoreFlowNode = {
   label: string;
   ghost?: boolean;
   outputs: OutputNodeHandle[];
   inputs: InputNodeHandle[];
-}
-export interface FlowNodeDataData extends CoreFlowNode {
+};
+export type FlowNodeDataData = {
   type: GraphDataType;
   value: any;
   config: Record<string, any>;
-}
-export interface FlowNodeSourceData extends CoreFlowNode {
+} & CoreFlowNode;
+
+export type FlowNodeSourceData = {
   stage?: ShaderStage;
   category?: InputCategory;
   active: boolean;
@@ -100,7 +101,8 @@ export interface FlowNodeSourceData extends CoreFlowNode {
    */
   biStage: boolean;
   glslError?: boolean;
-}
+} & CoreFlowNode;
+
 export type FlowNodeData = FlowNodeSourceData | FlowNodeDataData;
 
 const showPosition = (id: any, xPos: number, yPos: number) =>

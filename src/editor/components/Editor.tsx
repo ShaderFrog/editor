@@ -20,10 +20,12 @@ import React, {
   useRef,
   useState,
   MouseEvent,
+  TouchEvent,
 } from 'react';
 
 import {
-  Edge as ReactFlowEdge,
+  Node as XyFlowNode,
+  Edge as XyFlowEdge,
   Connection,
   ReactFlowProvider,
   useUpdateNodeInternals,
@@ -32,10 +34,13 @@ import {
   OnConnectStartParams,
   useStoreApi,
   OnSelectionChangeFunc,
+  OnConnectStart,
+  OnNodeDrag,
   NodeChange,
   useNodesState,
   useEdgesState,
-} from 'reactflow';
+  InternalNode,
+} from '@xyflow/react';
 
 import { SplitPane } from '@andrewray/react-multi-split-pane';
 
@@ -94,17 +99,15 @@ import {
   graphToFlowGraph,
   graphNodeToFlowNode,
   graphEdgeToFlowEdge,
-  updateFlowInput,
-  updateGraphInput,
-  updateFlowNodeData,
-  updateFlowNodesData,
+  updateGraphNodeInput as updateGraphNodeInputInternal,
+  updateFlowNodeInput as updateFlowInputInternal,
+  updateFlowNodeData as updateFlowNodeDataInternal,
   updateGraphNode as updateGraphNodeInternal,
   addFlowEdge,
   addGraphEdge,
   updateGraphFromFlowGraph,
   updateFlowEdgeData,
   markInputsConnected,
-  updateFlowNodesConfig,
 } from './flow/flow-helpers';
 
 import { usePrevious } from '../hooks/usePrevious';
@@ -130,7 +133,11 @@ import TextureBrowser from './TextureBrowser';
 import randomShaderName from '@editor/util/randomShaderName';
 import { Shader } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
-import { EDITOR_BOTTOM_PANEL, useEditorStore } from './flow/useEditorStore';
+import {
+  EDITOR_BOTTOM_PANEL,
+  EditorProvider,
+  useEditorStore,
+} from './flow/editor-store';
 import Modal from './Modal';
 import { xor } from '@shaderfrog/glsl-parser/parser/utils';
 import GlslEditor from './GlslEditor';
@@ -154,7 +161,7 @@ const Editor = ({
   assetPrefix,
   saveErrors,
   onCloseSaveErrors,
-  shader: initialShader,
+  // shader: initialShader,
   isOwnShader,
   isAuthenticated,
   onCreateShader,
@@ -162,20 +169,17 @@ const Editor = ({
   isDeleting,
   onDeleteShader,
   engine,
-  exampleShader,
-  example,
-  examples,
-  makeExampleGraph,
   menuItems,
   sceneComponent: SceneComponent,
   addEngineNode,
   currentUser,
 }: EditorProps & EngineProps) => {
-  const reactFlowStore = useStoreApi();
-  const { addSelectedNodes } = reactFlowStore.getState();
+  const xyFlowStore = useStoreApi();
+  // const { addSelectedNodes } = reactFlowStore.getState();
   const { screenToFlowPosition, getNode } = useReactFlow();
 
   const {
+    // ui state
     hideMenu,
     menu,
     bottomPanelType,
@@ -184,47 +188,48 @@ const Editor = ({
     primarySelectedNodeId,
     setPrimarySelectedNodeId,
     addEditorTab,
+    setSceneDimensions,
+    setCompileInfo,
+    sceneConfig,
+    setSceneConfig,
+    // Shader
+    shader,
+    setShader,
+    // Graph
+    graph,
+    setGraph,
+    updateGraphNode,
+    updateGraphNodeInput,
     setNodeErrors,
     clearNodeErrors,
-    setUi,
-    setCompileInfo,
-    ui,
+    // Flow graph
+    flowNodes,
+    flowEdges,
+    setFlowNodes,
+    setFlowEdges,
+    updateFlowNode,
+    updateFlowNodeData,
+    updateAllFlowNodes,
+    updateFlowNodeConfig,
+    updateFlowInput,
+    addSelectedNodes,
+    onNodesChange,
+    onEdgesChange,
   } = useEditorStore();
 
-  const [shader, setShader] = useState<Shader>(() => {
-    return (
-      initialShader || {
-        user: {
-          name: 'Fake User',
-          isPro: false,
-        },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        engine: engine.name as 'three',
-        name: randomShaderName(),
-        visibility: 0,
-        imageData: '',
-        tags: [],
-        config: {
-          graph: {
-            nodes: [],
-            edges: [],
-          },
-          scene: {
-            bg: '',
-            lights: 'point',
-            previewObject: 'sphere',
-          },
-        },
-      }
-    );
-  });
+  const grindex = useMemo(() => computeGrindex(graph), [graph]);
+
+  // const [shader, setShader] = useState<Shader>(() => {
+  //   return (
+  //     initialShader
+  //   );
+  // });
 
   // Refresh the shader from the server if the ID changes - which happens on a
   // fork and a create
-  if (initialShader && shader?.id && initialShader?.id !== shader?.id) {
-    setShader(initialShader);
-  }
+  // if (initialShader && shader?.id && initialShader?.id !== shader?.id) {
+  //   setShader(initialShader);
+  // }
 
   const [screenshotData, setScreenshotData] = useState<string>('');
   const takeScreenshotRef = useRef<() => Promise<string>>();
@@ -252,37 +257,18 @@ const Editor = ({
    * 4. For adding new connections, react-flow creates the connection, and
    *    the callback calls our addConnection() function, which updates the core
    *    graph, and then updates the flow graph. I'm pretty sure this undoes what
-   *    react-flow does internally, because it calls setEdges()
+   *    react-flow does internally, because it calls setFlowEdges()
    * 5. Some callbacks, like onNodesDelete, need additional side effects, like
    *    deleting all the upstream nodes and edges. In those callbacks, the
    *    changes are calculated, and applied to both core and react-flow graph.
    */
-  const [flowNodes, setNodes, applyNodeChanges] = useNodesState([]);
-  const [flowEdges, setEdges, applyEdgeChanges] = useEdgesState([]);
-  const flowStore = useStoreApi();
+  // const [flowNodes, setFlowNodes, applyNodeChanges] = useNodesState([]);
+  // const [flowEdges, setFlowEdges, applyEdgeChanges] = useEdgesState([]);
+  // const flowStore = useStoreApi();
 
-  const [initialGraph, initialSceneConfig, initialExample] = useMemo(() => {
-    if (exampleShader) {
-      return [exampleShader.config.graph, exampleShader.config.scene];
-    }
-    const query = new URLSearchParams(window.location.search);
-    const exampleGraph = query.get('example') || example;
-    if (initialShader) {
-      return [initialShader.config.graph, initialShader.config.scene];
-    }
-    // @ts-ignore
-    const [graph, sceneConfig] = makeExampleGraph(exampleGraph);
-    return [expandUniformDataNodes(graph), sceneConfig, exampleGraph];
-  }, [makeExampleGraph, example, initialShader, exampleShader]);
-
-  const [currentExample, setExample] = useState<string | null | undefined>(
-    initialExample
-  );
-  const [sceneConfig, setSceneConfig] =
-    useState<AnySceneConfig>(initialSceneConfig);
-
-  const [graph, setGraph] = useState(initialGraph);
-  const grindex = useMemo(() => computeGrindex(graph), [graph]);
+  // const [currentExample, setExample] = useState<string | null | undefined>(
+  //   initialExample
+  // );
 
   const primarySelectedNode = primarySelectedNodeId
     ? grindex.nodes[primarySelectedNodeId]
@@ -339,19 +325,19 @@ const Editor = ({
     [sceneConfig, setSceneConfig, debouncedSetNeedsCompile]
   );
 
-  useEffect(() => {
-    if (shader) {
-      return;
-    }
-    const urlParams = new URLSearchParams(window.location.search);
-    const value = currentExample || '';
-    urlParams.set('example', value);
-    window.history.replaceState(
-      {},
-      value,
-      `${window.location.pathname}?${urlParams.toString()}`
-    );
-  }, [currentExample, shader]);
+  // useEffect(() => {
+  //   if (shader) {
+  //     return;
+  //   }
+  //   const urlParams = new URLSearchParams(window.location.search);
+  //   const value = currentExample || '';
+  //   urlParams.set('example', value);
+  //   window.history.replaceState(
+  //     {},
+  //     value,
+  //     `${window.location.pathname}?${urlParams.toString()}`
+  //   );
+  // }, [currentExample, shader]);
 
   const setVertexOverride = useCallback(
     (vertexResult: string) => {
@@ -380,24 +366,24 @@ const Editor = ({
     [setFragmentOverride]
   );
 
-  const updateFlowNode = useCallback(
-    (nodeId: string, data: Partial<FlowNodeData>) => {
-      setNodes((nodes) => updateFlowNodesData(nodes, nodeId, data));
-    },
-    [setNodes]
-  );
-  const updateFlowNodeConfig = useCallback(
-    (nodeId: string, config: Record<string, any>) => {
-      setNodes((nodes) => updateFlowNodesConfig(nodes, nodeId, config));
-    },
-    [setNodes]
-  );
-  const updateGraphNode = useCallback(
-    (nodeId: string, data) => {
-      setGraph((graph) => updateGraphNodeInternal(graph, nodeId, data));
-    },
-    [setGraph]
-  );
+  // const updateFlowNode = useCallback(
+  //   (nodeId: string, data: Partial<FlowNodeData>) => {
+  //     setFlowNodes((nodes) => updateFlowNodesData(nodes, nodeId, data));
+  //   },
+  //   [setFlowNodes]
+  // );
+  // const updateFlowNodeConfig = useCallback(
+  //   (nodeId: string, config: Record<string, any>) => {
+  //     setFlowNodes((nodes) => updateFlowNodesConfig(nodes, nodeId, config));
+  //   },
+  //   [setFlowNodes]
+  // );
+  // const updateGraphNode = useCallback(
+  //   (nodeId: string, data) => {
+  //     setGraph((graph) => updateGraphNodeInternal(graph, nodeId, data));
+  //   },
+  //   [setGraph]
+  // );
 
   // Compile function, meant to be called manually in places where we want to
   // trigger a compile. I tried making this a useEffect, however this function
@@ -417,7 +403,7 @@ const Editor = ({
         .then((result) => {
           if (isError(result)) {
             setNodeErrors(result.nodeId, result);
-            updateFlowNode(result.nodeId, { glslError: true });
+            updateFlowNodeData(result.nodeId, { glslError: true });
             return;
           }
 
@@ -436,7 +422,7 @@ const Editor = ({
 
           // Update the available inputs from the node after the compile
           const updatedFlowNodes = flowElements.nodes.map((node) => {
-            return updateFlowNodeData(node, {
+            return updateFlowNodeDataInternal(node, {
               ...node.data,
               glslError: false,
               inputs: toFlowInputs(byId[node.id]),
@@ -453,8 +439,8 @@ const Editor = ({
               result.dataNodes
             )
           );
-          setNodes(nodes);
-          setEdges(edges);
+          setFlowNodes(nodes);
+          setFlowEdges(edges);
 
           // This is a hack to make the edges update to their handles if they move
           // https://github.com/wbkd/react-flow/issues/2008
@@ -474,11 +460,11 @@ const Editor = ({
     },
     [
       updateNodeInternals,
-      setEdges,
-      setNodes,
-      updateFlowNode,
+      setFlowEdges,
+      setFlowNodes,
       clearNodeErrors,
       setNodeErrors,
+      updateFlowNodeData,
     ]
   );
 
@@ -516,9 +502,10 @@ const Editor = ({
           const result = await computeAllContexts(newCtx, engine, graph);
           if (isError(result)) {
             setNodeErrors(result.nodeId, result);
-            setNodes((nodes) =>
-              updateFlowNodesData(nodes, result.nodeId, { glslError: true })
-            );
+            // setFlowNodes((nodes) =>
+            //   updateFlowNodesData(nodes, result.nodeId, { glslError: true })
+            // );
+            updateFlowNodeData(result.nodeId, { glslError: true });
 
             setContexting(false);
             const { errors } = result;
@@ -528,8 +515,8 @@ const Editor = ({
             // In case the initial context fails to generate, which can happen
             // if a node is saved in a bad state, create the flow elements
             // anyway, so the graph still shows up
-            setNodes(initialElements.nodes);
-            setEdges(initialElements.edges);
+            setFlowNodes(initialElements.nodes);
+            setFlowEdges(initialElements.edges);
           }
 
           log('Initializing flow nodes and compiling graph!', {
@@ -537,8 +524,8 @@ const Editor = ({
             newCtx,
           });
 
-          setNodes((nodes) =>
-            nodes.map((node) => updateFlowNodeData(node, { glslError: false }))
+          updateAllFlowNodes((node) =>
+            updateFlowNodeDataInternal(node, { glslError: false })
           );
 
           clearNodeErrors();
@@ -549,12 +536,21 @@ const Editor = ({
           setGuiError(error.message);
 
           // Same comment as above
-          setNodes(initialElements.nodes);
-          setEdges(initialElements.edges);
+          setFlowNodes(initialElements.nodes);
+          setFlowEdges(initialElements.edges);
         }
       }, 0);
     },
-    [compile, engine, setNodes, setEdges, setNodeErrors, clearNodeErrors]
+    [
+      compile,
+      engine,
+      setFlowNodes,
+      setFlowEdges,
+      setNodeErrors,
+      clearNodeErrors,
+      updateAllFlowNodes,
+      updateFlowNodeData,
+    ]
   );
 
   // Once we receive a new engine context, re-initialize the graph. This method
@@ -602,7 +598,7 @@ const Editor = ({
         return;
       }
 
-      updateFlowNode(nodeId, { value });
+      updateFlowNodeData(nodeId, { value });
       updateGraphNode(nodeId, { value });
 
       // Only recompile if a non-data-node value changes
@@ -614,19 +610,20 @@ const Editor = ({
       compileResult,
       debouncedSetNeedsCompile,
       updateGraphNode,
-      updateFlowNode,
+      updateFlowNodeData,
       graph.nodes,
     ]
   );
 
   const onInputBakedToggle = useCallback(
     (nodeId: string, inputId: string, baked: boolean) => {
-      setNodes((nodes) => updateFlowInput(nodes, nodeId, inputId, { baked }));
+      updateFlowInput(nodeId, inputId, { baked });
       // setFlowElements((fe) => updateFlowInput(fe, nodeId, inputId, { baked }));
-      setGraph((graph) => updateGraphInput(graph, nodeId, inputId, { baked }));
+      // setGraph((graph) => updateGraphNodeInputInternal(graph, nodeId, inputId, { baked }));
+      updateGraphNodeInput(nodeId, inputId, { baked });
       debouncedSetNeedsCompile(true);
     },
-    [setGraph, setNodes, debouncedSetNeedsCompile]
+    [updateGraphNodeInput, updateFlowInput, debouncedSetNeedsCompile]
   );
 
   /**
@@ -654,7 +651,7 @@ const Editor = ({
   const syncSceneSize = useThrottle(() => {
     if (sceneWrapRef.current) {
       const { width, height } = sceneWrapRef.current.getBoundingClientRect();
-      setUi({ sceneWidth: width, sceneHeight: height });
+      setSceneDimensions({ width: width, height: height });
     }
   }, 100);
 
@@ -673,7 +670,7 @@ const Editor = ({
    */
 
   const addConnection = useCallback(
-    (newEdge: ReactFlowEdge | Connection) => {
+    (newEdge: XyFlowEdge | Connection) => {
       const newEdgeId = makeId();
       const sourceId = ensure(newEdge.source);
       const targetId = ensure(newEdge.target);
@@ -703,17 +700,25 @@ const Editor = ({
           type,
         };
 
-        return updateGraphInput(
-          addGraphEdge(graph, addedEdge),
-          targetId,
-          targetHandleId,
-          // Here's the "auto-baking"
-          input.bakeable
-            ? {
-                baked: isCode,
-              }
-            : {}
-        );
+        const updatedGraph = addGraphEdge(graph, addedEdge);
+
+        return {
+          ...updatedGraph,
+          nodes: updatedGraph.nodes.map((node) =>
+            node.id === targetId
+              ? updateGraphNodeInputInternal(
+                  node,
+                  targetHandleId,
+                  // Here's the "auto-baking"
+                  input.bakeable
+                    ? {
+                        baked: isCode,
+                      }
+                    : {}
+                )
+              : node
+          ),
+        };
       });
 
       // Duplicates above core graph logic. Another option is to map the result
@@ -748,16 +753,21 @@ const Editor = ({
         { nodes: flowNodes, edges: flowEdges },
         addedEdge
       );
-      const nodesWithInput = updateFlowInput(
-        nodes,
-        sourceId,
-        targetHandleId,
-        input.bakeable
-          ? {
-              baked: isCode,
-            }
-          : {}
+      const nodesWithInput = nodes.map((node) =>
+        node.id === sourceId
+          ? updateFlowInputInternal(node, targetHandleId, { baked: isCode })
+          : node
       );
+      // updateFlowInput(
+      //   nodes,
+      //   sourceId,
+      //   targetHandleId,
+      //   input.bakeable
+      //     ? {
+      //         baked: isCode,
+      //       }
+      //     : {}
+      // );
 
       // React-flow updates the edges, calls the onEdgeUpdate callback, which
       // calls this function, which then again updates the edges. I *think* this
@@ -765,23 +775,25 @@ const Editor = ({
       // might be better to move this logic into onEdgesChange, like how
       // onNodesChange blocks the output nodes from being deleted, since this is
       // specific interception logic on top of adding a new graph edge.
-      setNodes(nodesWithInput);
-      setEdges(edges);
+      setFlowNodes(nodesWithInput);
+      setFlowEdges(edges);
 
       setNeedsCompile(true);
     },
-    [getNode, setNodes, setEdges, flowNodes, flowEdges, setGraph]
+    // This nonsense function uses setGraph with an updater, but takes in
+    // flowEdges and flowNdoes as a dependency
+    [getNode, setFlowNodes, setFlowEdges, flowNodes, flowEdges, setGraph]
   );
 
   // This is the Flow callback that calls our custom connection handler when a
   // new edge is dragged between inputs/outputs
   const onConnect = useCallback(
-    (edge: ReactFlowEdge | Connection) => addConnection(edge),
+    (edge: XyFlowEdge | Connection) => addConnection(edge),
     [addConnection]
   );
 
   const onEdgeUpdate = useCallback(
-    (oldEdge: ReactFlowEdge, newConnection: Connection) => {
+    (oldEdge: XyFlowEdge, newConnection: Connection) => {
       edgeUpdateSuccessful.current = true;
       addConnection(newConnection);
     },
@@ -795,7 +807,7 @@ const Editor = ({
    *
    * This strategy to is taken from https://github.com/xyflow/xyflow/issues/3092
    */
-  const onNodesChange = useCallback(
+  const onNodesChangeIntercept = useCallback(
     (changes: NodeChange[]) => {
       // Prevent deleting of output nodes
       const nextChanges = changes.reduce<NodeChange[]>((acc, change) => {
@@ -810,9 +822,9 @@ const Editor = ({
         return [...acc, change];
       }, []);
 
-      applyNodeChanges(nextChanges);
+      onNodesChange(nextChanges);
     },
-    [getNode, applyNodeChanges]
+    [getNode, onNodesChange]
   );
 
   const openNodeEditor = useCallback(
@@ -827,7 +839,7 @@ const Editor = ({
   );
 
   const onNodeDoubleClick = useCallback(
-    (event, flowNode: FlowNode) => {
+    (event, flowNode: XyFlowNode) => {
       const node = graph.nodes.find((n) => n.id === flowNode.id) as SourceNode;
 
       addSelectedNodes([node.id]);
@@ -864,7 +876,7 @@ const Editor = ({
 
   const setValidHandleTargets = useCallback(
     (nodeId: string, handleType: string) => {
-      setNodes((nodes) => {
+      setFlowNodes((nodes) => {
         const source = graph.nodes.find(({ id }) => id === nodeId) as GraphNode;
         return nodes.map((n) => {
           const node = n as FlowNode;
@@ -878,7 +890,7 @@ const Editor = ({
           ) {
             return node;
           }
-          return updateFlowNodeData(node, {
+          return updateFlowNodeDataInternal(node, {
             inputs: node.data.inputs.map((input) => ({
               ...input,
               validTarget: handleType === 'source',
@@ -891,13 +903,13 @@ const Editor = ({
         });
       });
     },
-    [setNodes, graph]
+    [setFlowNodes, graph]
   );
 
   const resetTargets = useCallback(() => {
-    setNodes((nodes) =>
+    setFlowNodes((nodes) =>
       (nodes as FlowNode[]).map((node) =>
-        updateFlowNodeData(node, {
+        updateFlowNodeDataInternal(node, {
           inputs: node.data.inputs.map((input) => ({
             ...input,
             validTarget: false,
@@ -909,12 +921,12 @@ const Editor = ({
         })
       )
     );
-  }, [setNodes]);
+  }, [setFlowNodes]);
 
   // Used for deleting edge on drag off
   const edgeUpdateSuccessful = useRef(true);
 
-  const onEdgeUpdateStart = useCallback(
+  const onReconnectStart = useCallback(
     (event: any, edge: any) => {
       edgeUpdateSuccessful.current = false;
 
@@ -935,8 +947,8 @@ const Editor = ({
   /**
    * Called when dragging from any handle, input and output
    */
-  const onConnectStart = useCallback(
-    (_: React.MouseEvent | React.TouchEvent, params: OnConnectStartParams) => {
+  const onConnectStart = useCallback<OnConnectStart>(
+    (_, params) => {
       const { nodeId, handleType, handleId } = params;
       if (!nodeId || !handleType) {
         return;
@@ -957,7 +969,7 @@ const Editor = ({
   /**
    * Called after edge drag finishes, for succssful and unsuccessfull connections
    */
-  const onEdgeUpdateEnd = useCallback(
+  const onReconnectEnd = useCallback(
     (_, edge) => {
       resetTargets();
 
@@ -968,12 +980,12 @@ const Editor = ({
           nodes: flowNodes,
           edges: flowEdges.filter((e) => e.id !== edge.id),
         });
-        setNodes(nodes);
-        setEdges(edges);
+        setFlowNodes(nodes);
+        setFlowEdges(edges);
       }
       edgeUpdateSuccessful.current = true;
     },
-    [resetTargets, setNodes, setEdges, flowNodes, flowEdges]
+    [resetTargets, setFlowNodes, setFlowEdges, flowNodes, flowEdges]
   );
 
   const addNodeAtPosition = useCallback(
@@ -1013,11 +1025,12 @@ const Editor = ({
         );
       }
 
-      setEdges((edges) => [
+      setFlowEdges((edges) => [
         ...edges,
         ...expanded!.edges.map(graphEdgeToFlowEdge),
       ]);
-      setNodes((nodes) => [
+
+      setFlowNodes((nodes) => [
         ...nodes,
         ...expanded!.nodes.map((newGn, index) =>
           graphNodeToFlowNode(
@@ -1065,8 +1078,8 @@ const Editor = ({
       debouncedSetNeedsCompile,
       engine,
       ctx,
-      setEdges,
-      setNodes,
+      setFlowEdges,
+      setFlowNodes,
       setGraph,
     ]
   );
@@ -1140,11 +1153,7 @@ const Editor = ({
   /**
    * Copy node positions from the flow graph into the domain graph on node move
    */
-  const onNodeDragStop = (
-    event: React.MouseEvent,
-    node: FlowNode,
-    nodes: FlowNode[]
-  ) => {
+  const onNodeDragStop: OnNodeDrag = (event, node, nodes) => {
     setGraph((graph) => ({
       ...graph,
       nodes: graph.nodes.map((n) =>
@@ -1343,8 +1352,8 @@ const Editor = ({
 
     const newFlowGraph = graphToFlowGraph(newGraph);
 
-    setNodes(newFlowGraph.nodes);
-    setEdges(newFlowGraph.edges);
+    setFlowNodes(newFlowGraph.nodes);
+    setFlowEdges(newFlowGraph.edges);
     setGraph(newGraph);
 
     if (incomingOutFragNode) {
@@ -1397,14 +1406,14 @@ const Editor = ({
   const previousMenu = usePrevious(menu);
   useEffect(() => {
     if (!menu && previousMenu) {
-      setNodes((nodes) =>
-        nodes.map((node) => updateFlowNodeData(node, { ghost: false }))
+      updateAllFlowNodes((node) =>
+        updateFlowNodeDataInternal(node, { ghost: false })
       );
-      setEdges((edges) =>
+      setFlowEdges((edges) =>
         edges.map((edge) => updateFlowEdgeData(edge, { ghost: false }))
       );
     }
-  }, [setNodes, setEdges, previousMenu, menu]);
+  }, [setFlowNodes, setFlowEdges, previousMenu, menu, updateAllFlowNodes]);
 
   const onNodeContextSelect = useCallback(
     (nodeId: string, type: string) => {
@@ -1421,9 +1430,15 @@ const Editor = ({
           addEditorTab(currentNode.id, 'code');
           setEditorTabIndex(1);
         }
+      } else if (type === NodeContextActions.EDIT_CONFIG) {
+        addSelectedNodes([currentNode.id]);
+        setPrimarySelectedNodeId(currentNode.id);
+
+        addEditorTab(currentNode.id, 'config');
+        setEditorTabIndex(1);
       } else if (type === NodeContextActions.DELETE_NODE_ONLY) {
-        setNodes((nodes) => nodes.filter((node) => node.id !== nodeId));
-        setEdges((edges) =>
+        setFlowNodes((nodes) => nodes.filter((node) => node.id !== nodeId));
+        setFlowEdges((edges) =>
           edges.filter(
             (edge) => edge.source !== nodeId && edge.target !== nodeId
           )
@@ -1438,8 +1453,12 @@ const Editor = ({
         debouncedSetNeedsCompile(true);
       } else if (type === NodeContextActions.DELETE_FULL_NODE_TREE) {
         const { edgesById, nodesById } = findNodeTree(graph, currentNode);
-        setNodes((nodes) => nodes.filter((node) => !nodesById.has(node.id)));
-        setEdges((edges) => edges.filter((edge) => !edgesById.has(edge.id)));
+        setFlowNodes((nodes) =>
+          nodes.filter((node) => !nodesById.has(node.id))
+        );
+        setFlowEdges((edges) =>
+          edges.filter((edge) => !edgesById.has(edge.id))
+        );
         setGraph((graph) => ({
           ...graph,
           nodes: graph.nodes.filter((node) => !nodesById.has(node.id)),
@@ -1448,8 +1467,12 @@ const Editor = ({
         debouncedSetNeedsCompile(true);
       } else if (type === NodeContextActions.DELETE_NODE_AND_DEPENDENCIES) {
         const { edgesById, nodesById } = findNodeAndData(graph, currentNode);
-        setNodes((nodes) => nodes.filter((node) => !nodesById.has(node.id)));
-        setEdges((edges) => edges.filter((edge) => !edgesById.has(edge.id)));
+        setFlowNodes((nodes) =>
+          nodes.filter((node) => !nodesById.has(node.id))
+        );
+        setFlowEdges((edges) =>
+          edges.filter((edge) => !edgesById.has(edge.id))
+        );
         setGraph((graph) => ({
           ...graph,
           nodes: graph.nodes.filter((node) => !nodesById.has(node.id)),
@@ -1462,8 +1485,8 @@ const Editor = ({
     [
       graph,
       setGraph,
-      setEdges,
-      setNodes,
+      setFlowEdges,
+      setFlowNodes,
       addSelectedNodes,
       setEditorTabIndex,
       hideMenu,
@@ -1483,12 +1506,10 @@ const Editor = ({
         (n) => n.id === nodeId
       ) as SourceNode;
       if (type === NodeContextActions.DELETE_NODE_ONLY) {
-        setNodes((nodes) =>
-          nodes.map((node) =>
-            updateFlowNodeData(node, { ghost: node.id === nodeId })
-          )
+        updateAllFlowNodes((node) =>
+          updateFlowNodeDataInternal(node, { ghost: node.id === nodeId })
         );
-        setEdges((edges) =>
+        setFlowEdges((edges) =>
           edges.map((edge) =>
             updateFlowEdgeData(edge, {
               ghost: edge.source === nodeId || edge.target === nodeId,
@@ -1497,38 +1518,40 @@ const Editor = ({
         );
       } else if (type === NodeContextActions.DELETE_FULL_NODE_TREE) {
         const { edgesById, nodesById } = findNodeTree(graph, currentNode);
-        setNodes((nodes) =>
+        setFlowNodes((nodes) =>
           nodes.map((node) =>
-            updateFlowNodeData(node, { ghost: nodesById.has(node.id) })
+            updateFlowNodeDataInternal(node, { ghost: nodesById.has(node.id) })
           )
         );
-        setEdges((edges) =>
+        setFlowEdges((edges) =>
           edges.map((edge) =>
             updateFlowEdgeData(edge, { ghost: edgesById.has(edge.id) })
           )
         );
       } else if (type === NodeContextActions.DELETE_NODE_AND_DEPENDENCIES) {
         const { edgesById, nodesById } = findNodeAndData(graph, currentNode);
-        setNodes((nodes) =>
+        setFlowNodes((nodes) =>
           nodes.map((node) =>
-            updateFlowNodeData(node, { ghost: nodesById.has(node.id) })
+            updateFlowNodeDataInternal(node, { ghost: nodesById.has(node.id) })
           )
         );
-        setEdges((edges) =>
+        setFlowEdges((edges) =>
           edges.map((edge) =>
             updateFlowEdgeData(edge, { ghost: edgesById.has(edge.id) })
           )
         );
       } else {
-        setNodes((nodes) =>
-          nodes.map((node) => updateFlowNodeData(node, { ghost: false }))
+        setFlowNodes((nodes) =>
+          nodes.map((node) =>
+            updateFlowNodeDataInternal(node, { ghost: false })
+          )
         );
-        setEdges((edges) =>
+        setFlowEdges((edges) =>
           edges.map((edge) => updateFlowEdgeData(edge, { ghost: false }))
         );
       }
     },
-    [compiling, graph, setNodes, setEdges]
+    [compiling, graph, setFlowNodes, setFlowEdges, updateAllFlowNodes]
   );
 
   // const onNodeContextClose = useCallback(() => {
@@ -1577,7 +1600,7 @@ const Editor = ({
   // Callback to inform of which edges were deleted. This does NOT need to
   // modify react flow nodes
   const onEdgesDelete = useCallback(
-    (edges: ReactFlowEdge[]) => {
+    (edges: XyFlowEdge[]) => {
       const ids = new Set(edges.map((e) => e.id));
       setGraph((graph) => ({
         ...graph,
@@ -1592,7 +1615,7 @@ const Editor = ({
   // edges in the flow and core graph. This does NOT need to modify flow nodes,
   // this
   const onNodesDelete = useCallback(
-    (nodes: FlowNode[]) => {
+    (nodes: XyFlowNode[]) => {
       const graphNode = graph.nodes.find(
         (node) => node.id === nodes[0].id
       ) as GraphNode;
@@ -1602,10 +1625,10 @@ const Editor = ({
 
       // Update the flow graph to delete extra nodes and edges, since this
       // callback is only for a single node.
-      setNodes((nodes) =>
+      setFlowNodes((nodes) =>
         nodes.filter((node) => !nodesToRemoveById.has(node.id))
       );
-      setEdges((edges) =>
+      setFlowEdges((edges) =>
         edges.filter((edge) => !edgesToRemoveById.has(edge.id))
       );
 
@@ -1615,23 +1638,24 @@ const Editor = ({
         edges: graph.edges.filter((edge) => !edgesToRemoveById.has(edge.id)),
       }));
     },
-    [graph, setGraph, setEdges, setNodes]
+    [graph, setGraph, setFlowEdges, setFlowNodes]
   );
 
   const getClosestNodeToPosition = useCallback(
     (xy: XYPosition) => {
       const MIN_DISTANCE = 150;
 
-      const { nodeInternals } = flowStore.getState();
-      const storeNodes = Array.from(nodeInternals.values());
+      const { nodeLookup } = xyFlowStore.getState();
+      const storeNodes = Array.from(nodeLookup.values());
 
       const closestNode = storeNodes.reduce<{
         distance: number;
-        node: FlowNode | null;
+        node: InternalNode | null;
       }>(
         (res, n) => {
-          const dx = n.positionAbsolute!.x + n.width! / 2 - xy.x;
-          const dy = n.positionAbsolute!.y + n.height! / 2 - xy.y;
+          // TODO: position below used to be "absolutePosition".
+          const dx = n.position!.x + n.width! / 2 - xy.x;
+          const dy = n.position!.y + n.height! / 2 - xy.y;
           const d = Math.sqrt(dx * dx + dy * dy);
 
           if (d < res.distance && d < MIN_DISTANCE) {
@@ -1649,7 +1673,7 @@ const Editor = ({
 
       return closestNode.node;
     },
-    [flowStore]
+    [xyFlowStore]
   );
 
   const [activeShader, setActiveShader] = useState<Shader | null>(null);
@@ -1680,8 +1704,8 @@ const Editor = ({
     }
     setActiveShader(null);
     setReplacingNode(null);
-    setNodes((nodes) =>
-      nodes.map((node) => updateFlowNodeData(node, { ghost: false }))
+    updateAllFlowNodes((node) =>
+      updateFlowNodeDataInternal(node, { ghost: false })
     );
     if (!event.over) {
       return;
@@ -1755,8 +1779,8 @@ const Editor = ({
 
       const newFlowGraph = graphToFlowGraph(newGraph);
 
-      setNodes(newFlowGraph.nodes);
-      setEdges(newFlowGraph.edges);
+      setFlowNodes(newFlowGraph.nodes);
+      setFlowEdges(newFlowGraph.edges);
       setGraph(newGraph);
 
       debouncedSetNeedsCompile(true);
@@ -1773,13 +1797,20 @@ const Editor = ({
       return;
     }
     if (mouseRef.current) {
-      const closestNode = getClosestNodeToPosition(mouseRef.current.projected);
-      setNodes((nodes) =>
+      const closestNodeId = getClosestNodeToPosition(
+        mouseRef.current.projected
+      )?.id;
+      setFlowNodes((nodes) =>
         nodes.map((node) =>
-          updateFlowNodeData(node, { ghost: closestNode?.id === node.id })
+          updateFlowNodeDataInternal(node, {
+            ghost: closestNodeId === node.id,
+          })
         )
       );
-      setReplacingNode(closestNode);
+      const closestNode = flowNodes.find((n) => n.id === closestNodeId);
+      if (closestNode) {
+        setReplacingNode(closestNode);
+      }
     }
   };
 
@@ -1799,10 +1830,10 @@ const Editor = ({
     const payload = {
       // TODO CONVERT OR THROW
       engine: engine.name as 'three',
-      name: shader?.name,
+      name: shader.name,
       tags: [],
-      description: shader?.description,
-      visibility: shader?.visibility || 1,
+      description: shader.description,
+      visibility: shader.visibility || 1,
       imageData: screenshotData,
       config: {
         graph: updateGraphFromFlowGraph(graph, {
@@ -1813,7 +1844,7 @@ const Editor = ({
       },
     };
 
-    if (shader?.id && onUpdateShader && isOwnShader && !btnFork) {
+    if (shader.id && onUpdateShader && isOwnShader && !btnFork) {
       await onUpdateShader({
         id: shader.id,
         ...payload,
@@ -1998,6 +2029,7 @@ const Editor = ({
                         updateGraphNode(primarySelectedNode.id, change);
                         if ('name' in change) {
                           updateFlowNode(primarySelectedNode.id, {
+                            // @ts-ignore
                             label: change.name,
                           });
                         } else {
@@ -2018,16 +2050,16 @@ const Editor = ({
                   nodes={flowNodes}
                   edges={flowEdges}
                   onConnect={onConnect}
-                  onEdgeUpdate={onEdgeUpdate}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={applyEdgeChanges}
+                  onReconnect={onEdgeUpdate}
+                  onNodesChange={onNodesChangeIntercept}
+                  onEdgesChange={onEdgesChange}
                   onNodesDelete={onNodesDelete}
                   onNodeDoubleClick={onNodeDoubleClick}
                   onSelectionChange={onSelectionChange}
                   onEdgesDelete={onEdgesDelete}
                   onConnectStart={onConnectStart}
-                  onEdgeUpdateStart={onEdgeUpdateStart}
-                  onEdgeUpdateEnd={onEdgeUpdateEnd}
+                  onReconnectStart={onReconnectStart}
+                  onReconnectEnd={onReconnectEnd}
                   onConnectEnd={onConnectEnd}
                   onNodeDragStop={onNodeDragStop}
                 />
@@ -2070,8 +2102,8 @@ const Editor = ({
               onGraphChange={() => {
                 setGraph(graph);
                 const updated = graphToFlowGraph(graph);
-                setNodes(updated.nodes);
-                setEdges(updated.edges);
+                setFlowNodes(updated.nodes);
+                setFlowEdges(updated.edges);
               }}
               setFragmentOverride={(value) => {
                 debouncedSetFragmentOverride(value);
@@ -2110,8 +2142,8 @@ const Editor = ({
           compile={childCompile}
           compileResult={compileResult}
           setGlResult={setGlResult}
-          width={ui.sceneWidth}
-          height={ui.sceneHeight}
+          width={sceneConfig.width}
+          height={sceneConfig.height}
           assetPrefix={assetPrefix}
           takeScreenshotRef={takeScreenshotRef}
         />
@@ -2146,8 +2178,8 @@ const Editor = ({
 
                 const newFlowGraph = graphToFlowGraph(newGraph);
 
-                setNodes(newFlowGraph.nodes);
-                setEdges(newFlowGraph.edges);
+                setFlowNodes(newFlowGraph.nodes);
+                setFlowEdges(newFlowGraph.edges);
                 setGraph(newGraph);
 
                 setShowImport(false);
@@ -2158,11 +2190,6 @@ const Editor = ({
         {isMetadataOpen ? (
           <Modal onClose={() => setMetadataOpen(false)}>
             <MetadataEditor
-              shader={shader}
-              graph={graph}
-              setGraph={setGraph}
-              flowNodes={flowNodes}
-              setShader={setShader}
               isOwnShader={isOwnShader}
               isDeleting={isDeleting}
               onDeleteShader={onDeleteShader}
@@ -2209,6 +2236,8 @@ const Editor = ({
 };
 
 const EditorWithProviders = (props: EditorProps & EngineProps) => {
+  const { exampleShader, example, examples, makeExampleGraph } = props;
+
   // For dragging shaders into the graph, make sure the mouse has to travel,
   // to avoid clicking on a siderbar shader causing a drag state
   const mouseSensor = useSensor(MouseSensor, {
@@ -2218,14 +2247,73 @@ const EditorWithProviders = (props: EditorProps & EngineProps) => {
   });
   const sensors = useSensors(mouseSensor);
 
+  const defaultShader = useMemo(
+    () => ({
+      user: {
+        name: 'Fake User',
+        isPro: false,
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      engine: props.engine.name as 'three',
+      name: randomShaderName(),
+      visibility: 0,
+      imageData: '',
+      tags: [],
+      config: {
+        graph: {
+          nodes: [],
+          edges: [],
+        },
+        scene: {
+          bg: '',
+          lights: 'point',
+          previewObject: 'sphere',
+        },
+      },
+    }),
+    [props.engine]
+  );
+
+  // TODO cehck for bugs in changing shader id in URL - since the previous logic
+  // of
+  /**
+   * 
+  if (initialShader && shader?.id && initialShader?.id !== shader?.id) {
+    setShader(initialShader);
+  }
+   */
+  // is not here
+  const shader = props.shader || defaultShader;
+
+  const [initialGraph, initialSceneConfig, initialExample] = useMemo(() => {
+    if (exampleShader) {
+      return [exampleShader.config.graph, exampleShader.config.scene];
+    }
+    const query = new URLSearchParams(window.location.search);
+    const exampleGraph = query.get('example') || example;
+    if (shader) {
+      return [shader.config.graph, shader.config.scene];
+    }
+    // @ts-ignore
+    const [graph, sceneConfig] = makeExampleGraph(exampleGraph);
+    return [expandUniformDataNodes(graph), sceneConfig, exampleGraph];
+  }, [makeExampleGraph, example, shader, exampleShader]);
+
   return (
-    <DndContext sensors={sensors}>
-      <ReactFlowProvider>
-        <Hoisty>
-          <Editor {...props} />
-        </Hoisty>
-      </ReactFlowProvider>
-    </DndContext>
+    <EditorProvider
+      shader={shader}
+      graph={initialGraph}
+      sceneConfig={initialSceneConfig}
+    >
+      <DndContext sensors={sensors}>
+        <ReactFlowProvider>
+          <Hoisty>
+            <Editor {...props} />
+          </Hoisty>
+        </ReactFlowProvider>
+      </DndContext>
+    </EditorProvider>
   );
 };
 

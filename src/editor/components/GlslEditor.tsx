@@ -27,7 +27,7 @@ import {
   useEditorStore,
   useGlslEditorTabIndex,
   useIsNodeIdOpen,
-} from './flow/useEditorStore';
+} from './flow/editor-store';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChevronRight,
@@ -232,7 +232,7 @@ const GlslEditor = ({
     nodeErrors,
     removeEditorTabPaneId,
     compileInfo,
-    ui,
+    sceneDimensions: ui,
   } = useEditorStore();
 
   const codeEditorTabIndex = useGlslEditorTabIndex();

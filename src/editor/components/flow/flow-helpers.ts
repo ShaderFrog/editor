@@ -1,5 +1,11 @@
 import groupBy from 'lodash.groupby';
 import {
+  Node as XyFlowNode,
+  Edge as XYFlowEdge,
+  XYPosition,
+} from '@xyflow/react';
+
+import {
   isSourceNode,
   findNode,
   Graph,
@@ -12,7 +18,6 @@ import {
   Edge as GraphEdge,
   EdgeLink,
 } from '@core/graph';
-import { Node as ReactFlowNode, Edge as FlowEdge, XYPosition } from 'reactflow';
 import { FlowEdgeData } from './FlowEdge';
 import {
   FlowNodeData,
@@ -23,9 +28,9 @@ import {
 } from './FlowNode';
 import { SHADERFROG_FLOW_EDGE_TYPE } from './FlowEditor';
 
-export type FlowElement = ReactFlowNode<FlowNodeData> | FlowEdge<FlowEdgeData>;
-export type FlowEdgeOrLink = FlowEdge<FlowEdgeData>;
-export type FlowNode = ReactFlowNode<FlowNodeData>;
+export type FlowElement = XyFlowNode<FlowNodeData> | XYFlowEdge<FlowEdgeData>;
+export type FlowEdgeOrLink = XYFlowEdge<FlowEdgeData>;
+export type FlowNode = XyFlowNode<FlowNodeData>;
 export type FlowElements = {
   nodes: FlowNode[];
   edges: FlowEdgeOrLink[];
@@ -35,7 +40,7 @@ export type FlowElements = {
 // the nodes that feed into this one, until we find one that has a stage set
 export const findInputStage = (
   ids: Record<string, FlowNode>,
-  edgesByTarget: Record<string, FlowEdge<FlowEdgeData>[]>,
+  edgesByTarget: Record<string, XYFlowEdge<FlowEdgeData>[]>,
   node: FlowNode
 ): ShaderStage | undefined => {
   let nodeData = node.data as FlowNodeSourceData;
@@ -78,7 +83,7 @@ export const setFlowNodeCategories = (
 // we connect edges in the graph, update it to figure out which stage we should
 // set the add node to based on inputs to the node.
 export const setFlowNodeStages = (flowElements: FlowElements): FlowElements => {
-  const targets = flowElements.edges.reduce<Record<string, FlowEdge[]>>(
+  const targets = flowElements.edges.reduce<Record<string, XYFlowEdge[]>>(
     (acc, edge) => ({
       ...acc,
       [edge.target]: [...(acc[edge.target] || []), edge],
@@ -174,7 +179,7 @@ export const graphNodeToFlowNode = (
 };
 
 export const flowEdgeToGraphEdge = (
-  edge: FlowEdge<FlowEdgeData>
+  edge: XYFlowEdge<FlowEdgeData>
 ): GraphEdge => ({
   id: edge.id,
   from: edge.source,
@@ -186,7 +191,7 @@ export const flowEdgeToGraphEdge = (
 
 export const graphEdgeToFlowEdge = (
   edge: GraphEdge
-): FlowEdge<FlowEdgeData> => ({
+): XYFlowEdge<FlowEdgeData> => ({
   id: edge.id,
   source: edge.from,
   sourceHandle: edge.output,
@@ -199,27 +204,19 @@ export const graphEdgeToFlowEdge = (
   type: SHADERFROG_FLOW_EDGE_TYPE,
 });
 
-export const updateGraphInput = (
-  graph: Graph,
-  nodeId: string,
+export const updateGraphNodeInput = <T extends GraphNode>(
+  node: T,
   inputId: string,
   data: Partial<NodeInput>
-): Graph => ({
-  ...graph,
-  nodes: graph.nodes.map((node) =>
-    node.id === nodeId
+): T => ({
+  ...node,
+  inputs: node.inputs.map((input) =>
+    input.id === inputId
       ? {
-          ...node,
-          inputs: node.inputs.map((input) =>
-            input.id === inputId
-              ? {
-                  ...input,
-                  ...data,
-                }
-              : input
-          ),
+          ...input,
+          ...data,
         }
-      : node
+      : input
   ),
 });
 
@@ -241,9 +238,9 @@ export const updateGraphNode = (
 });
 
 export const updateFlowEdgeData = (
-  edge: FlowEdge<FlowEdgeData>,
+  edge: XYFlowEdge<FlowEdgeData>,
   data: Partial<FlowEdgeData>
-): FlowEdge<FlowEdgeData> => ({
+): XYFlowEdge<FlowEdgeData> => ({
   ...edge,
   data: {
     ...edge.data,
@@ -272,7 +269,7 @@ export const updateFlowNodesData = (
   );
 
 export const updateFlowNodeConfig = (
-  node: ReactFlowNode<FlowNodeDataData>,
+  node: XyFlowNode<FlowNodeDataData>,
   config: Record<string, any>
 ): FlowNode => ({
   ...node,
@@ -292,34 +289,28 @@ export const updateFlowNodesConfig = (
 ): FlowNode[] =>
   nodes.map((node) =>
     node.id === nodeId
-      ? updateFlowNodeConfig(node as ReactFlowNode<FlowNodeDataData>, config)
+      ? updateFlowNodeConfig(node as XyFlowNode<FlowNodeDataData>, config)
       : node
   );
 
-export const updateFlowInput = (
-  nodes: FlowNode[],
-  nodeId: string,
+export const updateFlowNodeInput = (
+  node: FlowNode,
   inputId: string,
   data: Partial<InputNodeHandle>
-): FlowNode[] =>
-  nodes.map((node) =>
-    node.id === nodeId
-      ? {
-          ...node,
-          data: {
-            ...node.data,
-            inputs: node.data.inputs.map((input) =>
-              input.id === inputId
-                ? {
-                    ...input,
-                    ...data,
-                  }
-                : input
-            ),
-          },
-        }
-      : node
-  );
+): FlowNode => ({
+  ...node,
+  data: {
+    ...node.data,
+    inputs: node.data.inputs.map((input) =>
+      input.id === inputId
+        ? {
+            ...input,
+            ...data,
+          }
+        : input
+    ),
+  },
+});
 
 export const addGraphEdge = (graph: Graph, newEdge: GraphEdge): Graph => {
   const updatedEdges = graph.edges.filter(
@@ -340,7 +331,7 @@ export const addGraphEdge = (graph: Graph, newEdge: GraphEdge): Graph => {
 
 export const addFlowEdge = (
   flowElements: FlowElements,
-  newEdge: FlowEdge
+  newEdge: XYFlowEdge
 ): FlowElements => {
   const updatedEdges = flowElements.edges.filter(
     (element) =>

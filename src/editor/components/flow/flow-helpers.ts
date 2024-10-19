@@ -28,13 +28,29 @@ import {
 } from './FlowNode';
 import { SHADERFROG_FLOW_EDGE_TYPE } from './FlowEditor';
 
-export type FlowElement = XyFlowNode<FlowNodeData> | XYFlowEdge<FlowEdgeData>;
 export type FlowEdgeOrLink = XYFlowEdge<FlowEdgeData>;
-export type FlowNode = XyFlowNode<FlowNodeData>;
+
+export type FlowSourceNode = XyFlowNode<FlowNodeSourceData>;
+export type FlowDataNode = XyFlowNode<FlowNodeDataData>;
+
+export type FlowNode = FlowSourceNode | FlowDataNode;
+
+// export type FlowNode<T extends Record<string, unknown> = FlowNodeData> =
+//   XyFlowNode<T, 'number'>;
+// export type FlowNode = XyFlowNode<FlowNodeData>;
+
+export type FlowElement = FlowNode | FlowEdgeOrLink;
+
 export type FlowElements = {
   nodes: FlowNode[];
   edges: FlowEdgeOrLink[];
 };
+
+export const isFlowSourceNode = (node: FlowNode): node is FlowSourceNode =>
+  'stage' in node.data;
+
+export const isFlowDataNode = (node: FlowNode): node is FlowDataNode =>
+  'value' in node.data;
 
 // Determine the stage of a node (vertex/fragment) by recursively looking at
 // the nodes that feed into this one, until we find one that has a stage set
@@ -67,10 +83,11 @@ export const setFlowNodeCategories = (
   ...flowElements,
   nodes: flowElements.nodes.map((node) => {
     if (node.id in dataNodes) {
+      const n = node as FlowDataNode;
       return {
-        ...node,
+        ...n,
         data: {
-          ...node.data,
+          ...n.data,
           category: 'code',
         },
       };
@@ -153,29 +170,34 @@ export const graphNodeToFlowNode = (
   node: GraphNode,
   position: XYPosition
 ): FlowNode => {
-  const data: FlowNodeData = isSourceNode(node)
-    ? {
-        label: node.name,
-        stage: node.stage,
-        active: false,
-        biStage: node.biStage || false,
-        inputs: toFlowInputs(node),
-        outputs: node.outputs.map((o) => flowOutput(o.name, o.id)),
-      }
-    : {
-        label: node.name,
-        type: node.type,
-        value: node.value,
-        inputs: toFlowInputs(node),
-        outputs: node.outputs.map((o) => flowOutput(o.name, o.id)),
-        config: { ...node },
-      };
-  return {
+  const base = {
     id: node.id,
-    data,
     type: node.type,
     position,
   };
+  return isSourceNode(node)
+    ? {
+        ...base,
+        data: {
+          label: node.name,
+          stage: node.stage,
+          active: false,
+          biStage: node.biStage || false,
+          inputs: toFlowInputs(node),
+          outputs: node.outputs.map((o) => flowOutput(o.name, o.id)),
+        },
+      }
+    : {
+        ...base,
+        data: {
+          label: node.name,
+          dataType: node.type,
+          value: node.value,
+          inputs: toFlowInputs(node),
+          outputs: node.outputs.map((o) => flowOutput(o.name, o.id)),
+          config: { ...node },
+        },
+      };
 };
 
 export const flowEdgeToGraphEdge = (
@@ -226,25 +248,19 @@ export const updateGraphNode = (
   data: Partial<GraphNode>
 ): Graph => ({
   ...graph,
-  // @ts-ignore
   nodes: graph.nodes.map((node) => {
     if (node.id === nodeId) {
       const updated = { ...node, ...data };
-      return updated;
+      return updated as GraphNode;
     }
     return node;
-    // ? {
-    //     ...node,
-    //     ...data,
-    //   }
-    // : node
   }),
 });
 
 export const updateFlowEdgeData = (
-  edge: XYFlowEdge<FlowEdgeData>,
+  edge: FlowEdgeOrLink,
   data: Partial<FlowEdgeData>
-): XYFlowEdge<FlowEdgeData> => ({
+): FlowEdgeOrLink => ({
   ...edge,
   data: {
     ...edge.data,
@@ -252,10 +268,18 @@ export const updateFlowEdgeData = (
   },
 });
 
-export const updateFlowNodeData = (
-  node: FlowNode,
-  data: Partial<FlowNodeData>
-): FlowNode => ({
+export const updateFlowNode = <T extends FlowNode>(
+  node: T,
+  data: Partial<T>
+): T => ({
+  ...node,
+  ...data,
+});
+
+export const updateFlowNodeData = <T extends FlowNode>(
+  node: T,
+  data: Partial<T['data']>
+): T => ({
   ...node,
   data: {
     ...node.data,
@@ -264,18 +288,18 @@ export const updateFlowNodeData = (
 });
 
 export const updateFlowNodesData = (
-  nodes: FlowNode[],
+  nodes: FlowDataNode[],
   nodeId: string,
   data: Partial<FlowNodeData>
-): FlowNode[] =>
+): FlowDataNode[] =>
   nodes.map((node) =>
     node.id === nodeId ? updateFlowNodeData(node, data) : node
   );
 
 export const updateFlowNodeConfig = (
-  node: XyFlowNode<FlowNodeDataData>,
+  node: FlowDataNode,
   config: Record<string, any>
-): FlowNode => ({
+): FlowDataNode => ({
   ...node,
   data: {
     ...node.data,
@@ -287,21 +311,19 @@ export const updateFlowNodeConfig = (
 });
 
 export const updateFlowNodesConfig = (
-  nodes: FlowNode[],
+  nodes: FlowDataNode[],
   nodeId: string,
   config: Record<string, any>
-): FlowNode[] =>
+): FlowDataNode[] =>
   nodes.map((node) =>
-    node.id === nodeId
-      ? updateFlowNodeConfig(node as XyFlowNode<FlowNodeDataData>, config)
-      : node
+    node.id === nodeId ? updateFlowNodeConfig(node, config) : node
   );
 
-export const updateFlowNodeInput = (
-  node: FlowNode,
+export const updateFlowNodeInput = <T extends FlowNode>(
+  node: T,
   inputId: string,
   data: Partial<InputNodeHandle>
-): FlowNode => ({
+): T => ({
   ...node,
   data: {
     ...node.data,

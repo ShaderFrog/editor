@@ -1,16 +1,20 @@
 import React from 'react';
 import {
-  EdgeProps,
+  type EdgeProps,
   getBezierPath,
   getStraightPath,
   // getEdgeCenter,
   // getMarkerEnd,
 } from '@xyflow/react';
 import { EdgeLink, EdgeType } from '@core/graph';
+import { FlowEdgeOrLink } from './flow-helpers';
 
 export type LinkEdgeData = {
   type: 'link';
 };
+
+// Type 'FlowEdgeData' does not satisfy the constraint 'Edge<Record<string, unknown>, string | undefined>'.
+//   Type 'FlowEdgeData' is missing the following properties from type 'EdgeBase<Record<string, unknown>, string | undefined>': id, source, targetts(2344)
 
 export type FlowEdgeData = {
   type?: EdgeType;
@@ -36,7 +40,7 @@ export default function FlowEdge({
   data,
   style = {},
   markerEnd,
-}: EdgeProps<FlowEdgeData>) {
+}: EdgeProps<FlowEdgeOrLink>) {
   const isLink = data?.type === EdgeLink.NEXT_STAGE;
   const [edgePath] = (isLink ? getStraightPath : getBezierPath)({
     sourceX,

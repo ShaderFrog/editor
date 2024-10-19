@@ -32,6 +32,9 @@ import {
   updateFlowNodeData,
   updateGraphNode,
   updateGraphNodeInput,
+  updateFlowNode,
+  updateFlowNodeConfig,
+  isFlowDataNode,
 } from './flow-helpers';
 import { FlowNodeData, FlowNodeDataData, InputNodeHandle } from './FlowNode';
 import { Shader } from '@/editor/model';
@@ -254,7 +257,7 @@ const createEditorStore = (
     updateFlowNode: (nodeId, data) =>
       set(({ flowNodes }) => ({
         flowNodes: flowNodes.map((node) =>
-          node.id === nodeId ? { ...node, ...data } : node
+          node.id === nodeId ? updateFlowNode(node, data) : node
         ),
       })),
     updateFlowNodeData: (nodeId, data) =>
@@ -266,17 +269,8 @@ const createEditorStore = (
     updateFlowNodeConfig: (nodeId, config) =>
       set(({ flowNodes }) => ({
         flowNodes: flowNodes.map((node) =>
-          node.id === nodeId
-            ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  config: {
-                    ...(node as XYFlowNode<FlowNodeDataData>).data.config,
-                    ...config,
-                  },
-                },
-              }
+          node.id === nodeId && isFlowDataNode(node)
+            ? updateFlowNodeConfig(node, config)
             : node
         ),
       })),

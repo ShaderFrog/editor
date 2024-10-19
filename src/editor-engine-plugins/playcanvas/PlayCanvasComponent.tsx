@@ -615,7 +615,6 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
     if (!compileResult?.fragmentResult || !app?.graphicsDevice) {
       return;
     }
-    const { graph } = compileResult;
 
     const pbrName = `component_playcanvas_${id()}`;
     log('🛠 Re-creating Playcanvas material', {

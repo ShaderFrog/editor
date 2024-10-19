@@ -732,7 +732,7 @@ const Editor = ({
       const sourceFlowNode = ensure(getNode(newEdge.source!));
 
       // More icky business logic here...
-      const edgeType = (sourceFlowNode.data as FlowNodeDataData).type;
+      const edgeType = (sourceFlowNode.data as FlowNodeDataData).dataType;
       const type: EdgeType | undefined =
         (sourceFlowNode.data as FlowNodeSourceData).stage || edgeType;
       const isCode = sourceFlowNode.type === 'source';

@@ -1,11 +1,7 @@
-import React from 'react';
 import cx from 'classnames';
 
-import {
-  ConnectionLineComponentProps,
-  getBezierPath,
-  Position,
-} from '@xyflow/react';
+import { ConnectionLineComponentProps, getBezierPath } from '@xyflow/react';
+import { FlowSourceNode } from './flow-helpers';
 
 const ConnectionLine = ({
   fromX,
@@ -27,9 +23,10 @@ const ConnectionLine = ({
     targetY: toY,
     targetPosition: toPosition,
   });
+  const n = fromNode as unknown as FlowSourceNode;
 
   return (
-    <g className={cx('react-flow__edge animated', fromNode?.data?.stage)}>
+    <g className={cx('react-flow__edge animated', n?.data?.stage)}>
       <path className="react-flow__edge-path" d={edgePath} fillRule="evenodd" />
     </g>
   );

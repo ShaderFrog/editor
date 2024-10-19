@@ -10,6 +10,9 @@ import {
   XYPosition,
   ReactFlowProps,
   ReactFlowInstance,
+  type EdgeProps,
+  NodeTypes,
+  EdgeTypes,
 } from '@xyflow/react';
 
 import { NodeType, GraphDataType } from '@core/graph';
@@ -51,7 +54,7 @@ const flowStyles = { background: '#111' };
 
 const flowKey = (id: string | undefined) => `shaderflog_flow_${id}`;
 
-const nodeTypes: Record<NodeType | GraphDataType | EngineNodeType, any> = {
+const nodeTypes: NodeTypes = {
   toon: SourceNodeComponent,
   phong: SourceNodeComponent,
   physical: SourceNodeComponent,
@@ -84,9 +87,12 @@ const nodeTypes: Record<NodeType | GraphDataType | EngineNodeType, any> = {
 
 export const SHADERFROG_FLOW_EDGE_TYPE = 'special';
 
-const edgeTypes: Record<typeof SHADERFROG_FLOW_EDGE_TYPE, any> = {
+const edgeTypes = {
   [SHADERFROG_FLOW_EDGE_TYPE]: FlowEdgeComponent,
-};
+  // This is a whole nightmare, if you use the actual type of the eddgeTypes prop:
+  //    Record<typeof SHADERFROG_FLOW_EDGE_TYPE, React.ComponentType<EdgeProps>>
+  // Then it errors on component assignment. This satisfies seems to work.
+} satisfies EdgeTypes;
 
 export type MouseData = {
   real: XYPosition;

@@ -1,7 +1,15 @@
 import cx from 'classnames';
 import React, { useState } from 'react';
 
-import { AssignemntToStrategy, Strategy, StrategyType } from '@core/strategy';
+import {
+  AssignmentToStrategy,
+  DeclarationOfStrategy,
+  InjectStrategy,
+  NamedAttributeStrategy,
+  Strategy,
+  StrategyType,
+  UniformStrategy,
+} from '@core/strategy';
 import {
   SourceNode,
   SourceType,
@@ -14,13 +22,15 @@ import { useEditorStore } from './flow/editor-store';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircleXmark } from '@fortawesome/free-solid-svg-icons';
 
+type StrategyEditorProps<T extends { config: any } = any> = {
+  config: T['config'];
+  onChange: (config: T['config']) => void;
+};
+
 const AssignmentToStrategyEditor = ({
   config,
   onChange,
-}: {
-  config: AssignemntToStrategy['config'];
-  onChange: (config: AssignemntToStrategy['config']) => void;
-}) => {
+}: StrategyEditorProps<AssignmentToStrategy>) => {
   return (
     <div>
       <label>
@@ -48,25 +58,105 @@ const AssignmentToStrategyEditor = ({
   );
 };
 
+const DeclarationOfStrategyEditor = ({
+  config,
+  onChange,
+}: StrategyEditorProps<DeclarationOfStrategy>) => {
+  return (
+    <div>
+      <label>
+        Declaration Of
+        <input
+          className="textinput"
+          type="text"
+          value={config.declarationOf}
+          onChange={(e) =>
+            onChange({ ...config, declarationOf: e.target.value })
+          }
+        ></input>
+      </label>
+    </div>
+  );
+};
+
+const NamedAttributeStrategyEditor = ({
+  config,
+  onChange,
+}: StrategyEditorProps<NamedAttributeStrategy>) => {
+  return (
+    <div>
+      <label>
+        Attribute Name
+        <input
+          className="textinput"
+          type="text"
+          value={config.attributeName}
+          onChange={(e) =>
+            onChange({ ...config, attributeName: e.target.value })
+          }
+        ></input>
+      </label>
+    </div>
+  );
+};
+
+const InjectStrategyEditor = ({
+  config,
+  onChange,
+}: StrategyEditorProps<InjectStrategy>) => {
+  return (
+    <div>
+      <label>
+        Find
+        <input
+          placeholder="Source code to find"
+          className="textinput"
+          type="text"
+          value={config.find}
+          onChange={(e) => onChange({ ...config, find: e.target.value })}
+        ></input>
+      </label>
+      <label>
+        Insert
+        <select
+          className="select"
+          value={config.insert}
+          onChange={(e) =>
+            onChange({
+              ...config,
+              insert: e.target.value as 'replace' | 'before' | 'after',
+            })
+          }
+        >
+          <option value="before">Before</option>
+          <option value="after">After</option>
+          <option value="replace">Replace</option>
+        </select>
+      </label>
+      <label>
+        Count
+        <input
+          className="textinput"
+          type="number"
+          step="1"
+          value={config.count}
+          onChange={(e) =>
+            onChange({ ...config, count: parseInt(e.target.value, 10) })
+          }
+        ></input>
+      </label>
+    </div>
+  );
+};
+
 const strategyEditors: {
-  [key in StrategyType]?: React.FC<{
-    config: any;
-    onChange: (config: any) => void;
-  }>;
+  [key in StrategyType]?: React.FC<StrategyEditorProps>;
 } = {
   [StrategyType.ASSIGNMENT_TO]: AssignmentToStrategyEditor,
+  [StrategyType.DECLARATION_OF]: DeclarationOfStrategyEditor,
+  [StrategyType.NAMED_ATTRIBUTE]: NamedAttributeStrategyEditor,
+  [StrategyType.INJECT]: InjectStrategyEditor,
 };
-//   [StrategyType {
-//   VARIABLE = 'Variable Names',
-//   ASSIGNMENT_TO = 'Assignment To',
-//   DECLARATION_OF = 'Variable Declaration',
-//   TEXTURE_2D = 'Texture2D',
-//   NAMED_ATTRIBUTE = 'Named Attribute',
-//   UNIFORM = 'Uniform',
-//   INJECT = 'Inject',
-//   HARD_CODE_INPUTS = 'Hard Code Inputs',
-// }]
-// };
 
 const sourceTypeText: Record<SourceType, any> = {
   Expression: (
@@ -242,12 +332,6 @@ const StrategyEditor = ({
                   onChange={setStrategyConfig}
                 />
               ) : null}
-              {/* <input
-                className="textinput"
-                type="text"
-                name="config"
-                defaultValue="{}"
-              ></input> */}
             </div>
             <div>
               <button className="buttonauto formbutton" type="submit">

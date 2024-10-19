@@ -150,24 +150,6 @@ const log = (...args: any[]) =>
 const guessIfColorName = (name: string) =>
   /col|foreground|background/i.test(name);
 
-// TODO:
-// - ✅ changing the source code in the glsl editor and re-compiling does not udpate graph
-// ✅  fix immutable input auto-collapse on line:
-//            node.inputs = collapseNodeInput
-// - ✅ remove the below line?
-//            @ts-ignore
-//            label: change.name,
-// - ✅ Dragging nodes in graph re creates three materal (grindex?)
-// - ✅ Reset graph view/zoom on each page load, don't preserve it?
-// - ✅ Test shader ID in URL changing and this component re-rendering prop(erly)
-// - ✅ Add input deleting button
-// - Add strategy UI
-// - Remove " This is a hack" below and see if it works?
-// "onGraphChange" in GlslEditor looks suspcious - can that be done through zustand?
-// "Give the flow graph time to update" looks suspicious below
-// - remove comments in PR
-// - ✅ double clicking node, back to graph = only that node shows up LOL
-
 const Editor = ({
   assetPrefix,
   saveErrors,
@@ -185,7 +167,6 @@ const Editor = ({
   currentUser,
 }: EditorProps & EngineProps) => {
   const xyFlowStore = useStoreApi();
-  // const { addSelectedNodes } = reactFlowStore.getState();
   const { screenToFlowPosition, getNode, setViewport } = useReactFlow();
 
   const {

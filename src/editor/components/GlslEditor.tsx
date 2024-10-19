@@ -1,11 +1,13 @@
-import styles from '../styles/editor.module.css';
-import bind from 'classnames/bind';
-const cx = bind.bind(styles);
-
-import { NodeRendererProps, Tree } from 'react-arborist';
 import { useCallback, useMemo } from 'react';
-
 import { SplitPane } from '@andrewray/react-multi-split-pane';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faCircleInfo,
+  faClose,
+  faCode,
+  faGear,
+  faLock,
+} from '@fortawesome/free-solid-svg-icons';
 
 import {
   SourceNode,
@@ -13,34 +15,24 @@ import {
   ShaderStage,
   computeGrindex,
 } from '@core/graph';
-
 import { Engine } from '@core/engine';
-
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import CodeEditor from './CodeEditor';
-
 import { isMacintosh } from '@editor/util/platform';
 import {
   PaneState,
   PaneType,
   useEditorStore,
   useGlslEditorTabIndex,
-  useIsNodeIdOpen,
 } from './flow/editor-store';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  faChevronRight,
-  faCircleInfo,
-  faClose,
-  faCode,
-  faGear,
-  faLock,
-} from '@fortawesome/free-solid-svg-icons';
 import { capitalize } from '@/util/string';
 import StrategyEditor from './StrategyEditor';
-import { TreeProps } from 'react-arborist/dist/module/types/tree-props';
 import debounce from 'lodash.debounce';
 import { FileTree, findInTree, TreeData } from './FileTree';
+
+import styles from '../styles/editor.module.css';
+import bind from 'classnames/bind';
+const cx = bind.bind(styles);
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(glsl.editor)\x1b[0m', ...args);

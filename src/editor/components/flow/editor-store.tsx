@@ -2,6 +2,7 @@ import { createContext, useRef, useContext } from 'react';
 import { useStore, createStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { NodeChange, XYPosition } from '@xyflow/react';
+import { Draft, produce as immerProduce, enableMapSet } from 'immer';
 import {
   addEdge,
   applyNodeChanges,
@@ -15,9 +16,15 @@ import {
 export type AppNode = Node;
 
 import { ValueOf } from '@/editor/util/types';
-import { Draft, produce as immerProduce, enableMapSet } from 'immer';
 import { makeId } from '@/core/util/id';
-import { Graph, GraphNode, NodeErrors, NodeInput } from '@/core';
+import {
+  CompileResult,
+  EngineContext,
+  Graph,
+  GraphNode,
+  NodeErrors,
+  NodeInput,
+} from '@/core';
 import {
   FlowEdgeOrLink,
   FlowNode,
@@ -35,9 +42,9 @@ enableMapSet();
 
 // Immer's produce does not infer the zustand state type! Thanks
 // https://github.com/pmndrs/zustand/issues/83#issuecomment-2228437266
-export function produce<T>(cb: (value: Draft<T>) => void): (value: T) => T {
-  return immerProduce(cb);
-}
+// export function produce<T>(cb: (value: Draft<T>) => void): (value: T) => T {
+//   return immerProduce(cb);
+// }
 
 /*******************************************************************************
  * Types and friends
@@ -143,6 +150,10 @@ interface EditorState {
     inputId: string,
     data: Partial<NodeInput>
   ) => void;
+  compileResult: CompileResult | undefined;
+  setCompileResult: (compileResult: CompileResult) => void;
+  engineContext: EngineContext | undefined;
+  setEngineContext: (engineContext: EngineContext) => void;
 
   // UI state
   menu: ContextMenu | undefined;
@@ -235,12 +246,10 @@ const createEditorStore = (
       })),
     addSelectedNodes: (nodeIds) =>
       set(({ flowNodes }) => ({
-        flowNodes: flowNodes
-          .filter(({ id }) => nodeIds.includes(id))
-          .map((node) => ({
-            ...node,
-            selected: true,
-          })),
+        flowNodes: flowNodes.map((node) => ({
+          ...node,
+          selected: nodeIds.includes(node.id) ? true : node.selected,
+        })),
       })),
     updateFlowNode: (nodeId, data) =>
       set(({ flowNodes }) => ({
@@ -281,30 +290,40 @@ const createEditorStore = (
     // Shader and core editor
     setShader: (shader) => set(() => ({ shader })),
     setSceneConfig: (sceneConfig) => set(() => ({ sceneConfig })),
-    // graph: initProps.graph,
     setGraph: (graphOrUpdater) =>
       set((state) => {
         if (typeof graphOrUpdater === 'function') {
-          return { graph: graphOrUpdater(state.graph) };
+          const res = graphOrUpdater(state.graph);
+          return { graph: res };
         } else {
           return { graph: graphOrUpdater };
         }
       }),
     updateGraphNode: (nodeId, data) =>
-      set(({ graph }) => ({
-        graph: updateGraphNode(graph, nodeId, data),
-      })),
+      set(({ graph }) => {
+        const res = updateGraphNode(graph, nodeId, data);
+        return {
+          graph: res,
+        };
+      }),
     updateGraphNodeInput: (nodeId, inputId, data) =>
-      set(({ graph }) => ({
-        graph: {
+      set(({ graph }) => {
+        const res = {
           ...graph,
           nodes: graph.nodes.map((node) =>
             node.id === nodeId
               ? updateGraphNodeInput(node, inputId, data)
               : node
           ),
-        },
-      })),
+        };
+        return {
+          graph: res,
+        };
+      }),
+    compileResult: undefined,
+    setCompileResult: (compileResult) => set(() => ({ compileResult })),
+    engineContext: undefined,
+    setEngineContext: (engineContext) => set(() => ({ engineContext })),
 
     // UI state
     menu: undefined,
@@ -329,26 +348,22 @@ const createEditorStore = (
     setGlslEditorActivePaneId: (glslEditorActivePaneId) =>
       set(() => ({ glslEditorActivePaneId })),
     addEditorTab: (nodeId, type) =>
-      set(
-        produce((state) => {
-          const existing = findPaneForNodeId(
-            state.glslEditorTabs,
-            nodeId,
-            type
-          );
-          if (existing) {
-            state.glslEditorActivePaneId = existing.id;
-          } else {
-            const id = makeId();
-            state.glslEditorTabs.push({
+      set(({ glslEditorTabs }) => {
+        const existing = findPaneForNodeId(glslEditorTabs, nodeId, type);
+        if (existing) {
+          return { glslEditorActivePaneId: existing.id };
+        } else {
+          const id = makeId();
+          return {
+            glslEditorTabs: glslEditorTabs.concat({
               type: 'pane',
               id,
               contents: { type, nodeId },
-            });
-            state.glslEditorActivePaneId = id;
-          }
-        })
-      ),
+            }),
+            glslEditorActivePaneId: id,
+          };
+        }
+      }),
     removeEditorTabPaneId: (paneId) =>
       set(({ glslEditorTabs, glslEditorActivePaneId }) => {
         const filtered = glslEditorTabs.filter(({ id }) => id !== paneId);
@@ -421,15 +436,20 @@ export const EditorProvider = ({
 export const useEditorStoreSelector = <T extends unknown>(
   selector: (state: EditorState) => T
 ): T => {
-  const store = useContext(EditorStoreContext);
-  if (!store) throw new Error('Missing BearContext.Provider in the tree');
+  const store = useEditorRawStore();
   return useStore(store, selector);
 };
 
 export const useEditorStore = () => {
-  const store = useContext(EditorStoreContext);
-  if (!store) throw new Error('Missing BearContext.Provider in the tree');
+  const store = useEditorRawStore();
   return useStore(store);
+};
+
+export const useEditorRawStore = () => {
+  const store = useContext(EditorStoreContext);
+  if (!store)
+    throw new Error('Missing EditorStoreContext.Provider in the tree');
+  return store;
 };
 
 /*******************************************************************************

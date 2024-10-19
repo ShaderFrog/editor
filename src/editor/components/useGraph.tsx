@@ -18,9 +18,9 @@ import {
   isError,
   NodeErrors,
   TextureNodeValueData,
+  CompileResult,
 } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
-import { UICompileGraphResult } from '../uICompileGraphResult';
 
 import { makeId } from '../../util/id';
 import { addNode, multiplyNode, sourceNode } from '@core/graph';
@@ -30,7 +30,7 @@ const compileGraphAsync = async (
   graph: Graph,
   engine: Engine,
   ctx: EngineContext
-): Promise<NodeErrors | UICompileGraphResult> =>
+): Promise<NodeErrors | CompileResult> =>
   new Promise((resolve, reject) => {
     setTimeout(async () => {
       console.warn('Compiling!', graph, 'for nodes', ctx.nodes);
@@ -44,9 +44,8 @@ const compileGraphAsync = async (
         }
 
         resolve({
-          compileMs: (performance.now() - allStart).toFixed(3),
-          graph,
           ...result,
+          compileMs: (performance.now() - allStart).toFixed(3),
         });
       } catch (err) {
         return reject(err);

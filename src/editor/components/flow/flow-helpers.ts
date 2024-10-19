@@ -227,14 +227,18 @@ export const updateGraphNode = (
 ): Graph => ({
   ...graph,
   // @ts-ignore
-  nodes: graph.nodes.map((node) =>
-    node.id === nodeId
-      ? {
-          ...node,
-          ...data,
-        }
-      : node
-  ),
+  nodes: graph.nodes.map((node) => {
+    if (node.id === nodeId) {
+      const updated = { ...node, ...data };
+      return updated;
+    }
+    return node;
+    // ? {
+    //     ...node,
+    //     ...data,
+    //   }
+    // : node
+  }),
 });
 
 export const updateFlowEdgeData = (

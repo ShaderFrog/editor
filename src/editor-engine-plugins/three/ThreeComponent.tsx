@@ -921,8 +921,10 @@ const ThreeComponent: React.FC<SceneProps> = ({
   // from moving nodes or sliding uniform sliders, which should not cause a
   // material re-creation. Putting the graph in a ref lets the effect access it
   // without making it a dependency of the effect.
-  const graphRef = useRef<Graph>(graph);
+  const graphRef = useRef(graph);
   graphRef.current = graph;
+  const grindexRef = useRef(grindex);
+  grindexRef.current = grindex;
 
   useEffect(() => {
     if (!compileResult?.fragmentResult) {
@@ -931,6 +933,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     const material = createMaterial(compileResult, ctx);
     const graph = graphRef.current;
+    const grindex = grindexRef.current;
 
     // const { graph } = compileResult;
     const {
@@ -995,7 +998,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
     mesh.material = material;
     shadersUpdated.current = true;
   }, [
-    grindex,
     loadTexture,
     sceneConfig,
     compileResult,

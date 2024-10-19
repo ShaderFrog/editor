@@ -49,7 +49,7 @@ import { FlowEdgeOrLink, FlowNode } from './flow-helpers';
 // need better layoutting of the tabs + graph
 const flowStyles = { background: '#111' };
 
-const flowKey = 'example-flow';
+const flowKey = (id: string | undefined) => `shaderflog_flow_${id}`;
 
 const nodeTypes: Record<NodeType | GraphDataType | EngineNodeType, any> = {
   toon: SourceNodeComponent,
@@ -134,7 +134,6 @@ const nodeContextMenuItems = (node?: FlowNode): MenuItem[] => {
               {
                 display: 'Edit Configuration',
                 value: NodeContextActions.EDIT_CONFIG,
-                key: 'Double Click',
               },
             ]
           : []),
@@ -208,7 +207,7 @@ const FlowEditor = ({
   onNodeDragStop,
   onNodeValueChange,
 }: FlowEditorProps) => {
-  const { menu, setMenu, hideMenu } = useEditorStore();
+  const { menu, setMenu, hideMenu, shader } = useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
 
   useHotkeys('esc', () => hideMenu());
@@ -244,12 +243,12 @@ const FlowEditor = ({
   const onMoveEnd = useCallback(() => {
     if (rfInstance) {
       const flow = rfInstance.toObject().viewport;
-      localStorage.setItem(flowKey, JSON.stringify(flow));
+      localStorage.setItem(flowKey(shader.id), JSON.stringify(flow));
     }
   }, [rfInstance]);
   const defaultViewport = useMemo(
     () =>
-      JSON.parse(localStorage.getItem(flowKey) || 'null') || {
+      JSON.parse(localStorage.getItem(flowKey(shader.id)) || 'null') || {
         x: 200,
         y: 150,
         zoom: 0.5,

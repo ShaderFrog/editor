@@ -40,10 +40,12 @@ import {
 import { capitalize } from '@/util/string';
 import StrategyEditor from './StrategyEditor';
 import { TreeProps } from 'react-arborist/dist/module/types/tree-props';
-import { UICompileGraphResult } from '../uICompileGraphResult';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(glsl.editor)\x1b[0m', ...args);
+
+const isReadOnly = (node: SourceNode) =>
+  !!node?.config?.properties?.length || !!node?.engine;
 
 /**
  * React-Arborist setup
@@ -202,29 +204,22 @@ const FileTree = (props: TreeProps<TreeData>) => {
  * GLSL Editor
  */
 interface GlslEditorProps {
-  graph: Graph;
   engine: Engine;
-  ctx: EngineContext;
   onCompile: () => void;
   onSaveOrFork: () => void;
   onGraphChange: () => void;
   setFragmentOverride: (value: string) => void;
   setVertexOverride: (value: string) => void;
-  compileResult: UICompileGraphResult | undefined;
 }
 
 const GlslEditor = ({
-  graph,
   engine,
-  ctx,
   onCompile,
   onSaveOrFork,
   onGraphChange,
   setFragmentOverride,
   setVertexOverride,
-  compileResult,
 }: GlslEditorProps) => {
-  const grindex = useMemo(() => computeGrindex(graph), [graph]);
   const {
     setGlslEditorActivePaneId,
     glslEditorActivePaneId,
@@ -232,8 +227,12 @@ const GlslEditor = ({
     nodeErrors,
     removeEditorTabPaneId,
     compileInfo,
-    sceneDimensions: ui,
+    updateGraphNode,
+    compileResult,
+    graph,
+    engineContext,
   } = useEditorStore();
+  const grindex = useMemo(() => computeGrindex(graph), [graph]);
 
   const codeEditorTabIndex = useGlslEditorTabIndex();
 
@@ -461,26 +460,29 @@ const GlslEditor = ({
                   </div>
                 );
               } else if (pane.contents?.type === 'code' && primaryNode) {
+                const readOnly = isReadOnly(primaryNode);
                 tabContents = (
                   <CodeEditor
                     engine={engine}
                     identity={primaryNode.id}
-                    defaultValue={primaryNode.source}
+                    defaultValue={
+                      engineContext!.runtime.cache.nodes[primaryNode.id]
+                        ?.computedSource || primaryNode.source
+                    }
+                    readOnly={readOnly}
                     errors={nodeErrors[primaryNode.id]}
                     onSave={onSaveOrFork}
                     onCompile={onCompile}
                     onChange={(value) => {
-                      if (value) {
-                        (grindex.nodes[primaryNode.id] as SourceNode).source =
-                          value;
-                      }
+                      updateGraphNode(primaryNode.id, { source: value });
+                      // if (value) {
+                      //   (grindex.nodes[primaryNode.id] as SourceNode).source =
+                      //     value;
+                      // }
                     }}
                   />
                 );
-                if (
-                  primaryNode?.config?.properties?.length ||
-                  primaryNode?.engine
-                ) {
+                if (readOnly) {
                   tabContents = (
                     <div className={styles.shrinkGrowRows}>
                       <div className={cx(styles.readOnlyMsg, 'm-5')}>
@@ -495,9 +497,7 @@ const GlslEditor = ({
               } else {
                 tabContents = (
                   <StrategyEditor
-                    ctx={ctx}
                     node={primaryNode}
-                    graph={graph}
                     onSave={onCompile}
                     onGraphChange={onGraphChange}
                   ></StrategyEditor>

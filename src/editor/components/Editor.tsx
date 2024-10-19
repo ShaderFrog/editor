@@ -20,7 +20,6 @@ import React, {
   useRef,
   useState,
   MouseEvent,
-  TouchEvent,
 } from 'react';
 
 import {
@@ -31,14 +30,11 @@ import {
   useUpdateNodeInternals,
   useReactFlow,
   XYPosition,
-  OnConnectStartParams,
   useStoreApi,
   OnSelectionChangeFunc,
   OnConnectStart,
   OnNodeDrag,
   NodeChange,
-  useNodesState,
-  useEdgesState,
   InternalNode,
 } from '@xyflow/react';
 
@@ -69,21 +65,16 @@ import FlowEditor, {
   SHADERFROG_FLOW_EDGE_TYPE,
 } from './flow/FlowEditor';
 
-import { Engine, EngineContext } from '@core/engine';
+import { EngineContext } from '@core/engine';
 
 import useThrottle from '../hooks/useThrottle';
 
-import {
-  FlowNodeSourceData,
-  FlowNodeDataData,
-  FlowNodeData,
-} from './flow/FlowNode';
+import { FlowNodeSourceData, FlowNodeDataData } from './flow/FlowNode';
 
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import ConfigEditor from './ConfigEditor';
 
 import { Hoisty } from '../hoistedRefContext';
-import { UICompileGraphResult } from '../uICompileGraphResult';
 import { ensure } from '../../util/ensure';
 
 import { makeId } from '../../util/id';
@@ -102,7 +93,6 @@ import {
   updateGraphNodeInput as updateGraphNodeInputInternal,
   updateFlowNodeInput as updateFlowInputInternal,
   updateFlowNodeData as updateFlowNodeDataInternal,
-  updateGraphNode as updateGraphNodeInternal,
   addFlowEdge,
   addGraphEdge,
   updateGraphFromFlowGraph,
@@ -136,6 +126,7 @@ import BottomModal from './BottomModal';
 import {
   EDITOR_BOTTOM_PANEL,
   EditorProvider,
+  useEditorRawStore,
   useEditorStore,
 } from './flow/editor-store';
 import Modal from './Modal';
@@ -143,8 +134,10 @@ import { xor } from '@shaderfrog/glsl-parser/parser/utils';
 import GlslEditor from './GlslEditor';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  faArrowsRotate,
   faCode,
   faDiagramProject,
+  faMagnifyingGlass,
   faPencil,
 } from '@fortawesome/free-solid-svg-icons';
 import MetadataEditor from './MetadataEditor';
@@ -157,11 +150,28 @@ const log = (...args: any[]) =>
 const guessIfColorName = (name: string) =>
   /col|foreground|background/i.test(name);
 
+// TODO:
+// - ✅ changing the source code in the glsl editor and re-compiling does not udpate graph
+// ✅  fix immutable input auto-collapse on line:
+//            node.inputs = collapseNodeInput
+// - ✅ remove the below line?
+//            @ts-ignore
+//            label: change.name,
+// - ✅ Dragging nodes in graph re creates three materal (grindex?)
+// - ✅ Reset graph view/zoom on each page load, don't preserve it?
+// - ✅ Test shader ID in URL changing and this component re-rendering prop(erly)
+// - ✅ Add input deleting button
+// - Add strategy UI
+// - Remove " This is a hack" below and see if it works?
+// "onGraphChange" in GlslEditor looks suspcious - can that be done through zustand?
+// "Give the flow graph time to update" looks suspicious below
+// - remove comments in PR
+// - ✅ double clicking node, back to graph = only that node shows up LOL
+
 const Editor = ({
   assetPrefix,
   saveErrors,
   onCloseSaveErrors,
-  // shader: initialShader,
   isOwnShader,
   isAuthenticated,
   onCreateShader,
@@ -176,7 +186,7 @@ const Editor = ({
 }: EditorProps & EngineProps) => {
   const xyFlowStore = useStoreApi();
   // const { addSelectedNodes } = reactFlowStore.getState();
-  const { screenToFlowPosition, getNode } = useReactFlow();
+  const { screenToFlowPosition, getNode, setViewport } = useReactFlow();
 
   const {
     // ui state
@@ -202,6 +212,8 @@ const Editor = ({
     updateGraphNodeInput,
     setNodeErrors,
     clearNodeErrors,
+    engineContext,
+    setEngineContext,
     // Flow graph
     flowNodes,
     flowEdges,
@@ -215,21 +227,12 @@ const Editor = ({
     addSelectedNodes,
     onNodesChange,
     onEdgesChange,
+    compileResult,
+    setCompileResult,
   } = useEditorStore();
+  const rawStore = useEditorRawStore();
 
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
-
-  // const [shader, setShader] = useState<Shader>(() => {
-  //   return (
-  //     initialShader
-  //   );
-  // });
-
-  // Refresh the shader from the server if the ID changes - which happens on a
-  // fork and a create
-  // if (initialShader && shader?.id && initialShader?.id !== shader?.id) {
-  //   setShader(initialShader);
-  // }
 
   const [screenshotData, setScreenshotData] = useState<string>('');
   const takeScreenshotRef = useRef<() => Promise<string>>();
@@ -245,7 +248,7 @@ const Editor = ({
 
   // Store the engine context in state. There's a separate function for passing
   // to children to update the engine context, which has more side effects
-  const [ctx, setCtxState] = useState<EngineContext>();
+  // const [ctx, setCtxState] = useState<EngineContext>();
 
   /**
    * React-Flow to Graph data flow
@@ -286,8 +289,6 @@ const Editor = ({
   const [guiError, setGuiError] = useState<string>('');
 
   const [replacingNode, setReplacingNode] = useState<FlowNode | null>(null);
-
-  const [compileResult, setCompileResult] = useState<UICompileGraphResult>();
 
   /**
    * Auto-screenshot logic
@@ -341,12 +342,14 @@ const Editor = ({
 
   const setVertexOverride = useCallback(
     (vertexResult: string) => {
-      setCompileResult({
-        ...compileResult,
-        vertexResult,
-      } as UICompileGraphResult);
+      if (compileResult) {
+        setCompileResult({
+          ...compileResult,
+          vertexResult,
+        });
+      }
     },
-    [compileResult]
+    [compileResult, setCompileResult]
   );
   const debouncedSetVertexOverride = useMemo(
     () => debounce(setVertexOverride, 1000),
@@ -354,12 +357,14 @@ const Editor = ({
   );
   const setFragmentOverride = useCallback(
     (fragmentResult: string) => {
-      setCompileResult({
-        ...compileResult,
-        fragmentResult,
-      } as UICompileGraphResult);
+      if (compileResult) {
+        setCompileResult({
+          ...compileResult,
+          fragmentResult,
+        });
+      }
     },
-    [compileResult]
+    [compileResult, setCompileResult]
   );
   const debouncedSetFragmentOverride = useMemo(
     () => debounce(setFragmentOverride, 1000),
@@ -388,99 +393,96 @@ const Editor = ({
   // Compile function, meant to be called manually in places where we want to
   // trigger a compile. I tried making this a useEffect, however this function
   // needs to update "flowElements" at the end, which leads to an infinite loop
-  const compile = useCallback(
-    (
-      engine: Engine,
-      ctx: EngineContext,
-      graph: Graph,
-      flowElements: FlowElements
-    ) => {
-      setContexting(false);
-      setCompiling(true);
+  const compile = useCallback(() => {
+    const { flowNodes, flowEdges, graph, engineContext } = rawStore.getState();
 
-      log('Starting compileGraphAsync()!');
-      compileGraphAsync(graph, engine, ctx)
-        .then((result) => {
-          if (isError(result)) {
-            setNodeErrors(result.nodeId, result);
-            updateFlowNodeData(result.nodeId, { glslError: true });
-            return;
-          }
+    setContexting(false);
+    setCompiling(true);
 
-          log(`Compile complete in ${result.compileMs} ms!`, {
-            compileResult: result,
-          });
+    log('Starting compileGraphAsync()!');
+    compileGraphAsync(graph, engine, engineContext!)
+      .then((result) => {
+        if (isError(result)) {
+          setNodeErrors(result.nodeId, result);
+          updateFlowNodeData(result.nodeId, { glslError: true });
+          return;
+        }
 
-          clearNodeErrors();
-          setGuiError('');
-          setCompileResult(result);
-
-          const byId = graph.nodes.reduce<Record<string, GraphNode>>(
-            (acc, node) => ({ ...acc, [node.id]: node }),
-            {}
-          );
-
-          // Update the available inputs from the node after the compile
-          const updatedFlowNodes = flowElements.nodes.map((node) => {
-            return updateFlowNodeDataInternal(node, {
-              ...node.data,
-              glslError: false,
-              inputs: toFlowInputs(byId[node.id]),
-              active: result.compileResult.activeNodeIds.has(node.id),
-            });
-          });
-
-          const { nodes, edges } = markInputsConnected(
-            setFlowNodeCategories(
-              {
-                ...flowElements,
-                nodes: updatedFlowNodes,
-              },
-              result.dataNodes
-            )
-          );
-          setFlowNodes(nodes);
-          setFlowEdges(edges);
-
-          // This is a hack to make the edges update to their handles if they move
-          // https://github.com/wbkd/react-flow/issues/2008
-          setTimeout(() => {
-            updatedFlowNodes.forEach((node) => updateNodeInternals(node.id));
-          }, 500);
-        })
-        .catch((err) => {
-          console.error('Error compiling!', err);
-          setGuiError(err.message);
-        })
-        .finally(() => {
-          setNeedsCompile(false);
-          setCompiling(false);
-          setContexting(false);
+        log(`Compile complete in ${result.compileMs} ms!`, {
+          compileResult: result,
         });
-    },
-    [
-      updateNodeInternals,
-      setFlowEdges,
-      setFlowNodes,
-      clearNodeErrors,
-      setNodeErrors,
-      updateFlowNodeData,
-    ]
-  );
+
+        clearNodeErrors();
+        setGuiError('');
+        setCompileResult(result);
+
+        const byId = graph.nodes.reduce<Record<string, GraphNode>>(
+          (acc, node) => ({ ...acc, [node.id]: node }),
+          {}
+        );
+
+        // Update the available inputs from the node after the compile
+        const updatedFlowNodes = flowNodes.map((node) =>
+          updateFlowNodeDataInternal(node, {
+            ...node.data,
+            glslError: false,
+            inputs: toFlowInputs(byId[node.id]),
+            active: result.compileResult.activeNodeIds.has(node.id),
+          })
+        );
+
+        const { nodes, edges } = markInputsConnected(
+          setFlowNodeCategories(
+            {
+              edges: flowEdges,
+              nodes: updatedFlowNodes,
+            },
+            result.dataNodes
+          )
+        );
+        setFlowNodes(nodes);
+        setFlowEdges(edges);
+
+        // This is a hack to make the edges update to their handles if they move
+        // https://github.com/wbkd/react-flow/issues/2008
+        setTimeout(() => {
+          updatedFlowNodes.forEach((node) => updateNodeInternals(node.id));
+        }, 500);
+      })
+      .catch((err) => {
+        console.error('Error compiling!', err);
+        setGuiError(err.message);
+      })
+      .finally(() => {
+        setNeedsCompile(false);
+        setCompiling(false);
+        setContexting(false);
+      });
+  }, [
+    updateNodeInternals,
+    setFlowEdges,
+    setFlowNodes,
+    clearNodeErrors,
+    setNodeErrors,
+    updateFlowNodeData,
+    engine,
+    rawStore,
+    setCompileResult,
+  ]);
 
   // Let child components call compile after, say, their lighting has finished
   // updating. I'm doing this to avoid having to figure out the flow control
   // of: parent updates lights, child gets updates, sets lights, then parent
   // handles recompile
-  const childCompile = useCallback(
-    (ctx: EngineContext) => {
-      return compile(engine, ctx, graph, {
-        nodes: flowNodes,
-        edges: flowEdges,
-      });
-    },
-    [engine, compile, graph, flowNodes, flowEdges]
-  );
+  // const childCompile = useCallback(
+  //   (ctx: EngineContext) => {
+  //     return compile(engine, ctx, graph, {
+  //       nodes: flowNodes,
+  //       edges: flowEdges,
+  //     });
+  //   },
+  //   [engine, compile, graph, flowNodes, flowEdges]
+  // );
 
   const setGlResult = useCallback(
     (result: {
@@ -495,51 +497,62 @@ const Editor = ({
 
   // Computes and recompiles an entirely new graph
   const initializeGraph = useCallback(
-    (initialElements: FlowElements, newCtx: EngineContext, graph: Graph) => {
+    async (
+      initialFlowElements: FlowElements,
+      newCtx: EngineContext,
+      graph: Graph
+    ) => {
       setContexting(true);
-      setTimeout(async () => {
-        try {
-          const result = await computeAllContexts(newCtx, engine, graph);
-          if (isError(result)) {
-            setNodeErrors(result.nodeId, result);
-            // setFlowNodes((nodes) =>
-            //   updateFlowNodesData(nodes, result.nodeId, { glslError: true })
-            // );
-            updateFlowNodeData(result.nodeId, { glslError: true });
+      // setTimeout(async () => {
+      try {
+        setEngineContext(newCtx);
+        setFlowNodes(initialFlowElements.nodes);
+        setFlowEdges(initialFlowElements.edges);
 
-            setContexting(false);
-            const { errors } = result;
-            console.error('Error computing context!', errors);
-            setGuiError(`Error computing context: ${errors[0]}`);
+        const result = await computeAllContexts(newCtx, engine, graph);
+        if (isError(result)) {
+          setNodeErrors(result.nodeId, result);
+          // setFlowNodes((nodes) =>
+          //   updateFlowNodesData(nodes, result.nodeId, { glslError: true })
+          // );
+          updateFlowNodeData(result.nodeId, { glslError: true });
 
-            // In case the initial context fails to generate, which can happen
-            // if a node is saved in a bad state, create the flow elements
-            // anyway, so the graph still shows up
-            setFlowNodes(initialElements.nodes);
-            setFlowEdges(initialElements.edges);
-          }
-
-          log('Initializing flow nodes and compiling graph!', {
-            graph,
-            newCtx,
-          });
-
-          updateAllFlowNodes((node) =>
-            updateFlowNodeDataInternal(node, { glslError: false })
-          );
-
-          clearNodeErrors();
-          compile(engine, newCtx, graph, initialElements);
-        } catch (error: any) {
           setContexting(false);
-          console.error('Error computing context!', error);
-          setGuiError(error.message);
-
-          // Same comment as above
-          setFlowNodes(initialElements.nodes);
-          setFlowEdges(initialElements.edges);
+          const { errors } = result;
+          console.error('Error computing context!', errors);
+          setGuiError(`Error computing context: ${errors[0]}`);
+        } else {
+          setEngineContext({
+            ...newCtx,
+            nodes: {
+              ...newCtx.nodes,
+              ...result,
+            },
+          });
         }
-      }, 0);
+
+        log('Initializing flow nodes and compiling graph!', {
+          graph,
+          newCtx,
+        });
+
+        updateAllFlowNodes((node) =>
+          updateFlowNodeDataInternal(node, { glslError: false })
+        );
+
+        clearNodeErrors();
+        // compile(engine, newCtx, graph, initialFlowElements);
+        compile();
+      } catch (error: any) {
+        setContexting(false);
+        console.error('Error computing context!', error);
+        setGuiError(error.message);
+
+        // Same comment as above
+        setFlowNodes(initialFlowElements.nodes);
+        setFlowEdges(initialFlowElements.edges);
+      }
+      // }, 0);
     },
     [
       compile,
@@ -550,6 +563,7 @@ const Editor = ({
       clearNodeErrors,
       updateAllFlowNodes,
       updateFlowNodeData,
+      setEngineContext,
     ]
   );
 
@@ -557,13 +571,15 @@ const Editor = ({
   // is passed to engine specific editor components
   const setCtx = useCallback(
     (newCtx: EngineContext) => {
-      if (newCtx.engine !== ctx?.engine) {
-        ctx?.engine
-          ? log('🔀 Changing engines!', { ctx, newCtx })
+      const { engineContext } = rawStore.getState();
+
+      if (newCtx.engine !== engineContext?.engine) {
+        engineContext?.engine
+          ? log('🔀 Changing engines!', { engineContext, newCtx })
           : log('🌟 Initializing engine!', newCtx, '(no old context)', {
-              ctx,
+              engineContext,
             });
-        setCtxState(newCtx);
+        // setEngineContext(newCtx);
         let newGraph = graph;
         // Previous logic of switching between engines. Maybe will revisit
         // someday...
@@ -579,6 +595,7 @@ const Editor = ({
         //     }
         //   }
         // }
+        log({ flow: graphToFlowGraph(newGraph), newCtx, newGraph });
         initializeGraph(graphToFlowGraph(newGraph), newCtx, newGraph);
         // This branch wasn't here before I started working on the bug where
         // switching away from the scene to the source code tab and back removed
@@ -586,10 +603,10 @@ const Editor = ({
         // objects here to avoid re-creating anything. I'm also curious if this
         // causes any kind of infinite loupe
       } else {
-        setCtxState(newCtx);
+        setEngineContext(newCtx);
       }
     },
-    [ctx, setCtxState, initializeGraph, graph]
+    [setEngineContext, initializeGraph, graph, rawStore]
   );
 
   const onNodeValueChange = useCallback(
@@ -863,15 +880,15 @@ const Editor = ({
 
   const onSelectionChange = useCallback<OnSelectionChangeFunc>(
     ({ nodes }) => {
-      const node = nodes?.[0];
+      const flowNode = nodes?.[0];
+      const node = grindex.nodes[flowNode?.id];
       if (node) {
-        const selected = graph.nodes.find((n) => n.id === node.id) as GraphNode;
-        setPrimarySelectedNodeId(selected.id);
+        setPrimarySelectedNodeId(node.id);
       } else {
         setPrimarySelectedNodeId(undefined);
       }
     },
-    [graph, setPrimarySelectedNodeId]
+    [setPrimarySelectedNodeId, grindex]
   );
 
   const setValidHandleTargets = useCallback(
@@ -989,7 +1006,7 @@ const Editor = ({
   );
 
   const addNodeAtPosition = useCallback(
-    (
+    async (
       graph: Graph,
       nodeDataType: string,
       name: string,
@@ -1049,38 +1066,49 @@ const Editor = ({
       ]);
 
       // Give the flow graph time to update after adding the new nodes
-      setTimeout(async () => {
-        const updatedGraph = {
-          ...graph,
-          edges: [...graph.edges, ...expanded!.edges],
-          nodes: [...graph.nodes, ...expanded!.nodes],
-        };
-        // Create new inputs for new nodes added to the graph
-        const nodesToRefresh = [
-          ...expanded!.nodes,
-          ...(newEdgeData ? [findNode(updatedGraph, newEdgeData.to)] : []),
-        ];
-        log('Computing context for new nodes to generate their inputs...', {
-          'New Nodes': nodesToRefresh,
+      // setTimeout(async () => {
+      const updatedGraph = {
+        ...graph,
+        edges: [...graph.edges, ...expanded!.edges],
+        nodes: [...graph.nodes, ...expanded!.nodes],
+      };
+      // Create new inputs for new nodes added to the graph
+      const nodesToRefresh = [
+        ...expanded!.nodes,
+        ...(newEdgeData ? [findNode(updatedGraph, newEdgeData.to)] : []),
+      ];
+      log('Computing context for new nodes to generate their inputs...', {
+        'New Nodes': nodesToRefresh,
+      });
+
+      const newNodeContext = await computeContextForNodes(
+        engineContext!,
+        engine,
+        updatedGraph,
+        nodesToRefresh
+      );
+      if (!isError(newNodeContext)) {
+        setEngineContext({
+          ...engineContext!,
+          nodes: {
+            ...engineContext!.nodes,
+            ...newNodeContext,
+          },
         });
-        await computeContextForNodes(
-          ctx as EngineContext,
-          engine,
-          updatedGraph,
-          nodesToRefresh
-        );
-        setGraph(updatedGraph);
-        debouncedSetNeedsCompile(true);
-      }, 10);
+      }
+      setGraph(updatedGraph);
+      debouncedSetNeedsCompile(true);
+      // }, 10);
     },
     [
       addEngineNode,
       debouncedSetNeedsCompile,
       engine,
-      ctx,
+      engineContext,
       setFlowEdges,
       setFlowNodes,
       setGraph,
+      setEngineContext,
     ]
   );
 
@@ -1570,21 +1598,9 @@ const Editor = ({
    */
   useEffect(() => {
     if (needsCompile && !compiling) {
-      compile(engine, ctx as EngineContext, graph, {
-        nodes: flowNodes,
-        edges: flowEdges,
-      });
+      compile();
     }
-  }, [
-    compiling,
-    needsCompile,
-    flowNodes,
-    flowEdges,
-    ctx,
-    graph,
-    compile,
-    engine,
-  ]);
+  }, [compiling, needsCompile, compile]);
 
   const onContainerClick = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -1821,7 +1837,7 @@ const Editor = ({
   });
 
   const saveOrFork = async (btnFork = false) => {
-    if (!ctx || (!onUpdateShader && !onCreateShader)) {
+    if (!onUpdateShader && !onCreateShader) {
       return;
     }
     setIsSaving(true);
@@ -1864,10 +1880,7 @@ const Editor = ({
   }, [isSmallScreen, syncSceneSize]);
 
   useHotkeys(isMacintosh() ? `cmd+'` : `ctrl+'`, () => {
-    compile(engine, ctx as EngineContext, graph, {
-      nodes: flowNodes,
-      edges: flowEdges,
-    });
+    compile();
   });
 
   useHotkeys(
@@ -1906,6 +1919,27 @@ const Editor = ({
             </div>
           ) : null}
           <div className="m-right-15">
+            <button
+              className="buttonauto formbutton size2 secondary m-right-10"
+              onClick={(e) => {
+                e.preventDefault();
+                setViewport(
+                  {
+                    x: 0,
+                    y: 0,
+                    zoom: 0.5,
+                  },
+                  { duration: 800 }
+                );
+              }}
+              title="Reset Graph View"
+            >
+              <span className={cx('fa-layers', styles.resetVeiw)}>
+                <FontAwesomeIcon icon={faArrowsRotate} size="xl" />
+                <FontAwesomeIcon icon={faMagnifyingGlass} size="1x" />
+              </span>
+            </button>
+
             {'shadertoy' in engine.importers ? (
               <button
                 className="buttonauto formbutton size2 secondary m-right-10"
@@ -2028,8 +2062,7 @@ const Editor = ({
                       onChange={(change) => {
                         updateGraphNode(primarySelectedNode.id, change);
                         if ('name' in change) {
-                          updateFlowNode(primarySelectedNode.id, {
-                            // @ts-ignore
+                          updateFlowNodeData(primarySelectedNode.id, {
                             label: change.name,
                           });
                         } else {
@@ -2088,16 +2121,8 @@ const Editor = ({
           {/* Main code editor tab */}
           <TabPanel className="relative">
             <GlslEditor
-              graph={graph}
               engine={engine}
-              ctx={ctx as EngineContext}
-              compileResult={compileResult}
-              onCompile={() => {
-                compile(engine, ctx as EngineContext, graph, {
-                  nodes: flowNodes,
-                  edges: flowEdges,
-                });
-              }}
+              onCompile={compile}
               onSaveOrFork={saveOrFork}
               onGraphChange={() => {
                 setGraph(graph);
@@ -2139,7 +2164,7 @@ const Editor = ({
           setSceneConfig={setSceneConfigAndRecompile}
           setCtx={setCtx}
           graph={graph}
-          compile={childCompile}
+          compile={compile}
           compileResult={compileResult}
           setGlResult={setGlResult}
           width={sceneConfig.width}
@@ -2275,15 +2300,6 @@ const EditorWithProviders = (props: EditorProps & EngineProps) => {
     [props.engine]
   );
 
-  // TODO cehck for bugs in changing shader id in URL - since the previous logic
-  // of
-  /**
-   * 
-  if (initialShader && shader?.id && initialShader?.id !== shader?.id) {
-    setShader(initialShader);
-  }
-   */
-  // is not here
   const shader = props.shader || defaultShader;
 
   const [initialGraph, initialSceneConfig, initialExample] = useMemo(() => {
@@ -2295,13 +2311,18 @@ const EditorWithProviders = (props: EditorProps & EngineProps) => {
     if (shader) {
       return [shader.config.graph, shader.config.scene];
     }
-    // @ts-ignore
     const [graph, sceneConfig] = makeExampleGraph(exampleGraph);
     return [expandUniformDataNodes(graph), sceneConfig, exampleGraph];
   }, [makeExampleGraph, example, shader, exampleShader]);
 
+  // Use the key id to force a remount of the editor when the shader changes.
+  // It would be nice to keep the scene context around, but that's a refactor
+  // for another day...
+  const id = 'id' in shader ? shader.id : null;
+
   return (
     <EditorProvider
+      key={id}
       shader={shader}
       graph={initialGraph}
       sceneConfig={initialSceneConfig}
@@ -2309,7 +2330,7 @@ const EditorWithProviders = (props: EditorProps & EngineProps) => {
       <DndContext sensors={sensors}>
         <ReactFlowProvider>
           <Hoisty>
-            <Editor {...props} />
+            <Editor {...props} key={id} />
           </Hoisty>
         </ReactFlowProvider>
       </DndContext>

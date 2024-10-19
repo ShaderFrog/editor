@@ -34,7 +34,6 @@ import {
   OnSelectionChangeFunc,
   OnConnectStart,
   OnNodeDrag,
-  NodeChange,
   InternalNode,
 } from '@xyflow/react';
 
@@ -185,7 +184,6 @@ const Editor = ({
     setSceneConfig,
     // Shader
     shader,
-    setShader,
     // Graph
     graph,
     setGraph,
@@ -200,13 +198,11 @@ const Editor = ({
     flowEdges,
     setFlowNodes,
     setFlowEdges,
-    updateFlowNode,
     updateFlowNodeData,
     updateAllFlowNodes,
     updateFlowNodeConfig,
     updateFlowInput,
     addSelectedNodes,
-    onNodesChange,
     onEdgesChange,
     compileResult,
     setCompileResult,
@@ -226,33 +222,6 @@ const Editor = ({
   }, []);
 
   const updateNodeInternals = useUpdateNodeInternals();
-
-  // Store the engine context in state. There's a separate function for passing
-  // to children to update the engine context, which has more side effects
-  // const [ctx, setCtxState] = useState<EngineContext>();
-
-  /**
-   * React-Flow to Graph data flow
-   *
-   * 1. We use the useNodes/EdgesState hooks to manually control the flow graph
-   * 2. We use the onNodesChange to filter undeletable nodes
-   * 3. Other flow node events fire, like onEdgesDelete to copy react-flow
-   *    changes to the core graph
-   * 4. For adding new connections, react-flow creates the connection, and
-   *    the callback calls our addConnection() function, which updates the core
-   *    graph, and then updates the flow graph. I'm pretty sure this undoes what
-   *    react-flow does internally, because it calls setFlowEdges()
-   * 5. Some callbacks, like onNodesDelete, need additional side effects, like
-   *    deleting all the upstream nodes and edges. In those callbacks, the
-   *    changes are calculated, and applied to both core and react-flow graph.
-   */
-  // const [flowNodes, setFlowNodes, applyNodeChanges] = useNodesState([]);
-  // const [flowEdges, setFlowEdges, applyEdgeChanges] = useEdgesState([]);
-  // const flowStore = useStoreApi();
-
-  // const [currentExample, setExample] = useState<string | null | undefined>(
-  //   initialExample
-  // );
 
   const primarySelectedNode = primarySelectedNodeId
     ? grindex.nodes[primarySelectedNodeId]
@@ -306,70 +275,6 @@ const Editor = ({
     },
     [sceneConfig, setSceneConfig, debouncedSetNeedsCompile]
   );
-
-  // useEffect(() => {
-  //   if (shader) {
-  //     return;
-  //   }
-  //   const urlParams = new URLSearchParams(window.location.search);
-  //   const value = currentExample || '';
-  //   urlParams.set('example', value);
-  //   window.history.replaceState(
-  //     {},
-  //     value,
-  //     `${window.location.pathname}?${urlParams.toString()}`
-  //   );
-  // }, [currentExample, shader]);
-
-  const setVertexOverride = useCallback(
-    (vertexResult: string) => {
-      if (compileResult) {
-        setCompileResult({
-          ...compileResult,
-          vertexResult,
-        });
-      }
-    },
-    [compileResult, setCompileResult]
-  );
-  const debouncedSetVertexOverride = useMemo(
-    () => debounce(setVertexOverride, 1000),
-    [setVertexOverride]
-  );
-  const setFragmentOverride = useCallback(
-    (fragmentResult: string) => {
-      if (compileResult) {
-        setCompileResult({
-          ...compileResult,
-          fragmentResult,
-        });
-      }
-    },
-    [compileResult, setCompileResult]
-  );
-  const debouncedSetFragmentOverride = useMemo(
-    () => debounce(setFragmentOverride, 1000),
-    [setFragmentOverride]
-  );
-
-  // const updateFlowNode = useCallback(
-  //   (nodeId: string, data: Partial<FlowNodeData>) => {
-  //     setFlowNodes((nodes) => updateFlowNodesData(nodes, nodeId, data));
-  //   },
-  //   [setFlowNodes]
-  // );
-  // const updateFlowNodeConfig = useCallback(
-  //   (nodeId: string, config: Record<string, any>) => {
-  //     setFlowNodes((nodes) => updateFlowNodesConfig(nodes, nodeId, config));
-  //   },
-  //   [setFlowNodes]
-  // );
-  // const updateGraphNode = useCallback(
-  //   (nodeId: string, data) => {
-  //     setGraph((graph) => updateGraphNodeInternal(graph, nodeId, data));
-  //   },
-  //   [setGraph]
-  // );
 
   // Compile function, meant to be called manually in places where we want to
   // trigger a compile. I tried making this a useEffect, however this function
@@ -451,20 +356,6 @@ const Editor = ({
     setCompileResult,
   ]);
 
-  // Let child components call compile after, say, their lighting has finished
-  // updating. I'm doing this to avoid having to figure out the flow control
-  // of: parent updates lights, child gets updates, sets lights, then parent
-  // handles recompile
-  // const childCompile = useCallback(
-  //   (ctx: EngineContext) => {
-  //     return compile(engine, ctx, graph, {
-  //       nodes: flowNodes,
-  //       edges: flowEdges,
-  //     });
-  //   },
-  //   [engine, compile, graph, flowNodes, flowEdges]
-  // );
-
   const setGlResult = useCallback(
     (result: {
       fragError: string;
@@ -484,7 +375,7 @@ const Editor = ({
       graph: Graph
     ) => {
       setContexting(true);
-      // setTimeout(async () => {
+
       try {
         setEngineContext(newCtx);
         setFlowNodes(initialFlowElements.nodes);
@@ -522,7 +413,6 @@ const Editor = ({
         );
 
         clearNodeErrors();
-        // compile(engine, newCtx, graph, initialFlowElements);
         compile();
       } catch (error: any) {
         setContexting(false);
@@ -533,7 +423,6 @@ const Editor = ({
         setFlowNodes(initialFlowElements.nodes);
         setFlowEdges(initialFlowElements.edges);
       }
-      // }, 0);
     },
     [
       compile,
@@ -616,8 +505,6 @@ const Editor = ({
   const onInputBakedToggle = useCallback(
     (nodeId: string, inputId: string, baked: boolean) => {
       updateFlowInput(nodeId, inputId, { baked });
-      // setFlowElements((fe) => updateFlowInput(fe, nodeId, inputId, { baked }));
-      // setGraph((graph) => updateGraphNodeInputInternal(graph, nodeId, inputId, { baked }));
       updateGraphNodeInput(nodeId, inputId, { baked });
       debouncedSetNeedsCompile(true);
     },
@@ -756,16 +643,6 @@ const Editor = ({
           ? updateFlowInputInternal(node, targetHandleId, { baked: isCode })
           : node
       );
-      // updateFlowInput(
-      //   nodes,
-      //   sourceId,
-      //   targetHandleId,
-      //   input.bakeable
-      //     ? {
-      //         baked: isCode,
-      //       }
-      //     : {}
-      // );
 
       // React-flow updates the edges, calls the onEdgeUpdate callback, which
       // calls this function, which then again updates the edges. I *think* this
@@ -796,33 +673,6 @@ const Editor = ({
       addConnection(newConnection);
     },
     [addConnection]
-  );
-
-  /**
-   * When React Flow makes a change to the graph *nodes*, it proposes a set of
-   * changes. This callback lets you intercept those changes. It handles at
-   * least node selection, dragging, and deletion changes.
-   *
-   * This strategy to is taken from https://github.com/xyflow/xyflow/issues/3092
-   */
-  const onNodesChangeIntercept = useCallback(
-    (changes: NodeChange[]) => {
-      // Prevent deleting of output nodes
-      const nextChanges = changes.reduce<NodeChange[]>((acc, change) => {
-        if (change.type === 'remove') {
-          const node = getNode(change.id);
-          if (node?.type !== 'output') {
-            return [...acc, change];
-          }
-          return acc;
-        }
-
-        return [...acc, change];
-      }, []);
-
-      onNodesChange(nextChanges);
-    },
-    [getNode, onNodesChange]
   );
 
   const openNodeEditor = useCallback(
@@ -967,6 +817,7 @@ const Editor = ({
   /**
    * Called after edge drag finishes, for succssful and unsuccessfull connections
    */
+  // TODO: Refactor some of these into GlslEditor
   const onReconnectEnd = useCallback(
     (_, edge) => {
       resetTargets();
@@ -1046,8 +897,6 @@ const Editor = ({
         ),
       ]);
 
-      // Give the flow graph time to update after adding the new nodes
-      // setTimeout(async () => {
       const updatedGraph = {
         ...graph,
         edges: [...graph.edges, ...expanded!.edges],
@@ -1079,7 +928,6 @@ const Editor = ({
       }
       setGraph(updatedGraph);
       debouncedSetNeedsCompile(true);
-      // }, 10);
     },
     [
       addEngineNode,
@@ -1562,14 +1410,6 @@ const Editor = ({
     },
     [compiling, graph, setFlowNodes, setFlowEdges, updateAllFlowNodes]
   );
-
-  // const onNodeContextClose = useCallback(() => {
-  //   setFlowElements((fe) => ({
-  //     ...fe,
-  //     nodes: fe.nodes.map((node) => updateFlowNodeData(node, { ghost: false })),
-  //     edges: fe.edges.map((edge) => updateFlowEdgeData(edge, { ghost: false })),
-  //   }));
-  // }, [setFlowElements]);
 
   /**
    * Convenience compilation effect. This lets other callbacks update the
@@ -2054,6 +1894,8 @@ const Editor = ({
                   </BottomModal>
                 ) : null}
                 <FlowEditor
+                  nodes={flowNodes}
+                  edges={flowEdges}
                   menuItems={menuItems}
                   mouse={mouseRef}
                   onMenuAdd={onMenuAdd}
@@ -2061,11 +1903,8 @@ const Editor = ({
                   onNodeContextSelect={onNodeContextSelect}
                   onNodeContextHover={onNodeContextHover}
                   onNodeValueChange={onNodeValueChange}
-                  nodes={flowNodes}
-                  edges={flowEdges}
                   onConnect={onConnect}
                   onReconnect={onEdgeUpdate}
-                  onNodesChange={onNodesChangeIntercept}
                   onEdgesChange={onEdgesChange}
                   onNodesDelete={onNodesDelete}
                   onNodeDoubleClick={onNodeDoubleClick}
@@ -2110,12 +1949,6 @@ const Editor = ({
                 const updated = graphToFlowGraph(graph);
                 setFlowNodes(updated.nodes);
                 setFlowEdges(updated.edges);
-              }}
-              setFragmentOverride={(value) => {
-                debouncedSetFragmentOverride(value);
-              }}
-              setVertexOverride={(value) => {
-                debouncedSetVertexOverride(value);
               }}
             />
           </TabPanel>

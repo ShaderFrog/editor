@@ -3,19 +3,18 @@ import bind from 'classnames/bind';
 const cx = bind.bind(styles);
 
 import { NodeRendererProps, Tree } from 'react-arborist';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { SplitPane } from '@andrewray/react-multi-split-pane';
 
 import {
-  Graph,
   SourceNode,
   findLinkedNode,
   ShaderStage,
   computeGrindex,
 } from '@core/graph';
 
-import { Engine, EngineContext } from '@core/engine';
+import { Engine } from '@core/engine';
 
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import CodeEditor from './CodeEditor';
@@ -40,83 +39,14 @@ import {
 import { capitalize } from '@/util/string';
 import StrategyEditor from './StrategyEditor';
 import { TreeProps } from 'react-arborist/dist/module/types/tree-props';
+import debounce from 'lodash.debounce';
+import { FileTree, findInTree, TreeData } from './FileTree';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(glsl.editor)\x1b[0m', ...args);
 
 const isReadOnly = (node: SourceNode) =>
   !!node?.config?.properties?.length || !!node?.engine;
-
-/**
- * React-Arborist setup
- */
-type TreeData = {
-  id: string;
-  nodeId: string;
-  name: string;
-  children?: TreeData[];
-  type: PaneType;
-  stage?: ShaderStage;
-};
-
-const TreeNode = ({
-  node: treeNode,
-  style,
-  dragHandle,
-}: NodeRendererProps<TreeData>) => {
-  const node = treeNode.data;
-
-  const { nodeId } = node;
-  const { removeEditorTabPaneId, glslEditorTabs } = useEditorStore();
-
-  const correspondingPane = glslEditorTabs.find((pane) => {
-    const p = pane as PaneState;
-    return p.contents?.nodeId === nodeId && p.contents?.type === node.type;
-  });
-
-  const opened = useIsNodeIdOpen(nodeId, node.type);
-
-  return (
-    <div
-      style={style}
-      ref={dragHandle}
-      // Disabling opening/closing node trees for now
-      // onClick={() => node.toggle()}
-      className={cx(
-        treeNode.isLeaf ? styles.treeLeaf : styles.treeFolder,
-        node.stage === 'fragment'
-          ? styles.treeFragment
-          : node.stage === 'vertex'
-          ? styles.treeVertex
-          : styles.treeUnknown
-      )}
-    >
-      {treeNode.isLeaf ? (
-        <FontAwesomeIcon icon={faCode} className={styles.treeIcon} />
-      ) : (
-        <FontAwesomeIcon
-          icon={treeNode.isOpen ? faGear : faChevronRight}
-          className={styles.treeIcon}
-        />
-      )}
-      {node.name}
-      {opened ? (
-        <span
-          title="Close tab"
-          className={styles.treeClose}
-          onClick={(e) => {
-            e.preventDefault();
-            // Stop click from bubbling up to tab selection click!
-            e.stopPropagation();
-            removeEditorTabPaneId(correspondingPane!.id);
-          }}
-        >
-          <FontAwesomeIcon icon={faClose} className="close" />
-        </span>
-      ) : null}
-    </div>
-  );
-};
 
 const tabName = (name: string, type: PaneType, stage: ShaderStage) => {
   const isConfig = type === 'config';
@@ -146,59 +76,9 @@ const tabName = (name: string, type: PaneType, stage: ShaderStage) => {
 const nodeTabName = (node: SourceNode, type: PaneType) =>
   tabName(node.name, type, node.stage!);
 
-const findInTree = (
-  trees: TreeData[],
-  test: (test: TreeData) => boolean
-): TreeData | undefined => {
-  for (let node of trees) {
-    if (test(node)) {
-      return node;
-    }
-    if (node.children) {
-      const found = findInTree(node.children, test);
-      if (found) {
-        return found;
-      }
-    }
-  }
-};
-
 // Hard coded fake node IDs for the final output and fragment editor panes
 const FINAL_VERTEX = 'output_vertex';
 const FINAL_FRAGMENT = 'output_fragment';
-
-const FileTree = (props: TreeProps<TreeData>) => {
-  const { addEditorTab } = useEditorStore();
-  return (
-    <Tree
-      disableDrag
-      rowHeight={28}
-      disableMultiSelection
-      {...props}
-      onSelect={(treeNodes) => {
-        if (!treeNodes.length) {
-          return;
-        }
-        // Warning: This gets called on mount! addEditorTab() is idempoent
-        const treeNode = treeNodes[0];
-        let node = treeNode?.data;
-
-        if (node) {
-          addEditorTab(
-            node.nodeId,
-            node.type === 'live_edit'
-              ? 'live_edit'
-              : treeNode.children?.length
-              ? 'config'
-              : 'code'
-          );
-        }
-      }}
-    >
-      {TreeNode}
-    </Tree>
-  );
-};
 
 /**
  * GLSL Editor
@@ -208,8 +88,6 @@ interface GlslEditorProps {
   onCompile: () => void;
   onSaveOrFork: () => void;
   onGraphChange: () => void;
-  setFragmentOverride: (value: string) => void;
-  setVertexOverride: (value: string) => void;
 }
 
 const GlslEditor = ({
@@ -217,8 +95,6 @@ const GlslEditor = ({
   onCompile,
   onSaveOrFork,
   onGraphChange,
-  setFragmentOverride,
-  setVertexOverride,
 }: GlslEditorProps) => {
   const {
     setGlslEditorActivePaneId,
@@ -229,12 +105,44 @@ const GlslEditor = ({
     compileInfo,
     updateGraphNode,
     compileResult,
+    setCompileResult,
     graph,
     engineContext,
   } = useEditorStore();
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
 
   const codeEditorTabIndex = useGlslEditorTabIndex();
+
+  const setVertexOverride = useCallback(
+    (vertexResult: string) => {
+      if (compileResult) {
+        setCompileResult({
+          ...compileResult,
+          vertexResult,
+        });
+      }
+    },
+    [compileResult, setCompileResult]
+  );
+  const debouncedSetVertexOverride = useMemo(
+    () => debounce(setVertexOverride, 1000),
+    [setVertexOverride]
+  );
+  const setFragmentOverride = useCallback(
+    (fragmentResult: string) => {
+      if (compileResult) {
+        setCompileResult({
+          ...compileResult,
+          fragmentResult,
+        });
+      }
+    },
+    [compileResult, setCompileResult]
+  );
+  const debouncedSetFragmentOverride = useMemo(
+    () => debounce(setFragmentOverride, 1000),
+    [setFragmentOverride]
+  );
 
   const activePane = glslEditorTabs.find(
     (tab) => tab.id === glslEditorActivePaneId
@@ -433,8 +341,8 @@ const GlslEditor = ({
                     : compileResult?.fragmentResult;
                 const override =
                   pane.contents.nodeId === FINAL_VERTEX
-                    ? setVertexOverride
-                    : setFragmentOverride;
+                    ? debouncedSetVertexOverride
+                    : debouncedSetFragmentOverride;
 
                 tabContents = (
                   <div className={styles.shrinkGrowRows}>

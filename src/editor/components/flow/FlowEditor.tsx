@@ -13,6 +13,8 @@ import {
   type EdgeProps,
   NodeTypes,
   EdgeTypes,
+  NodeChange,
+  useReactFlow,
 } from '@xyflow/react';
 
 import { NodeType, GraphDataType } from '@core/graph';
@@ -201,7 +203,7 @@ const FlowEditor = ({
   onConnect,
   onReconnect,
   onEdgesChange,
-  onNodesChange,
+  // onNodesChange,
   onNodesDelete,
   onSelectionChange,
   onNodeDoubleClick,
@@ -213,8 +215,36 @@ const FlowEditor = ({
   onNodeDragStop,
   onNodeValueChange,
 }: FlowEditorProps) => {
-  const { menu, setMenu, hideMenu, shader } = useEditorStore();
+  const { menu, setMenu, hideMenu, shader, onNodesChange } = useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
+  const { screenToFlowPosition, getNode, setViewport } = useReactFlow();
+
+  /**
+   * When React Flow makes a change to the graph *nodes*, it proposes a set of
+   * changes. This callback lets you intercept those changes. It handles at
+   * least node selection, dragging, and deletion changes.
+   *
+   * This strategy to is taken from https://github.com/xyflow/xyflow/issues/3092
+   */
+  const onNodesChangeIntercept = useCallback(
+    (changes: NodeChange[]) => {
+      // Prevent deleting of output nodes
+      const nextChanges = changes.reduce<NodeChange[]>((acc, change) => {
+        if (change.type === 'remove') {
+          const node = getNode(change.id);
+          if (node?.type !== 'output') {
+            return [...acc, change];
+          }
+          return acc;
+        }
+
+        return [...acc, change];
+      }, []);
+
+      onNodesChange(nextChanges);
+    },
+    [getNode, onNodesChange]
+  );
 
   useHotkeys('esc', () => hideMenu());
   useHotkeys('shift+a', () =>
@@ -251,7 +281,8 @@ const FlowEditor = ({
       const flow = rfInstance.toObject().viewport;
       localStorage.setItem(flowKey(shader.id), JSON.stringify(flow));
     }
-  }, [rfInstance]);
+  }, [rfInstance, shader.id]);
+
   const defaultViewport = useMemo(
     () =>
       JSON.parse(localStorage.getItem(flowKey(shader.id)) || 'null') || {
@@ -404,7 +435,7 @@ const FlowEditor = ({
             onConnect={onConnect}
             onReconnect={onReconnect}
             onEdgesChange={onEdgesChange}
-            onNodesChange={onNodesChange}
+            onNodesChange={onNodesChangeIntercept}
             onNodesDelete={onNodesDelete}
             onSelectionChange={onSelectionChange}
             onNodeDoubleClick={onNodeDoubleClick}

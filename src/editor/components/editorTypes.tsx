@@ -1,8 +1,7 @@
 import { MutableRefObject, FunctionComponent } from 'react';
 
-import { Graph, GraphNode, Edge } from '@core/graph';
+import { Graph, Edge, CompileResult } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
-import { UICompileGraphResult } from '../uICompileGraphResult';
 import { MenuItem } from './ContextMenu/ContextMenu';
 import {
   Shader,
@@ -30,7 +29,7 @@ export type AnySceneConfig = BaseSceneConfig & Record<string, any>;
  */
 export type SceneProps = {
   compile: AnyFn;
-  compileResult: UICompileGraphResult | undefined;
+  compileResult: CompileResult | undefined;
   graph: Graph;
   setCtx: (ctx: EngineContext) => void;
   sceneConfig: AnySceneConfig;

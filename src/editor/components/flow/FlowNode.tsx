@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import classnames from 'classnames/bind';
 import groupBy from 'lodash.groupby';
-import { Handle, Position, useReactFlow } from 'reactflow';
+import { Handle, NodeProps, Position, useReactFlow } from '@xyflow/react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGear,
@@ -42,7 +42,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { NODRAG_CLASS } from '../editorTypes';
 import LabeledInput from '../LabeledInput';
 import clamp from '@editor/util/clamp';
-import { EDITOR_BOTTOM_PANEL, useEditorStore } from './useEditorStore';
+import { EDITOR_BOTTOM_PANEL, useEditorStore } from './editor-store';
+import { FlowSourceNode } from './flow-helpers';
 const cx = classnames.bind(styles);
 
 const headerHeight = 30;
@@ -80,18 +81,19 @@ export const flowOutput = (name: string, id?: string): OutputNodeHandle => ({
   name,
 });
 
-export interface CoreFlowNode {
+export type CoreFlowNode = {
   label: string;
   ghost?: boolean;
   outputs: OutputNodeHandle[];
   inputs: InputNodeHandle[];
-}
-export interface FlowNodeDataData extends CoreFlowNode {
-  type: GraphDataType;
+};
+export type FlowNodeDataData = {
+  dataType: GraphDataType;
   value: any;
   config: Record<string, any>;
-}
-export interface FlowNodeSourceData extends CoreFlowNode {
+} & CoreFlowNode;
+
+export type FlowNodeSourceData = {
   stage?: ShaderStage;
   category?: InputCategory;
   active: boolean;
@@ -100,34 +102,20 @@ export interface FlowNodeSourceData extends CoreFlowNode {
    */
   biStage: boolean;
   glslError?: boolean;
-}
+} & CoreFlowNode;
+
 export type FlowNodeData = FlowNodeSourceData | FlowNodeDataData;
 
-const showPosition = (id: any, xPos: number, yPos: number) =>
+const showPosition = (
+  id: any,
+  positionAbsoluteX: number,
+  positionAbsoluteY: number
+) =>
   global?.location?.search?.indexOf('debug') > -1 ? (
     <>
-      ({id}) {Math.round(xPos)}, {Math.round(yPos)}
+      ({id}) {Math.round(positionAbsoluteX)}, {Math.round(positionAbsoluteY)}
     </>
   ) : null;
-
-// interface NodeProp {
-//   nodeId: string;
-// }
-// interface CustomHandleProps extends HandleProps, NodeProp {}
-
-// const CustomHandle = ({ nodeId, id, handleIndex, ...props }: any) => {
-//   // const updateNodeInternals = useUpdateNodeInternals();
-//   // useEffect(() => {
-//   //   // Hack for handle updating
-//   //   setTimeout(() => {
-//   //     updateNodeInternals(nodeId);
-//   //   }, 0);
-//   // }, [nodeId, updateNodeInternals, handleIndex, id]);
-
-//   return <Handle id={id} {...props} />;
-// };
-
-// const computeIOKey = (arr: NodeHandle[]) => arr.map((a) => a.name).join(',');
 
 const InputHande = ({
   input,
@@ -205,7 +193,7 @@ const FlowWrap = ({
             'vector4',
             'rgb',
             'rgba',
-          ].includes((data as any).type)
+          ].includes((data as FlowNodeDataData).dataType)
             ? null
             : // The problem with other nodes is they have the aboslutely
               // positioned inputs/outputs which have variable height, so we do
@@ -713,25 +701,25 @@ const DataNodeComponent = memo(
   ({
     id,
     data,
-    xPos,
-    yPos,
+    positionAbsoluteX,
+    positionAbsoluteY,
   }: {
     id: string;
     data: FlowNodeDataData;
-    xPos: number;
-    yPos: number;
+    positionAbsoluteX: number;
+    positionAbsoluteY: number;
   }) => {
     const onChange = useFlowEventHack();
     const { openNodeContextMenu } = useFlowEditorContext();
 
     return (
-      <FlowWrap data={data} className={cx('flow-node_data', data.type)}>
+      <FlowWrap data={data} className={cx('flow-node_data', data.dataType)}>
         <div className="flowlabel">
           <div className="title">
             {data.label}
-            {showPosition(id, xPos, yPos)}
+            {showPosition(id, positionAbsoluteX, positionAbsoluteY)}
           </div>
-          <div className="dataType">{data.type}</div>
+          <div className="dataType">{data.dataType}</div>
           <button
             className="nodeConfig"
             onClick={(e) => {
@@ -756,19 +744,19 @@ const DataNodeComponent = memo(
           {/* This context powers the vector grid drag. This needs to wrap
               the calls to useDraggable() so the modifiers work. */}
           <DndContext modifiers={[restrictToParentElement]}>
-            {data.type === 'number' ? (
+            {data.dataType === 'number' ? (
               <NumberEditor id={id} data={data} onChange={onChange} />
-            ) : data.type === 'vector2' ? (
+            ) : data.dataType === 'vector2' ? (
               <Vector2Editor id={id} data={data} onChange={onChange} />
-            ) : data.type === 'array' ||
-              data.type === 'vector3' ||
-              data.type === 'vector4' ? (
+            ) : data.dataType === 'array' ||
+              data.dataType === 'vector3' ||
+              data.dataType === 'vector4' ? (
               <VectorEditor id={id} data={data} onChange={onChange} />
-            ) : data.type === 'rgb' || data.type === 'rgba' ? (
+            ) : data.dataType === 'rgb' || data.dataType === 'rgba' ? (
               <ColorEditor id={id} data={data} onChange={onChange} />
-            ) : data.type === 'texture' ? (
+            ) : data.dataType === 'texture' ? (
               <TextureEditor id={id} data={data} onChange={onChange} />
-            ) : data.type === 'samplerCube' ? (
+            ) : data.dataType === 'samplerCube' ? (
               <SamplerEditor
                 id={id}
                 data={data}
@@ -776,7 +764,7 @@ const DataNodeComponent = memo(
                 tex={samplerCubes}
               />
             ) : (
-              <div>NOOOOOO FlowNode for {data.type}</div>
+              <div>NOOOOOO FlowNode for {data.dataType}</div>
             )}
           </DndContext>
         </div>
@@ -815,14 +803,9 @@ const SourceNodeComponent = memo(
   ({
     id,
     data,
-    xPos,
-    yPos,
-  }: {
-    xPos: number;
-    yPos: number;
-    id: string;
-    data: FlowNodeSourceData;
-  }) => {
+    positionAbsoluteX,
+    positionAbsoluteY,
+  }: NodeProps<FlowSourceNode>) => {
     const { onInputBakedToggle, jumpToError } = useFlowGraphContext();
     const { openNodeContextMenu } = useFlowEditorContext();
     // const updateNodeInternals = useUpdateNodeInternals();
@@ -877,7 +860,8 @@ const SourceNodeComponent = memo(
         ) : null}
         <div className={cx('flowlabel', { three: !!data.stage })}>
           <div className="title">
-            {data.label} {showPosition(id, xPos, yPos)}
+            {data.label}{' '}
+            {showPosition(id, positionAbsoluteX, positionAbsoluteY)}
           </div>
           {data.stage ? (
             <div className="stage">

@@ -1,12 +1,6 @@
-import React from 'react';
-import {
-  EdgeProps,
-  getBezierPath,
-  getStraightPath,
-  // getEdgeCenter,
-  // getMarkerEnd,
-} from 'reactflow';
+import { type EdgeProps, getBezierPath, getStraightPath } from '@xyflow/react';
 import { EdgeLink, EdgeType } from '@core/graph';
+import { FlowEdgeOrLink } from './flow-helpers';
 
 export type LinkEdgeData = {
   type: 'link';
@@ -36,7 +30,7 @@ export default function FlowEdge({
   data,
   style = {},
   markerEnd,
-}: EdgeProps<FlowEdgeData>) {
+}: EdgeProps<FlowEdgeOrLink>) {
   const isLink = data?.type === EdgeLink.NEXT_STAGE;
   const [edgePath] = (isLink ? getStraightPath : getBezierPath)({
     sourceX,

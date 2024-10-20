@@ -48,23 +48,14 @@ import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.
 // @ts-ignore
 import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
 import {
-  mangleVar,
   SamplerCubeNode,
   TextureNode,
-  evaluateNode,
-  Graph,
-  findLinkedNode,
-  SourceNode,
   TextureNodeValueData,
   computeGrindex,
 } from '@core/graph';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import { EngineContext } from '@core/engine';
-import {
-  threngine,
-  ThreeRuntime,
-  createMaterial,
-} from '@core/plugins/three/threngine';
+import { ThreeRuntime, createMaterial } from '@core/plugins/three/threngine';
 
 import {
   Tabs,
@@ -85,7 +76,6 @@ import {
 
 import { useThree } from './useThree';
 import { usePrevious } from '../../editor/hooks/usePrevious';
-import { ensure } from '../../util/ensure';
 import { useSize } from '../../editor/hooks/useSize';
 import { RoomEnvironment } from './RoomEnvironment';
 import { SceneProps } from '@editor-components/editorTypes';
@@ -458,78 +448,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
           // @ts-ignore
           mesh.material[name] = value;
         });
-
-        /*
-        Object.entries(compileResult.dataInputs).forEach(([nodeId, inputs]) => {
-          // const node = graph.nodes.find(({ id }) => id === nodeId);
-          const node = grindex.nodes[nodeId];
-          if (!node) {
-            console.warn(
-              `While populating uniforms, compileResults.dataInput referenced node id "${nodeId}," but this node is not in the graph.`,
-              { nodeId, dataInputs: compileResult.dataInputs, graph }
-            );
-            return;
-          }
-          inputs.forEach((input) => {
-            const edge = graph.edges.find(
-              ({ to, input: i }) => to === nodeId && i === input.id
-            );
-            if (edge) {
-              const fromNode = graph.nodes.find(({ id }) => id === edge.from);
-              // In the case where a node has been deleted from the graph,
-              // dataInputs won't have been udpated until a recompile completes
-              if (!fromNode) {
-                return;
-              }
-
-              let value;
-              // THIS DUPLICATES OTHER LINE
-              // When a shader is plugged into the Texture node of a megashader,
-              // this happens, I'm not sure why yet. In fact, why is this branch
-              // getting called at all in useThree() ?
-              try {
-                value = evaluateNode(threngine, graph, fromNode);
-              } catch (err) {
-                console.warn(
-                  `Tried to evaluate a non-data node! ${input.displayName} on ${node.name}`
-                );
-                return;
-              }
-              let newValue = value;
-              if (fromNode.type === 'texture') {
-                // Runtime uniform updating
-                newValue = getAndUpdateTexture(fromNode as TextureNode);
-              }
-              // TODO RENDER TARGET
-              if (fromNode.type === 'samplerCube') {
-                newValue = textures[(fromNode as SamplerCubeNode).value];
-              }
-
-              if (input.type === 'property') {
-                // @ts-ignore
-                mesh.material[input.property] = newValue;
-              } else {
-                // TODO: This doesn't work for engine variables because
-                // those aren't suffixed
-                const name = mangleVar(
-                  input.displayName,
-                  threngine,
-                  node,
-                  findLinkedNode(graph, node.id) as SourceNode
-                );
-
-                // @ts-ignore
-                if (name in (mesh.material.uniforms || {})) {
-                  // @ts-ignore
-                  mesh.material.uniforms[name].value = newValue;
-                } else {
-                  console.warn('Unknown uniform', name);
-                }
-              }
-            }
-          });
-        });
-        */
       }
 
       // @ts-ignore
@@ -921,8 +839,10 @@ const ThreeComponent: React.FC<SceneProps> = ({
   // from moving nodes or sliding uniform sliders, which should not cause a
   // material re-creation. Putting the graph in a ref lets the effect access it
   // without making it a dependency of the effect.
-  const graphRef = useRef<Graph>(graph);
+  const graphRef = useRef(graph);
   graphRef.current = graph;
+  const grindexRef = useRef(grindex);
+  grindexRef.current = grindex;
 
   useEffect(() => {
     if (!compileResult?.fragmentResult) {
@@ -931,6 +851,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     const material = createMaterial(compileResult, ctx);
     const graph = graphRef.current;
+    const grindex = grindexRef.current;
 
     // const { graph } = compileResult;
     const {
@@ -995,7 +916,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
     mesh.material = material;
     shadersUpdated.current = true;
   }, [
-    grindex,
     loadTexture,
     sceneConfig,
     compileResult,

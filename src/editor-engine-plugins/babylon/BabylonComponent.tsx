@@ -492,7 +492,6 @@ const BabylonComponent: React.FC<SceneProps> = ({
       // log('Not yet creating a Babylon material as there is no fragmentResult');
       return;
     }
-    const { graph } = compileResult;
 
     const pbrName = `component_pbr_${id()}`;
     log('🛠 Re-creating BPR material', {

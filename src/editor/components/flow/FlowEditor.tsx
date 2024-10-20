@@ -1,27 +1,23 @@
 import React, { useCallback, MouseEvent, useState, useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { create } from 'zustand';
 
-import ReactFlow, {
-  Node as FlowNode,
+import {
+  ReactFlow,
   Background,
   BackgroundVariant,
   XYPosition,
   ReactFlowProps,
   ReactFlowInstance,
-} from 'reactflow';
-
-import { NodeType, GraphDataType } from '@core/graph';
-import { EngineNodeType } from '@core/engine';
+  NodeTypes,
+  EdgeTypes,
+  NodeChange,
+  useReactFlow,
+} from '@xyflow/react';
 
 import ConnectionLine from './ConnectionLine';
 import FlowEdgeComponent from './FlowEdge';
-import {
-  DataNodeComponent,
-  FlowNodeData,
-  SourceNodeComponent,
-} from './FlowNode';
+import { DataNodeComponent, SourceNodeComponent } from './FlowNode';
 import { FlowEventHack } from '../../flowEventHack';
 
 import ContextMenu, { MenuItem } from '../ContextMenu';
@@ -29,7 +25,7 @@ import { FlowEditorContext } from '@editor/editor/flowEditorContext';
 import { isMacintosh } from '@editor/util/platform';
 
 import styles from './floweditor.module.css';
-import { ContextMenuType, useEditorStore } from './useEditorStore';
+import { ContextMenuType, useEditorStore } from './editor-store';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCalculator,
@@ -40,17 +36,17 @@ import {
   faImage,
   faMultiply,
   faPalette,
-  faPallet,
   faPlus,
 } from '@fortawesome/free-solid-svg-icons';
+import { FlowEdgeOrLink, FlowNode } from './flow-helpers';
 
 // Terrible hack to make the flow graph full height minus the tab height - I
 // need better layoutting of the tabs + graph
 const flowStyles = { background: '#111' };
 
-const flowKey = 'example-flow';
+const flowKey = (id: string | undefined) => `shaderflog_flow_${id}`;
 
-const nodeTypes: Record<NodeType | GraphDataType | EngineNodeType, any> = {
+const nodeTypes: NodeTypes = {
   toon: SourceNodeComponent,
   phong: SourceNodeComponent,
   physical: SourceNodeComponent,
@@ -83,9 +79,12 @@ const nodeTypes: Record<NodeType | GraphDataType | EngineNodeType, any> = {
 
 export const SHADERFROG_FLOW_EDGE_TYPE = 'special';
 
-const edgeTypes: Record<typeof SHADERFROG_FLOW_EDGE_TYPE, any> = {
+const edgeTypes = {
   [SHADERFROG_FLOW_EDGE_TYPE]: FlowEdgeComponent,
-};
+  // This is a whole nightmare, if you use the actual type of the eddgeTypes prop:
+  //    Record<typeof SHADERFROG_FLOW_EDGE_TYPE, React.ComponentType<EdgeProps>>
+  // Then it errors on component assignment. This satisfies seems to work.
+} satisfies EdgeTypes;
 
 export type MouseData = {
   real: XYPosition;
@@ -93,44 +92,18 @@ export type MouseData = {
   projected: XYPosition;
 };
 
-type FlowEditorProps =
-  | {
-      menuItems: MenuItem[];
-      mouse: React.MutableRefObject<MouseData>;
-      onNodeValueChange: (id: string, value: any) => void;
-      onMenuAdd: (type: string) => void;
-      onMenuClose: () => void;
-      onNodeContextSelect: (nodeId: string, type: string) => void;
-      onNodeContextHover: (nodeId: string, type: string) => void;
-    } & Pick<
-      ReactFlowProps,
-      | 'nodes'
-      | 'edges'
-      | 'onConnect'
-      | 'onEdgeUpdate'
-      | 'onEdgesChange'
-      | 'onNodesChange'
-      | 'onNodesDelete'
-      | 'onNodeDoubleClick'
-      | 'onSelectionChange'
-      | 'onEdgesDelete'
-      | 'onConnectStart'
-      | 'onEdgeUpdateStart'
-      | 'onEdgeUpdateEnd'
-      | 'onNodeDragStop'
-      | 'onConnectEnd'
-    >;
-
 export enum NodeContextActions {
   EDIT_SOURCE = '1',
+  EDIT_CONFIG = '5',
   DELETE_NODE_AND_DEPENDENCIES = '2',
   DELETE_NODE_ONLY = '3',
   DELETE_FULL_NODE_TREE = '4',
 }
-const nodeContextMenuItems = (node?: FlowNode<FlowNodeData>): MenuItem[] => {
+const nodeContextMenuItems = (node?: FlowNode): MenuItem[] => {
   if (!node) {
     return [];
   }
+
   const isData = 'value' in node.data;
   return isData
     ? [
@@ -145,11 +118,23 @@ const nodeContextMenuItems = (node?: FlowNode<FlowNodeData>): MenuItem[] => {
         },
       ]
     : [
-        {
-          display: 'Edit Source',
-          value: NodeContextActions.EDIT_SOURCE,
-          key: 'Double Click',
-        },
+        // TODO: engine nodes have type "physical" but no other indicators they
+        // need the config link, do I need to put engine in the flownodedata?
+        // and selecting the menu on the "add" node triggers an infinite array serach?
+        // need to figure out what's not breaking the loope
+        ...(node.type === 'source'
+          ? [
+              {
+                display: 'Edit Source',
+                value: NodeContextActions.EDIT_SOURCE,
+                key: 'Double Click',
+              },
+              {
+                display: 'Edit Configuration',
+                value: NodeContextActions.EDIT_CONFIG,
+              },
+            ]
+          : []),
         {
           display: 'Delete Node & Data',
           value: NodeContextActions.DELETE_NODE_AND_DEPENDENCIES,
@@ -164,8 +149,35 @@ const nodeContextMenuItems = (node?: FlowNode<FlowNodeData>): MenuItem[] => {
           display: 'Delete Node Tree',
           value: NodeContextActions.DELETE_FULL_NODE_TREE,
         },
-      ];
+      ].filter(Boolean);
 };
+
+type FlowEditorProps =
+  | {
+      nodes: FlowNode[];
+      edges: FlowEdgeOrLink[];
+      menuItems: MenuItem[];
+      mouse: React.MutableRefObject<MouseData>;
+      onNodeValueChange: (id: string, value: any) => void;
+      onMenuAdd: (type: string) => void;
+      onMenuClose: () => void;
+      onNodeContextSelect: (nodeId: string, type: string) => void;
+      onNodeContextHover: (nodeId: string, type: string) => void;
+    } & Pick<
+      ReactFlowProps,
+      | 'onConnect'
+      | 'onReconnect'
+      | 'onEdgesChange'
+      | 'onNodesDelete'
+      | 'onNodeDoubleClick'
+      | 'onSelectionChange'
+      | 'onEdgesDelete'
+      | 'onConnectStart'
+      | 'onReconnectStart'
+      | 'onReconnectEnd'
+      | 'onNodeDragStop'
+      | 'onConnectEnd'
+    >;
 
 const FlowEditor = ({
   mouse,
@@ -177,22 +189,49 @@ const FlowEditor = ({
   nodes,
   edges,
   onConnect,
-  onEdgeUpdate,
+  onReconnect,
   onEdgesChange,
-  onNodesChange,
   onNodesDelete,
   onSelectionChange,
   onNodeDoubleClick,
   onEdgesDelete,
   onConnectStart,
-  onEdgeUpdateStart,
-  onEdgeUpdateEnd,
+  onReconnectStart,
+  onReconnectEnd,
   onConnectEnd,
   onNodeDragStop,
   onNodeValueChange,
 }: FlowEditorProps) => {
-  const { menu, setMenu, hideMenu } = useEditorStore();
+  const { menu, setMenu, hideMenu, shader, onNodesChange } = useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
+  const { getNode } = useReactFlow();
+
+  /**
+   * When React Flow makes a change to the graph *nodes*, it proposes a set of
+   * changes. This callback lets you intercept those changes. It handles at
+   * least node selection, dragging, and deletion changes.
+   *
+   * This strategy to is taken from https://github.com/xyflow/xyflow/issues/3092
+   */
+  const onNodesChangeIntercept = useCallback(
+    (changes: NodeChange[]) => {
+      // Prevent deleting of output nodes
+      const nextChanges = changes.reduce<NodeChange[]>((acc, change) => {
+        if (change.type === 'remove') {
+          const node = getNode(change.id);
+          if (node?.type !== 'output') {
+            return [...acc, change];
+          }
+          return acc;
+        }
+
+        return [...acc, change];
+      }, []);
+
+      onNodesChange(nextChanges);
+    },
+    [getNode, onNodesChange]
+  );
 
   useHotkeys('esc', () => hideMenu());
   useHotkeys('shift+a', () =>
@@ -227,12 +266,13 @@ const FlowEditor = ({
   const onMoveEnd = useCallback(() => {
     if (rfInstance) {
       const flow = rfInstance.toObject().viewport;
-      localStorage.setItem(flowKey, JSON.stringify(flow));
+      localStorage.setItem(flowKey(shader.id), JSON.stringify(flow));
     }
-  }, [rfInstance]);
+  }, [rfInstance, shader.id]);
+
   const defaultViewport = useMemo(
     () =>
-      JSON.parse(localStorage.getItem(flowKey) || 'null') || {
+      JSON.parse(localStorage.getItem(flowKey(shader.id)) || 'null') || {
         x: 200,
         y: 150,
         zoom: 0.5,
@@ -333,11 +373,13 @@ const FlowEditor = ({
     [onNodeContextHover, contextNodeId]
   );
 
-  const nodeContextMenu = useMemo(() => {
-    return nodeContextMenuItems(
-      (nodes || []).find((node) => node.id === contextNodeId)
-    );
-  }, [nodes, contextNodeId]);
+  const nodeContextMenu = useMemo(
+    () =>
+      nodeContextMenuItems(
+        (nodes || []).find((node) => node.id === contextNodeId)
+      ),
+    [nodes, contextNodeId]
+  );
 
   const { isOver, setNodeRef } = useDroppable({
     id: 'droppable',
@@ -378,17 +420,17 @@ const FlowEditor = ({
             edges={edges}
             onMoveEnd={onMoveEnd}
             onConnect={onConnect}
-            onEdgeUpdate={onEdgeUpdate}
+            onReconnect={onReconnect}
             onEdgesChange={onEdgesChange}
-            onNodesChange={onNodesChange}
+            onNodesChange={onNodesChangeIntercept}
             onNodesDelete={onNodesDelete}
             onSelectionChange={onSelectionChange}
             onNodeDoubleClick={onNodeDoubleClick}
             onEdgesDelete={onEdgesDelete}
             connectionLineComponent={ConnectionLine}
             onConnectStart={onConnectStart}
-            onEdgeUpdateStart={onEdgeUpdateStart}
-            onEdgeUpdateEnd={onEdgeUpdateEnd}
+            onReconnectStart={onReconnectStart}
+            onReconnectEnd={onReconnectEnd}
             onConnectEnd={onConnectEnd}
             onNodeDragStop={onNodeDragStop}
             onInit={setRfInstance}

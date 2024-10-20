@@ -1,17 +1,162 @@
 import cx from 'classnames';
-import React from 'react';
+import React, { useState } from 'react';
 
-import { EngineContext } from '@core/engine';
-import { Strategy, StrategyType } from '@core/strategy';
+import {
+  AssignmentToStrategy,
+  DeclarationOfStrategy,
+  InjectStrategy,
+  NamedAttributeStrategy,
+  Strategy,
+  StrategyType,
+  UniformStrategy,
+} from '@core/strategy';
 import {
   SourceNode,
   SourceType,
-  Graph,
   findLinkedNode,
   Backfillers,
 } from '@core/graph';
 
 import styles from '../styles/editor.module.css';
+import { useEditorStore } from './flow/editor-store';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCircleXmark } from '@fortawesome/free-solid-svg-icons';
+
+type StrategyEditorProps<T extends { config: any } = any> = {
+  config: T['config'];
+  onChange: (config: T['config']) => void;
+};
+
+const AssignmentToStrategyEditor = ({
+  config,
+  onChange,
+}: StrategyEditorProps<AssignmentToStrategy>) => {
+  return (
+    <div>
+      <label>
+        Assign To
+        <input
+          className="textinput"
+          type="text"
+          value={config.assignTo}
+          onChange={(e) => onChange({ ...config, assignTo: e.target.value })}
+        ></input>
+      </label>
+      <label>
+        Nth
+        <input
+          className="textinput"
+          type="number"
+          step="1"
+          value={config.nth}
+          onChange={(e) =>
+            onChange({ ...config, nth: parseInt(e.target.value, 10) })
+          }
+        ></input>
+      </label>
+    </div>
+  );
+};
+
+const DeclarationOfStrategyEditor = ({
+  config,
+  onChange,
+}: StrategyEditorProps<DeclarationOfStrategy>) => {
+  return (
+    <div>
+      <label>
+        Declaration Of
+        <input
+          className="textinput"
+          type="text"
+          value={config.declarationOf}
+          onChange={(e) =>
+            onChange({ ...config, declarationOf: e.target.value })
+          }
+        ></input>
+      </label>
+    </div>
+  );
+};
+
+const NamedAttributeStrategyEditor = ({
+  config,
+  onChange,
+}: StrategyEditorProps<NamedAttributeStrategy>) => {
+  return (
+    <div>
+      <label>
+        Attribute Name
+        <input
+          className="textinput"
+          type="text"
+          value={config.attributeName}
+          onChange={(e) =>
+            onChange({ ...config, attributeName: e.target.value })
+          }
+        ></input>
+      </label>
+    </div>
+  );
+};
+
+const InjectStrategyEditor = ({
+  config,
+  onChange,
+}: StrategyEditorProps<InjectStrategy>) => {
+  return (
+    <div>
+      <label>
+        Find
+        <input
+          placeholder="Source code to find"
+          className="textinput"
+          type="text"
+          value={config.find}
+          onChange={(e) => onChange({ ...config, find: e.target.value })}
+        ></input>
+      </label>
+      <label>
+        Insert
+        <select
+          className="select"
+          value={config.insert}
+          onChange={(e) =>
+            onChange({
+              ...config,
+              insert: e.target.value as 'replace' | 'before' | 'after',
+            })
+          }
+        >
+          <option value="before">Before</option>
+          <option value="after">After</option>
+          <option value="replace">Replace</option>
+        </select>
+      </label>
+      <label>
+        Count
+        <input
+          className="textinput"
+          type="number"
+          step="1"
+          value={config.count}
+          onChange={(e) =>
+            onChange({ ...config, count: parseInt(e.target.value, 10) })
+          }
+        ></input>
+      </label>
+    </div>
+  );
+};
+
+const strategyEditors: {
+  [key in StrategyType]?: React.FC<StrategyEditorProps>;
+} = {
+  [StrategyType.ASSIGNMENT_TO]: AssignmentToStrategyEditor,
+  [StrategyType.DECLARATION_OF]: DeclarationOfStrategyEditor,
+  [StrategyType.NAMED_ATTRIBUTE]: NamedAttributeStrategyEditor,
+  [StrategyType.INJECT]: InjectStrategyEditor,
+};
 
 const sourceTypeText: Record<SourceType, any> = {
   Expression: (
@@ -28,18 +173,22 @@ const sourceTypeText: Record<SourceType, any> = {
 
 const StrategyEditor = ({
   node,
-  graph,
   onSave,
   onGraphChange,
-  ctx,
 }: {
   node: SourceNode;
-  graph: Graph;
   onSave: () => void;
   onGraphChange: () => void;
-  ctx?: EngineContext;
 }) => {
-  if (!ctx || !node.config) {
+  const { graph, engineContext } = useEditorStore();
+
+  const [selectedStrategy, setSelectedStrategy] = useState(
+    StrategyType.VARIABLE
+  );
+  const [strategyConfig, setStrategyConfig] = useState({});
+  const StrategyEditor = strategyEditors[selectedStrategy];
+
+  if (!engineContext || !node.config) {
     return null;
   }
   const { inputs } = node;
@@ -152,7 +301,7 @@ const StrategyEditor = ({
               ...node.config.strategies,
               {
                 type: data.strategy,
-                config: JSON.parse(data.config as string),
+                config: strategyConfig,
               } as Strategy,
             ];
             onSave();
@@ -161,7 +310,14 @@ const StrategyEditor = ({
           <h2 className={cx(styles.uiHeader, 'm-top-15')}>Add Strategy</h2>
           <div className={styles.colcolauto}>
             <div>
-              <select name="strategy" className="select">
+              <select
+                name="strategy"
+                className="select"
+                value={selectedStrategy}
+                onChange={(e) =>
+                  setSelectedStrategy(e.target.value as StrategyType)
+                }
+              >
                 {Object.entries(StrategyType).map(([name, value]) => (
                   <option key={name} value={value}>
                     {name}
@@ -170,12 +326,12 @@ const StrategyEditor = ({
               </select>
             </div>
             <div>
-              <input
-                className="textinput"
-                type="text"
-                name="config"
-                defaultValue="{}"
-              ></input>
+              {StrategyEditor ? (
+                <StrategyEditor
+                  config={strategyConfig}
+                  onChange={setStrategyConfig}
+                />
+              ) : null}
             </div>
             <div>
               <button className="buttonauto formbutton" type="submit">
@@ -234,55 +390,59 @@ const StrategyEditor = ({
         {inputs.length
           ? inputs.map((i) => (
               <div key={i.id} className={cx('divide-b-10')}>
-                {backfillers[i.id] ? (
-                  <form
-                    className={cx('grid growGrowGrowShrink gap25')}
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const data = new FormData(
-                        event.target as HTMLFormElement
-                      );
+                <div
+                  className={cx(
+                    'grid gap25',
+                    backfillers[i.id] ? 'growGrowShrink' : 'growShrinkShrink'
+                  )}
+                >
+                  <div>{i.id}</div>
+                  {backfillers[i.id] ? (
+                    <form
+                      className={cx('grid growGrowShrink gap25')}
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        const data = new FormData(
+                          event.target as HTMLFormElement
+                        );
 
-                      (backfillers[i.id][0] = {
-                        argType: data.get('argType') as string,
-                        targetVariable: data.get('targetVariable') as string,
-                      }),
-                        onSave();
-                    }}
-                  >
-                    <div>{i.id}</div>
-                    <label>
-                      Arg Type
-                      <input
-                        className="textinput m-top-10"
-                        type="text"
-                        defaultValue={backfillers[i.id][0].argType}
-                      />
-                    </label>
-                    <label>
-                      Target Variable
-                      <input
-                        className="textinput m-top-10"
-                        type="text"
-                        defaultValue={backfillers[i.id][0].targetVariable}
-                      />
-                    </label>
-                    <div>
-                      <button
-                        className="buttonauto formbutton m-top-20"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          delete backfillers[i.id];
+                        (backfillers[i.id][0] = {
+                          argType: data.get('argType') as string,
+                          targetVariable: data.get('targetVariable') as string,
+                        }),
                           onSave();
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <span className={cx('grid', 'growShrink', 'gap25')}>
-                    <div>{i.id}</div>
+                      }}
+                    >
+                      <label>
+                        Arg Type
+                        <input
+                          className="textinput m-top-10"
+                          type="text"
+                          defaultValue={backfillers[i.id][0].argType}
+                        />
+                      </label>
+                      <label>
+                        Target Variable
+                        <input
+                          className="textinput m-top-10"
+                          type="text"
+                          defaultValue={backfillers[i.id][0].targetVariable}
+                        />
+                      </label>
+                      <div>
+                        <button
+                          className="buttonauto formbutton secondary m-top-20"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            delete backfillers[i.id];
+                            onSave();
+                          }}
+                        >
+                          Unbackfill
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
                     <button
                       className="buttonauto formbutton"
                       onClick={() => {
@@ -295,8 +455,21 @@ const StrategyEditor = ({
                     >
                       Backfill
                     </button>
-                  </span>
-                )}
+                  )}
+                  <div className="flexEnd">
+                    <FontAwesomeIcon
+                      title="Delete input"
+                      icon={faCircleXmark}
+                      className={styles.inlineClose}
+                      onClick={() => {
+                        node.inputs = node.inputs.filter(
+                          ({ id }) => id !== i.id
+                        );
+                        onSave();
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             ))
           : 'No inputs found'}

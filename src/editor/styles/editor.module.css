@@ -602,6 +602,23 @@ textarea.error {
   color: #fff;
 }
 
+.resetVeiw {
+}
+.resetVeiw svg:first-child {
+  color: #ddd;
+  filter: drop-shadow(0 0 1px rgb(0 0 0 / 1));
+  position: relative;
+  left: -2px;
+  top: -2px;
+}
+.resetVeiw svg:last-child {
+  color: #fff;
+  position: relative;
+  left: -17px;
+  top: -1px;
+  filter: drop-shadow(0 0 1px rgb(0 0 0 / 1));
+}
+
 /*******************************************************************************
  * Tab annotations
  ******************************************************************************/
@@ -646,6 +663,14 @@ textarea.error {
   position: absolute;
   top: 4px;
   right: 10px;
+}
+
+.inlineClose {
+  color: #ccc;
+  cursor: pointer;
+}
+.inlineClose:hover {
+  color: #fff;
 }
 
 /*******************************************************************************

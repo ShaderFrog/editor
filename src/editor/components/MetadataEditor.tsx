@@ -1,39 +1,31 @@
 import styles from '../styles/editor.module.css';
 import cx from 'classnames';
 
-import { Node, useReactFlow } from 'reactflow';
+import { Node, useReactFlow } from '@xyflow/react';
 
 import { Shader } from '@/editor/model';
 import { useMemo, useState } from 'react';
 import { computeGrindex, Graph, SourceNode } from '@/core';
 import { FlowNodeSourceData } from './flow/FlowNode';
+import { useEditorStore } from './flow/editor-store';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
 
 const MetadataEditor = ({
-  graph,
-  setGraph,
-  flowNodes,
-  shader,
-  setShader,
   isOwnShader,
   isDeleting,
   onDeleteShader,
   takeScreenshot,
   screenshotData,
 }: {
-  graph: Graph;
-  setGraph: React.Dispatch<React.SetStateAction<Graph>>;
-  flowNodes: Node<any>[];
-  shader: Shader;
-  setShader: React.Dispatch<React.SetStateAction<Shader>>;
   isOwnShader?: boolean;
   onDeleteShader?: (shaderId: string) => Promise<void>;
   isDeleting?: boolean;
   takeScreenshot: () => void;
   screenshotData?: string;
 }) => {
+  const { shader, graph, setGraph, flowNodes, setShader } = useEditorStore();
   const { getNode } = useReactFlow();
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
 

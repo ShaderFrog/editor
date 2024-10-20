@@ -18,7 +18,7 @@ export const useHoisty = () => {
 export const Hoisty: React.FC = ({ children }) => {
   const refData = useRef<{ [key: string]: any }>({});
 
-  // TODO: I've hard to hard code "three" / "babylon" in the respective places
+  // TODO: I've had to hard code "three" / "babylon" in the respective places
   // that use this hook, to keep the old context around to destroy it, and to
   // prevent babylon calling this hook and getting a brand new context. Can I
   // instead clear this, or forceUpdate?

@@ -144,10 +144,10 @@
   transition: 0.1s all ease-out;
 }
 .flownode .react-flow__handle.target {
-  left: -8px;
+  left: 0px;
 }
 .flownode .react-flow__handle.source {
-  right: -8px;
+  right: 0px;
 }
 
 .flownode .react-flow__handle.linkHandle {

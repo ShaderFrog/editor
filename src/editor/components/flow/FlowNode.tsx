@@ -55,13 +55,6 @@ const INPUT_LABEL_START_OFFSET = 4;
 // If there are no labeled input sections, move the output handle top higher up
 const outputHandleTopWithoutLabel = 24;
 
-export const flowOutput = (name: string, id?: string): OutputNodeHandle => ({
-  connected: false,
-  validTarget: false,
-  id: id || name,
-  name,
-});
-
 const showPosition = (
   id: any,
   positionAbsoluteX: number,

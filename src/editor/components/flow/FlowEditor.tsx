@@ -39,7 +39,11 @@ import {
   faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 
-import { FlowNode, FlowEdgeOrLink } from './flow-types';
+import {
+  FlowNode,
+  FlowEdgeOrLink,
+  SHADERFROG_FLOW_EDGE_TYPE,
+} from './flow-types';
 
 // Terrible hack to make the flow graph full height minus the tab height - I
 // need better layoutting of the tabs + graph
@@ -77,8 +81,6 @@ const nodeTypes: NodeTypes = {
   number: DataNodeComponent,
   array: DataNodeComponent,
 };
-
-export const SHADERFROG_FLOW_EDGE_TYPE = 'special';
 
 const edgeTypes = {
   [SHADERFROG_FLOW_EDGE_TYPE]: FlowEdgeComponent,

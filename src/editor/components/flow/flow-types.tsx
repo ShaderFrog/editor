@@ -1,11 +1,15 @@
 import { Node as XyFlowNode, Edge as XYFlowEdge } from '@xyflow/react';
 
+// Attempt to abstract out types to avoid circular dependencies
+
 import {
   EdgeType,
   ShaderStage,
   GraphDataType,
   InputCategory,
 } from '@core/graph';
+
+export const SHADERFROG_FLOW_EDGE_TYPE = 'special';
 
 export type LinkEdgeData = {
   type: 'link';

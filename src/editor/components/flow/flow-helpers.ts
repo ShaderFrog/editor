@@ -17,8 +17,7 @@ import {
   Edge as GraphEdge,
   EdgeLink,
 } from '@core/graph';
-import { flowOutput } from './FlowNode';
-import { SHADERFROG_FLOW_EDGE_TYPE } from './FlowEditor';
+import { OutputNodeHandle, SHADERFROG_FLOW_EDGE_TYPE } from './flow-types';
 import indexById from '@/core/util/indexByid';
 import {
   FlowNode,
@@ -493,3 +492,10 @@ export const updateGraphFromFlowGraph = (
     })),
   };
 };
+
+export const flowOutput = (name: string, id?: string): OutputNodeHandle => ({
+  connected: false,
+  validTarget: false,
+  id: id || name,
+  name,
+});

@@ -277,7 +277,7 @@ const FlowEditor = ({
         y: 150,
         zoom: 0.5,
       },
-    []
+    [shader.id]
   );
 
   // These are processed in useGraph() for the next time you need to figure this out

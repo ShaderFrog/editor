@@ -671,7 +671,7 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
     } else {
       console.warn('No mesh to assign the material to!');
     }
-  }, [setGlResult, compileResult, sceneData, app, textures]);
+  }, [setGlResult, graph, compileResult, sceneData, app, textures]);
 
   takeScreenshotRef.current = useCallback(async () => {
     const viewAngle = SceneDefaultAngles[sceneConfig.previewObject];

@@ -686,7 +686,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
       console.warn('No mesh to assign the material to!');
     }
     // sceneRef.current.shadersUpdated = true;
-  }, [scene, compileResult, textures.empty, sceneData.mesh]);
+  }, [scene, graph, compileResult, textures.empty, sceneData.mesh]);
 
   const prevLights = usePrevious(sceneConfig.lights);
   const previousShowHelpers = usePrevious(sceneConfig.showHelpers);

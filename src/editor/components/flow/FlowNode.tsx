@@ -117,25 +117,6 @@ const showPosition = (
     </>
   ) : null;
 
-// interface NodeProp {
-//   nodeId: string;
-// }
-// interface CustomHandleProps extends HandleProps, NodeProp {}
-
-// const CustomHandle = ({ nodeId, id, handleIndex, ...props }: any) => {
-//   // const updateNodeInternals = useUpdateNodeInternals();
-//   // useEffect(() => {
-//   //   // Hack for handle updating
-//   //   setTimeout(() => {
-//   //     updateNodeInternals(nodeId);
-//   //   }, 0);
-//   // }, [nodeId, updateNodeInternals, handleIndex, id]);
-
-//   return <Handle id={id} {...props} />;
-// };
-
-// const computeIOKey = (arr: NodeHandle[]) => arr.map((a) => a.name).join(',');
-
 const InputHande = ({
   input,
   top,
@@ -212,7 +193,7 @@ const FlowWrap = ({
             'vector4',
             'rgb',
             'rgba',
-          ].includes((data as any).type)
+          ].includes((data as FlowNodeDataData).dataType)
             ? null
             : // The problem with other nodes is they have the aboslutely
               // positioned inputs/outputs which have variable height, so we do

@@ -4,29 +4,20 @@ import { useHotkeys } from 'react-hotkeys-hook';
 
 import {
   ReactFlow,
-  Node as XYFlowNode,
   Background,
   BackgroundVariant,
   XYPosition,
   ReactFlowProps,
   ReactFlowInstance,
-  type EdgeProps,
   NodeTypes,
   EdgeTypes,
   NodeChange,
   useReactFlow,
 } from '@xyflow/react';
 
-import { NodeType, GraphDataType } from '@core/graph';
-import { EngineNodeType } from '@core/engine';
-
 import ConnectionLine from './ConnectionLine';
 import FlowEdgeComponent from './FlowEdge';
-import {
-  DataNodeComponent,
-  FlowNodeData,
-  SourceNodeComponent,
-} from './FlowNode';
+import { DataNodeComponent, SourceNodeComponent } from './FlowNode';
 import { FlowEventHack } from '../../flowEventHack';
 
 import ContextMenu, { MenuItem } from '../ContextMenu';
@@ -45,7 +36,6 @@ import {
   faImage,
   faMultiply,
   faPalette,
-  faPallet,
   faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import { FlowEdgeOrLink, FlowNode } from './flow-helpers';
@@ -167,7 +157,6 @@ type FlowEditorProps =
       nodes: FlowNode[];
       edges: FlowEdgeOrLink[];
       menuItems: MenuItem[];
-      // onNodesDelete: (nodes: FlowNode[]) => void;
       mouse: React.MutableRefObject<MouseData>;
       onNodeValueChange: (id: string, value: any) => void;
       onMenuAdd: (type: string) => void;
@@ -179,7 +168,6 @@ type FlowEditorProps =
       | 'onConnect'
       | 'onReconnect'
       | 'onEdgesChange'
-      | 'onNodesChange'
       | 'onNodesDelete'
       | 'onNodeDoubleClick'
       | 'onSelectionChange'
@@ -203,7 +191,6 @@ const FlowEditor = ({
   onConnect,
   onReconnect,
   onEdgesChange,
-  // onNodesChange,
   onNodesDelete,
   onSelectionChange,
   onNodeDoubleClick,
@@ -217,7 +204,7 @@ const FlowEditor = ({
 }: FlowEditorProps) => {
   const { menu, setMenu, hideMenu, shader, onNodesChange } = useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
-  const { screenToFlowPosition, getNode, setViewport } = useReactFlow();
+  const { getNode } = useReactFlow();
 
   /**
    * When React Flow makes a change to the graph *nodes*, it proposes a set of

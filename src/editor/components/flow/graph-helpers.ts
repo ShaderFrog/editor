@@ -39,7 +39,9 @@ export const findNodeAndData = (graph: Graph, startNode: GraphNode) => {
         // Stop at the linked node if present, since the other finder does that.
         isDataNode(node) &&
         node.id !== linkedNode?.id &&
-        acc.edges.map((edge) => edge.from).includes(node.id)
+        Object.values(acc.edges)
+          .map((edge) => edge.from)
+          .includes(node.id)
       );
     },
     edge: (input, toNode, inputEdge, fromNode, acc) => {
@@ -70,20 +72,23 @@ export const findNodeAndData = (graph: Graph, startNode: GraphNode) => {
     (edge) =>
       edge.from === linkedFragmentNode.id || edge.from === linkedVertexNode?.id
   );
-  elements.edges = elements.edges.concat(outboundEdges);
+  elements.edges = elements.edges = {
+    ...elements.edges,
+    ...outboundEdges.reduce((acc, edge) => ({ ...acc, [edge.id]: edge }), {}),
+  };
 
-  const edgesById = new Set<string>(elements.edges.map((edge) => edge.id));
-  const nodesById = new Set<string>(Object.keys(elements.nodes));
-  nodesById.add(linkedFragmentNode.id);
+  const edgeIds = new Set(Object.keys(elements.edges));
+  const nodeIds = new Set(Object.keys(elements.nodes));
+  nodeIds.add(linkedFragmentNode.id);
   elements.nodes[linkedFragmentNode.id] = linkedFragmentNode;
   if (linkedVertexNode) {
-    nodesById.add(linkedVertexNode.id);
+    nodeIds.add(linkedVertexNode.id);
     elements.nodes[linkedVertexNode.id] = linkedVertexNode;
   }
 
   return {
-    edgesById,
-    nodesById,
+    edgeIds,
+    nodeIds,
     nodes: elements.nodes,
     edges: elements.edges,
     linkedFragmentNode,
@@ -133,17 +138,20 @@ export const findNodeTree = (graph: Graph, startNode: GraphNode) => {
     : consSearchResult();
 
   const elements = mergeSearchResults(currentElements, otherElements);
-  const nodesById = new Set<string>(Object.keys(elements.nodes));
+  const nodeIds = new Set(Object.keys(elements.nodes));
 
   // Find outbound edges, which aren't found when filtering node from itself
-  const outboundEdges = graph.edges.filter((edge) => nodesById.has(edge.from));
-  elements.edges = elements.edges.concat(outboundEdges);
+  const outboundEdges = graph.edges.filter((edge) => nodeIds.has(edge.from));
+  elements.edges = {
+    ...elements.edges,
+    ...outboundEdges.reduce((acc, edge) => ({ ...acc, [edge.id]: edge }), {}),
+  };
 
-  const edgesById = new Set<string>(elements.edges.map((edge) => edge.id));
-  nodesById.add(linkedFragmentNode.id);
+  const edgeIds = new Set(Object.keys(elements.edges));
+  nodeIds.add(linkedFragmentNode.id);
   elements.nodes[linkedFragmentNode.id] = linkedFragmentNode;
   if (linkedVertexNode) {
-    nodesById.add(linkedVertexNode.id);
+    nodeIds.add(linkedVertexNode.id);
     elements.nodes[linkedVertexNode.id] = linkedVertexNode;
   }
 
@@ -153,13 +161,13 @@ export const findNodeTree = (graph: Graph, startNode: GraphNode) => {
     ),
     'No output node found in graph!'
   );
-  const edgeToVertexOutput = elements.edges.find(
+  const edgeToVertexOutput = Object.values(elements.edges).find(
     (edge) => edge.to === outputVertexNode?.id
   );
 
   return {
-    edgesById,
-    nodesById,
+    edgeIds,
+    nodeIds,
     edgeToVertexOutput,
     nodes: elements.nodes,
     edges: elements.edges,

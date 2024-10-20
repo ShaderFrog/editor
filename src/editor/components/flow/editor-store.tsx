@@ -2,12 +2,10 @@ import { createContext, useRef, useContext } from 'react';
 import { useStore, createStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { NodeChange, XYPosition } from '@xyflow/react';
-import { Draft, produce as immerProduce, enableMapSet } from 'immer';
 import {
   addEdge,
   applyNodeChanges,
   applyEdgeChanges,
-  Node as XYFlowNode,
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
@@ -36,18 +34,9 @@ import {
   updateFlowNodeConfig,
   isFlowDataNode,
 } from './flow-helpers';
-import { FlowNodeData, FlowNodeDataData, InputNodeHandle } from './FlowNode';
+import { FlowNodeData, InputNodeHandle } from './FlowNode';
 import { Shader } from '@/editor/model';
 import { AnySceneConfig } from '../editorTypes';
-
-// Required for immer to work with Map and Set
-enableMapSet();
-
-// Immer's produce does not infer the zustand state type! Thanks
-// https://github.com/pmndrs/zustand/issues/83#issuecomment-2228437266
-// export function produce<T>(cb: (value: Draft<T>) => void): (value: T) => T {
-//   return immerProduce(cb);
-// }
 
 /*******************************************************************************
  * Types and friends

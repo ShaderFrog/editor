@@ -54,7 +54,6 @@ import {
   isError,
   TextureNode,
   computeGrindex,
-  indexById,
 } from '@core/graph';
 
 import FlowEditor, {
@@ -141,6 +140,7 @@ import {
 import MetadataEditor from './MetadataEditor';
 import ConvertShadertoy from './ConvertShadertoy';
 import { truncate } from '@/util/string';
+import indexById from '@/core/util/indexByid';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);

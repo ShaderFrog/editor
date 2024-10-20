@@ -375,10 +375,6 @@ const GlslEditor = ({
                     onCompile={onCompile}
                     onChange={(value) => {
                       updateGraphNode(primaryNode.id, { source: value });
-                      // if (value) {
-                      //   (grindex.nodes[primaryNode.id] as SourceNode).source =
-                      //     value;
-                      // }
                     }}
                   />
                 );

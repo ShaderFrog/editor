@@ -1,3 +1,4 @@
+import indexById from '@/core/util/indexByid';
 import {
   Graph,
   GraphNode,
@@ -8,7 +9,6 @@ import {
   consSearchResult,
   mergeSearchResults,
   isDataNode,
-  indexById,
 } from '@core/graph';
 import { ensure } from '@core/util/ensure';
 

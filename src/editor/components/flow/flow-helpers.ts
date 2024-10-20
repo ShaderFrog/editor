@@ -16,7 +16,6 @@ import {
   alphabet,
   Edge as GraphEdge,
   EdgeLink,
-  indexById,
 } from '@core/graph';
 import { FlowEdgeData } from './FlowEdge';
 import {
@@ -27,6 +26,7 @@ import {
   InputNodeHandle,
 } from './FlowNode';
 import { SHADERFROG_FLOW_EDGE_TYPE } from './FlowEditor';
+import indexById from '@/core/util/indexByid';
 
 export type FlowEdgeOrLink = XYFlowEdge<FlowEdgeData>;
 

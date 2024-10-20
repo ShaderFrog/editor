@@ -1,4 +1,34 @@
-import { ShaderStage, GraphDataType, InputCategory } from '@core/graph';
+import { Node as XyFlowNode, Edge as XYFlowEdge } from '@xyflow/react';
+
+import {
+  EdgeType,
+  ShaderStage,
+  GraphDataType,
+  InputCategory,
+} from '@core/graph';
+
+export type LinkEdgeData = {
+  type: 'link';
+};
+
+export type FlowEdgeData = {
+  type?: EdgeType;
+  ghost?: boolean;
+};
+
+export type FlowEdgeOrLink = XYFlowEdge<FlowEdgeData>;
+
+export type FlowSourceNode = XyFlowNode<FlowNodeSourceData>;
+export type FlowDataNode = XyFlowNode<FlowNodeDataData>;
+
+export type FlowNode = FlowSourceNode | FlowDataNode;
+
+export type FlowElement = FlowNode | FlowEdgeOrLink;
+
+export type FlowElements = {
+  nodes: FlowNode[];
+  edges: FlowEdgeOrLink[];
+};
 
 export type InputNodeHandle = {
   name: string;

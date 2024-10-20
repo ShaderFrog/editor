@@ -22,8 +22,6 @@ import {
   NodeInput,
 } from '@/core';
 import {
-  FlowEdgeOrLink,
-  FlowNode,
   updateFlowNodeInput,
   updateFlowNodeData,
   updateGraphNode,
@@ -32,7 +30,12 @@ import {
   updateFlowNodeConfig,
   isFlowDataNode,
 } from './flow-helpers';
-import { FlowNodeData, InputNodeHandle } from './flow-types';
+import {
+  FlowNodeData,
+  InputNodeHandle,
+  FlowEdgeOrLink,
+  FlowNode,
+} from './flow-types';
 import { Shader } from '@/editor/model';
 import { AnySceneConfig } from '../editorTypes';
 

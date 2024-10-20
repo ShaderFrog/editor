@@ -17,30 +17,21 @@ import {
   Edge as GraphEdge,
   EdgeLink,
 } from '@core/graph';
-import { FlowEdgeData } from './FlowEdge';
 import { flowOutput } from './FlowNode';
 import { SHADERFROG_FLOW_EDGE_TYPE } from './FlowEditor';
 import indexById from '@/core/util/indexByid';
 import {
+  FlowNode,
+  FlowSourceNode,
+  FlowDataNode,
   FlowNodeData,
-  FlowNodeDataData,
+  FlowEdgeData,
   FlowNodeSourceData,
   InputNodeHandle,
+  FlowElements,
+  FlowElement,
+  FlowEdgeOrLink,
 } from './flow-types';
-
-export type FlowEdgeOrLink = XYFlowEdge<FlowEdgeData>;
-
-export type FlowSourceNode = XyFlowNode<FlowNodeSourceData>;
-export type FlowDataNode = XyFlowNode<FlowNodeDataData>;
-
-export type FlowNode = FlowSourceNode | FlowDataNode;
-
-export type FlowElement = FlowNode | FlowEdgeOrLink;
-
-export type FlowElements = {
-  nodes: FlowNode[];
-  edges: FlowEdgeOrLink[];
-};
 
 export const isFlowSourceNode = (node: FlowNode): node is FlowSourceNode =>
   'stage' in node.data;

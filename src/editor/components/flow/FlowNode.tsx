@@ -34,9 +34,9 @@ import { NODRAG_CLASS } from '../editorTypes';
 import LabeledInput from '../LabeledInput';
 import clamp from '@editor/util/clamp';
 import { EDITOR_BOTTOM_PANEL, useEditorStore } from './editor-store';
-import { FlowSourceNode } from './flow-helpers';
 
 import {
+  FlowSourceNode,
   FlowNodeData,
   FlowNodeDataData,
   InputNodeHandle,

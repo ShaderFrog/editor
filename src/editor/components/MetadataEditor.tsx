@@ -1,11 +1,10 @@
 import styles from '../styles/editor.module.css';
 import cx from 'classnames';
 
-import { Node, useReactFlow } from '@xyflow/react';
+import { useReactFlow } from '@xyflow/react';
 
-import { Shader } from '@/editor/model';
 import { useMemo, useState } from 'react';
-import { computeGrindex, Graph, SourceNode } from '@/core';
+import { computeGrindex, SourceNode } from '@/core';
 import { FlowNodeSourceData } from './flow/flow-types';
 import { useEditorStore } from './flow/editor-store';
 

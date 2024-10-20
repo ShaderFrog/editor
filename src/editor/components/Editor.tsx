@@ -66,8 +66,6 @@ import { EngineContext } from '@core/engine';
 
 import useThrottle from '../hooks/useThrottle';
 
-import { FlowNodeSourceData, FlowNodeDataData } from './flow/flow-types';
-
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import ConfigEditor from './ConfigEditor';
 
@@ -80,8 +78,13 @@ import { SMALL_SCREEN_WIDTH, useWindowSize } from '../hooks/useWindowSize';
 
 import {
   FlowNode,
-  FlowEdgeOrLink,
+  FlowNodeSourceData,
+  FlowNodeDataData,
   FlowElements,
+  FlowEdgeOrLink,
+} from './flow/flow-types';
+
+import {
   toFlowInputs,
   setFlowNodeCategories,
   graphToFlowGraph,

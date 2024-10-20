@@ -38,7 +38,8 @@ import {
   faPalette,
   faPlus,
 } from '@fortawesome/free-solid-svg-icons';
-import { FlowEdgeOrLink, FlowNode } from './flow-helpers';
+
+import { FlowNode, FlowEdgeOrLink } from './flow-types';
 
 // Terrible hack to make the flow graph full height minus the tab height - I
 // need better layoutting of the tabs + graph

@@ -1,15 +1,7 @@
 import { type EdgeProps, getBezierPath, getStraightPath } from '@xyflow/react';
-import { EdgeLink, EdgeType } from '@core/graph';
-import { FlowEdgeOrLink } from './flow-helpers';
 
-export type LinkEdgeData = {
-  type: 'link';
-};
-
-export type FlowEdgeData = {
-  type?: EdgeType;
-  ghost?: boolean;
-};
+import { EdgeLink } from '@core/graph';
+import { FlowEdgeData, FlowEdgeOrLink } from './flow-types';
 
 const isDataEdge = (data: any): data is FlowEdgeData => {
   return (

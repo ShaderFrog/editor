@@ -163,6 +163,21 @@ const Editor = ({
   addEngineNode,
   currentUser,
 }: EditorProps & EngineProps) => {
+  /**
+   * React-Flow to Graph data flow
+   *
+   * 1. We use the useNodes/EdgesState hooks to manually control the flow graph
+   * 2. We use the onNodesChange to filter undeletable nodes
+   * 3. Other flow node events fire, like onEdgesDelete to copy react-flow
+   *    changes to the core graph
+   * 4. For adding new connections, react-flow creates the connection, and
+   *    the callback calls our addConnection() function, which updates the core
+   *    graph, and then updates the flow graph. I'm pretty sure this undoes what
+   *    react-flow does internally, because it calls setEdges()
+   * 5. Some callbacks, like onNodesDelete, need additional side effects, like
+   *    deleting all the upstream nodes and edges. In those callbacks, the
+   *    changes are calculated, and applied to both core and react-flow graph.
+   */
   const { screenToFlowPosition, getNode, setViewport } = useReactFlow();
 
   const {

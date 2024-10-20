@@ -1,7 +1,7 @@
 import cx from 'classnames';
 
 import { ConnectionLineComponentProps, getBezierPath } from '@xyflow/react';
-import { FlowSourceNode } from './flow-helpers';
+import { FlowSourceNode } from './flow-types';
 
 const ConnectionLine = ({
   fromX,

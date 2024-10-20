@@ -108,10 +108,6 @@ export const findInTree = (
   }
 };
 
-// Hard coded fake node IDs for the final output and fragment editor panes
-// const FINAL_VERTEX = 'output_vertex';
-// const FINAL_FRAGMENT = 'output_fragment';
-
 export const FileTree = (props: TreeProps<TreeData>) => {
   const { addEditorTab } = useEditorStore();
   return (

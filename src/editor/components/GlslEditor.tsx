@@ -366,8 +366,8 @@ const GlslEditor = ({
                     engine={engine}
                     identity={primaryNode.id}
                     defaultValue={
-                      engineContext!.runtime.cache.nodes[primaryNode.id]
-                        ?.computedSource || primaryNode.source
+                      engineContext!.nodes[primaryNode.id]?.computedSource ||
+                      primaryNode.source
                     }
                     readOnly={readOnly}
                     errors={nodeErrors[primaryNode.id]}

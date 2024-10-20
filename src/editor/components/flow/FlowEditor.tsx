@@ -108,6 +108,7 @@ const nodeContextMenuItems = (node?: FlowNode): MenuItem[] => {
   }
 
   const isData = 'value' in node.data;
+  const isEngine = 'engine' in node.data && node.data.engine;
   return isData
     ? [
         {
@@ -125,10 +126,10 @@ const nodeContextMenuItems = (node?: FlowNode): MenuItem[] => {
         // need the config link, do I need to put engine in the flownodedata?
         // and selecting the menu on the "add" node triggers an infinite array serach?
         // need to figure out what's not breaking the loope
-        ...(node.type === 'source'
+        ...(node.type === 'source' || isEngine
           ? [
               {
-                display: 'Edit Source',
+                display: isEngine ? 'View Source' : 'Edit Source',
                 value: NodeContextActions.EDIT_SOURCE,
                 key: 'Double Click',
               },

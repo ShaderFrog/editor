@@ -317,6 +317,13 @@ const Editor = ({
 
         clearNodeErrors();
         setGuiError('');
+        setEngineContext({
+          ...engineContext!,
+          nodes: {
+            ...engineContext!.nodes,
+            ...result.updatedNodeContext,
+          },
+        });
         setCompileResult(result);
 
         const byId = indexById(graph.nodes);
@@ -368,13 +375,14 @@ const Editor = ({
     engine,
     rawStore,
     setCompileResult,
+    setEngineContext,
   ]);
 
   /**
-   * Convenience compilation effect. This lets other callbacks update the
-   * graph or flowElements however they want, and then set needsCompliation
-   * to true, without having to worry about all the possible combinations of
-   * updates of the parameters to compile()
+   * Convenience compilation effect. This lets other callbacks update the graph
+   * or flowElements, and then set needsCompile to true, without having to worry
+   * about all the possible combinations of updates of the parameters to
+   * compile()
    */
   useEffect(() => {
     if (needsCompile && !compiling) {
@@ -715,7 +723,7 @@ const Editor = ({
 
       if (isDataNode(node)) {
         openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
-      } else if (node.type === 'source') {
+      } else if (node.type === 'source' || node.engine) {
         addEditorTab(node.id, 'code');
         setEditorTabIndex(1);
       }

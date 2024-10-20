@@ -243,7 +243,7 @@ const GlslEditor = ({
 
   const selectedTreeId = topLevelVisiblePane
     ? findInTree(
-        treeNodes,
+        [...treeNodes, ...finalOutput],
         (node) =>
           node.type === topLevelVisiblePane?.contents?.type &&
           node.nodeId === topLevelVisiblePane?.contents?.nodeId
@@ -305,16 +305,13 @@ const GlslEditor = ({
             })}
 
             <div className={styles.tabControls}>
-              {primaryNode?.config?.properties?.length ||
-              primaryNode?.engine ? null : (
-                <button
-                  className="buttonauto formbutton size2"
-                  onClick={() => onCompile()}
-                  title={`${isMacintosh() ? `⌘-'` : `Ctrl+'`}`}
-                >
-                  Compile
-                </button>
-              )}
+              <button
+                className="buttonauto formbutton size2"
+                onClick={() => onCompile()}
+                title={`${isMacintosh() ? `⌘-'` : `Ctrl+'`}`}
+              >
+                Compile
+              </button>
             </div>
           </TabGroup>
           <TabPanels>

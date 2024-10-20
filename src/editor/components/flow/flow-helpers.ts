@@ -163,6 +163,7 @@ export const graphNodeToFlowNode = (
           stage: node.stage,
           active: false,
           biStage: node.biStage || false,
+          engine: node.engine || false,
           inputs: toFlowInputs(node),
           outputs: node.outputs.map((o) => flowOutput(o.name, o.id)),
         },

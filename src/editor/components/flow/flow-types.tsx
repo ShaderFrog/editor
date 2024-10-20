@@ -75,6 +75,7 @@ export type FlowNodeSourceData = {
    */
   biStage: boolean;
   glslError?: boolean;
+  engine?: boolean;
 } & CoreFlowNode;
 
 export type FlowNodeData = FlowNodeSourceData | FlowNodeDataData;

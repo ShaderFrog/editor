@@ -339,7 +339,7 @@ const Vector2Editor = (props: {
 };
 
 const componentToHex = (c: number) => {
-  var hex = (c * 255).toString(16);
+  var hex = Math.round(c * 255).toString(16);
   return hex.length == 1 ? '0' + hex : hex;
 };
 
@@ -396,6 +396,7 @@ const ColorEditor = ({
   const onComponentChange = (component: number, n: string) => {
     onChange(id, replaceAt(value, component, n));
   };
+
   return (
     <>
       <div>

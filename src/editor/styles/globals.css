@@ -391,6 +391,9 @@ div[role='treeitem'] {
   padding: 4px 8px;
   height: auto !important;
   border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 div[role='treeitem'][aria-level='2']:before {

@@ -54,6 +54,7 @@ import {
   isError,
   TextureNode,
   computeGrindex,
+  indexById,
 } from '@core/graph';
 
 import FlowEditor, {
@@ -318,10 +319,7 @@ const Editor = ({
         setGuiError('');
         setCompileResult(result);
 
-        const byId = graph.nodes.reduce<Record<string, GraphNode>>(
-          (acc, node) => ({ ...acc, [node.id]: node }),
-          {}
-        );
+        const byId = indexById(graph.nodes);
 
         // Update the available inputs from the node after the compile
         const updatedFlowNodes = flowNodes.map((node) =>

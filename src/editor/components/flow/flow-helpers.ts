@@ -1,4 +1,3 @@
-import groupBy from 'lodash.groupby';
 import {
   Node as XyFlowNode,
   Edge as XYFlowEdge,
@@ -17,6 +16,7 @@ import {
   alphabet,
   Edge as GraphEdge,
   EdgeLink,
+  indexById,
 } from '@core/graph';
 import { FlowEdgeData } from './FlowEdge';
 import {
@@ -107,13 +107,7 @@ export const setFlowNodeStages = (flowElements: FlowElements): FlowElements => {
     }),
     {}
   );
-  const ids = flowElements.nodes.reduce<Record<string, FlowNode>>(
-    (acc, node) => ({
-      ...acc,
-      [node.id]: node,
-    }),
-    {}
-  );
+  const nodesById = indexById(flowElements.nodes);
 
   const updatedSides: Record<string, FlowElement> = {};
   // Update the node stages by looking at their inputs
@@ -129,7 +123,7 @@ export const setFlowNodeStages = (flowElements: FlowElements): FlowElements => {
         ...node,
         data: {
           ...node.data,
-          stage: findInputStage(ids, targets, node),
+          stage: findInputStage(nodesById, targets, node),
         },
       });
     }),
@@ -503,12 +497,12 @@ export const updateGraphFromFlowGraph = (
   graph: Graph,
   elements: FlowElements
 ): Graph => {
-  const byId = groupBy(elements.nodes, 'id');
+  const byId = indexById(elements.nodes);
   return {
     ...graph,
     nodes: graph.nodes.map((n) => ({
       ...n,
-      position: byId[n.id][0].position,
+      position: byId[n.id].position,
     })),
   };
 };

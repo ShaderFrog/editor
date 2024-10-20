@@ -8,6 +8,7 @@ import {
   consSearchResult,
   mergeSearchResults,
   isDataNode,
+  indexById,
 } from '@core/graph';
 import { ensure } from '@core/util/ensure';
 
@@ -74,7 +75,7 @@ export const findNodeAndData = (graph: Graph, startNode: GraphNode) => {
   );
   elements.edges = elements.edges = {
     ...elements.edges,
-    ...outboundEdges.reduce((acc, edge) => ({ ...acc, [edge.id]: edge }), {}),
+    ...indexById(outboundEdges),
   };
 
   const edgeIds = new Set(Object.keys(elements.edges));
@@ -144,7 +145,7 @@ export const findNodeTree = (graph: Graph, startNode: GraphNode) => {
   const outboundEdges = graph.edges.filter((edge) => nodeIds.has(edge.from));
   elements.edges = {
     ...elements.edges,
-    ...outboundEdges.reduce((acc, edge) => ({ ...acc, [edge.id]: edge }), {}),
+    ...indexById(outboundEdges),
   };
 
   const edgeIds = new Set(Object.keys(elements.edges));

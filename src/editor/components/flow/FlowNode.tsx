@@ -808,16 +808,6 @@ const SourceNodeComponent = memo(
   }: NodeProps<FlowSourceNode>) => {
     const { onInputBakedToggle, jumpToError } = useFlowGraphContext();
     const { openNodeContextMenu } = useFlowEditorContext();
-    // const updateNodeInternals = useUpdateNodeInternals();
-    // const key = `${computeIOKey(data.inputs)}${computeIOKey(data.outputs)}`;
-
-    // useEffect(() => {
-    //   console.log('Effect running', { id });
-    //   updateNodeInternals(id);
-    //   return () => {
-    //     updateNodeInternals(id);
-    //   };
-    // }, [id, updateNodeInternals, key]);
 
     const [groups, height] = useMemo<
       [{ name: string; inputs: InputNodeHandle[]; offset: number }[], number]

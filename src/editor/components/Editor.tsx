@@ -56,11 +56,7 @@ import {
   computeGrindex,
 } from '@core/graph';
 
-import FlowEditor, {
-  MouseData,
-  NodeContextActions,
-  SHADERFROG_FLOW_EDGE_TYPE,
-} from './flow/FlowEditor';
+import FlowEditor, { MouseData, NodeContextActions } from './flow/FlowEditor';
 
 import { EngineContext } from '@core/engine';
 
@@ -82,6 +78,7 @@ import {
   FlowNodeDataData,
   FlowElements,
   FlowEdgeOrLink,
+  SHADERFROG_FLOW_EDGE_TYPE,
 } from './flow/flow-types';
 
 import {

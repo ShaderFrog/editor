@@ -11,8 +11,6 @@ import {
   type OnConnect,
 } from '@xyflow/react';
 
-export type AppNode = Node;
-
 import { ValueOf } from '@/editor/util/types';
 import { makeId } from '@/core/util/id';
 import {
@@ -34,7 +32,7 @@ import {
   updateFlowNodeConfig,
   isFlowDataNode,
 } from './flow-helpers';
-import { FlowNodeData, InputNodeHandle } from './FlowNode';
+import { FlowNodeData, InputNodeHandle } from './flow-types';
 import { Shader } from '@/editor/model';
 import { AnySceneConfig } from '../editorTypes';
 

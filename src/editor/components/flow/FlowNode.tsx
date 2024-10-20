@@ -15,15 +15,11 @@ import {
   faRightLong,
   faTerminal,
 } from '@fortawesome/free-solid-svg-icons';
+import { restrictToParentElement } from '@dnd-kit/modifiers';
+import { useDraggable, DndContext, useDndMonitor } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
-import {
-  ShaderStage,
-  GraphDataType,
-  Vector3,
-  Vector4,
-  InputCategory,
-  LinkHandle,
-} from '@core/graph';
+import { Vector3, Vector4, LinkHandle } from '@core/graph';
 
 import { ChangeHandler, useFlowEventHack } from '../../flowEventHack';
 import { replaceAt } from '@editor/util/replaceAt';
@@ -31,19 +27,24 @@ import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
 import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
 import { useAssetsAndGroups } from '@editor/api';
 
-import editorStyles from '../../styles/editor.module.css';
-import styles from './flownode.module.css';
 import { TextureNodeValueData } from '@core/graph';
 import { randomBetween } from '@editor/util/math';
-import { restrictToParentElement } from '@dnd-kit/modifiers';
 
-import { useDraggable, DndContext, useDndMonitor } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { NODRAG_CLASS } from '../editorTypes';
 import LabeledInput from '../LabeledInput';
 import clamp from '@editor/util/clamp';
 import { EDITOR_BOTTOM_PANEL, useEditorStore } from './editor-store';
 import { FlowSourceNode } from './flow-helpers';
+
+import {
+  FlowNodeData,
+  FlowNodeDataData,
+  InputNodeHandle,
+  OutputNodeHandle,
+} from './flow-types';
+
+import editorStyles from '../../styles/editor.module.css';
+import styles from './flownode.module.css';
 const cx = classnames.bind(styles);
 
 const headerHeight = 30;
@@ -54,57 +55,12 @@ const INPUT_LABEL_START_OFFSET = 4;
 // If there are no labeled input sections, move the output handle top higher up
 const outputHandleTopWithoutLabel = 24;
 
-export type InputNodeHandle = {
-  name: string;
-  id: string;
-  type: string;
-  dataType?: GraphDataType;
-  validTarget: boolean;
-  connected: boolean;
-  accepts?: InputCategory[];
-  baked?: boolean;
-  bakeable: boolean;
-};
-
-type OutputNodeHandle = {
-  validTarget: boolean;
-  connected: boolean;
-  category?: InputCategory;
-  id: string;
-  name: string;
-};
-
 export const flowOutput = (name: string, id?: string): OutputNodeHandle => ({
   connected: false,
   validTarget: false,
   id: id || name,
   name,
 });
-
-export type CoreFlowNode = {
-  label: string;
-  ghost?: boolean;
-  outputs: OutputNodeHandle[];
-  inputs: InputNodeHandle[];
-};
-export type FlowNodeDataData = {
-  dataType: GraphDataType;
-  value: any;
-  config: Record<string, any>;
-} & CoreFlowNode;
-
-export type FlowNodeSourceData = {
-  stage?: ShaderStage;
-  category?: InputCategory;
-  active: boolean;
-  /**
-   * Whether or not this node can be used for both shader fragment and vertex
-   */
-  biStage: boolean;
-  glslError?: boolean;
-} & CoreFlowNode;
-
-export type FlowNodeData = FlowNodeSourceData | FlowNodeDataData;
 
 const showPosition = (
   id: any,

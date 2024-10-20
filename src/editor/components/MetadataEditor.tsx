@@ -6,7 +6,7 @@ import { Node, useReactFlow } from '@xyflow/react';
 import { Shader } from '@/editor/model';
 import { useMemo, useState } from 'react';
 import { computeGrindex, Graph, SourceNode } from '@/core';
-import { FlowNodeSourceData } from './flow/FlowNode';
+import { FlowNodeSourceData } from './flow/flow-types';
 import { useEditorStore } from './flow/editor-store';
 
 const log = (...args: any[]) =>

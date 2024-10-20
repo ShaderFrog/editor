@@ -66,7 +66,7 @@ import { EngineContext } from '@core/engine';
 
 import useThrottle from '../hooks/useThrottle';
 
-import { FlowNodeSourceData, FlowNodeDataData } from './flow/FlowNode';
+import { FlowNodeSourceData, FlowNodeDataData } from './flow/flow-types';
 
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import ConfigEditor from './ConfigEditor';

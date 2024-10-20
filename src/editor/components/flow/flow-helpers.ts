@@ -18,15 +18,15 @@ import {
   EdgeLink,
 } from '@core/graph';
 import { FlowEdgeData } from './FlowEdge';
+import { flowOutput } from './FlowNode';
+import { SHADERFROG_FLOW_EDGE_TYPE } from './FlowEditor';
+import indexById from '@/core/util/indexByid';
 import {
   FlowNodeData,
   FlowNodeDataData,
   FlowNodeSourceData,
-  flowOutput,
   InputNodeHandle,
-} from './FlowNode';
-import { SHADERFROG_FLOW_EDGE_TYPE } from './FlowEditor';
-import indexById from '@/core/util/indexByid';
+} from './flow-types';
 
 export type FlowEdgeOrLink = XYFlowEdge<FlowEdgeData>;
 

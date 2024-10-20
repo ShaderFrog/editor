@@ -35,10 +35,6 @@ export type FlowDataNode = XyFlowNode<FlowNodeDataData>;
 
 export type FlowNode = FlowSourceNode | FlowDataNode;
 
-// export type FlowNode<T extends Record<string, unknown> = FlowNodeData> =
-//   XyFlowNode<T, 'number'>;
-// export type FlowNode = XyFlowNode<FlowNodeData>;
-
 export type FlowElement = FlowNode | FlowEdgeOrLink;
 
 export type FlowElements = {

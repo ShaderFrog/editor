@@ -190,6 +190,7 @@ const Editor = ({
     setPrimarySelectedNodeId,
     addEditorTab,
     setSceneDimensions,
+    compileInfo,
     setCompileInfo,
     sceneConfig,
     setSceneConfig,
@@ -1810,7 +1811,11 @@ const Editor = ({
             />{' '}
             Graph
           </Tab>
-          <Tab>
+          <Tab
+            className={cx({
+              [styles.errored]: compileInfo.vertError || compileInfo.fragError,
+            })}
+          >
             <FontAwesomeIcon icon={faCode} color="#aca" className="m-right-5" />
             GLSL Editor
           </Tab>

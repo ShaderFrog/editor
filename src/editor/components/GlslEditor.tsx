@@ -274,7 +274,17 @@ const GlslEditor = ({
             {glslEditorTabs.map((p) => {
               const pane = p as PaneState;
               return (
-                <Tab key={pane.id}>
+                <Tab
+                  key={pane.id}
+                  className={{
+                    [styles.errored]:
+                      pane.contents.nodeId in nodeErrors ||
+                      (pane.contents.nodeId === FINAL_VERTEX &&
+                        compileInfo.vertError) ||
+                      (pane.contents.nodeId === FINAL_FRAGMENT &&
+                        compileInfo.fragError),
+                  }}
+                >
                   {pane.contents.type === 'live_edit'
                     ? pane.contents.nodeId === FINAL_VERTEX
                       ? tabName('Vertex Output', 'live_edit', 'vertex')

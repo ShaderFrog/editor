@@ -374,14 +374,16 @@ const createEditorStore = (
     clearNodeErrors: () => set(() => ({ nodeErrors: {} })),
 
     // Compiler results
-    setCompileInfo: (updated) =>
-      set(({ compileInfo }) => ({ compileInfo: { ...compileInfo, updated } })),
     compileInfo: {
       fragError: null,
       vertError: null,
       programError: null,
       compileMs: null,
     },
+    setCompileInfo: (updated) =>
+      set(({ compileInfo }) => ({
+        compileInfo: { ...compileInfo, ...updated },
+      })),
 
     ...initProps,
   }));

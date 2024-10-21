@@ -131,10 +131,8 @@ import { xor } from '@shaderfrog/glsl-parser/parser/utils';
 import GlslEditor from './GlslEditor';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faArrowsRotate,
   faCode,
   faDiagramProject,
-  faMagnifyingGlass,
   faPencil,
 } from '@fortawesome/free-solid-svg-icons';
 import MetadataEditor from './MetadataEditor';
@@ -179,7 +177,7 @@ const Editor = ({
    *    deleting all the upstream nodes and edges. In those callbacks, the
    *    changes are calculated, and applied to both core and react-flow graph.
    */
-  const { screenToFlowPosition, getNode, setViewport } = useReactFlow();
+  const { screenToFlowPosition, getNode } = useReactFlow();
 
   const {
     // ui state
@@ -1743,27 +1741,6 @@ const Editor = ({
             </div>
           ) : null}
           <div className="m-right-15">
-            <button
-              className="buttonauto formbutton size2 secondary m-right-10"
-              onClick={(e) => {
-                e.preventDefault();
-                setViewport(
-                  {
-                    x: 0,
-                    y: 0,
-                    zoom: 0.5,
-                  },
-                  { duration: 800 }
-                );
-              }}
-              title="Reset Graph View"
-            >
-              <span className={cx('fa-layers', styles.resetVeiw)}>
-                <FontAwesomeIcon icon={faArrowsRotate} size="xl" />
-                <FontAwesomeIcon icon={faMagnifyingGlass} size="1x" />
-              </span>
-            </button>
-
             {'shadertoy' in engine.importers ? (
               <button
                 className="buttonauto formbutton size2 secondary m-right-10"
@@ -1899,6 +1876,7 @@ const Editor = ({
                 <FlowEditor
                   nodes={flowNodes}
                   edges={flowEdges}
+                  engine={engine}
                   menuItems={menuItems}
                   mouse={mouseRef}
                   onMenuAdd={onMenuAdd}
@@ -1919,25 +1897,6 @@ const Editor = ({
                   onConnectEnd={onConnectEnd}
                   onNodeDragStop={onNodeDragStop}
                 />
-                <div className={styles.graphFooter}>
-                  <span className={styles.footerSecondary}>Engine: </span>
-                  {engine.name === 'playcanvas'
-                    ? 'PlayCanvas'
-                    : engine.name === 'three'
-                    ? 'Three.js'
-                    : engine.name === 'babylon'
-                    ? 'Babylon.js'
-                    : 'Wtf'}
-                  {compileResult?.compileMs ? (
-                    <>
-                      <span className={styles.divider}>|</span>
-                      <span className={styles.footerSecondary}>
-                        Compile time:{' '}
-                      </span>
-                      {compileResult?.compileMs}ms
-                    </>
-                  ) : null}
-                </div>
               </div>
             </SplitPane>
           </TabPanel>

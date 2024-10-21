@@ -1,4 +1,10 @@
 .flowContainer {
-  height: calc(100% - 22px);
+  height: 100%;
   width: 100%;
+}
+
+.toolbar {
+  text-align: right;
+  padding: 2px 8px;
+  background: linear-gradient(#222, #111);
 }

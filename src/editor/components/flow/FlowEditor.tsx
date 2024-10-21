@@ -1,6 +1,7 @@
 import React, { useCallback, MouseEvent, useState, useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { useHotkeys } from 'react-hotkeys-hook';
+import cx from 'classnames';
 
 import {
   ReactFlow,
@@ -24,16 +25,19 @@ import ContextMenu, { MenuItem } from '../ContextMenu';
 import { FlowEditorContext } from '@editor/editor/flowEditorContext';
 import { isMacintosh } from '@editor/util/platform';
 
+import editorStyles from '../../styles/editor.module.css';
 import styles from './floweditor.module.css';
 import { ContextMenuType, useEditorStore } from './editor-store';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  faArrowsRotate,
   faCalculator,
   faCode,
   faCubes,
   faFileCode,
   faHashtag,
   faImage,
+  faMagnifyingGlass,
   faMultiply,
   faPalette,
   faPlus,
@@ -158,6 +162,7 @@ const nodeContextMenuItems = (node?: FlowNode): MenuItem[] => {
 
 type FlowEditorProps =
   | {
+      engine: { name: string };
       nodes: FlowNode[];
       edges: FlowEdgeOrLink[];
       menuItems: MenuItem[];
@@ -185,6 +190,7 @@ type FlowEditorProps =
 
 const FlowEditor = ({
   mouse,
+  engine,
   menuItems,
   onMenuAdd,
   onMenuClose,
@@ -206,9 +212,10 @@ const FlowEditor = ({
   onNodeDragStop,
   onNodeValueChange,
 }: FlowEditorProps) => {
-  const { menu, setMenu, hideMenu, shader, onNodesChange } = useEditorStore();
+  const { menu, setMenu, hideMenu, shader, onNodesChange, compileResult } =
+    useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
-  const { getNode } = useReactFlow();
+  const { getNode, setViewport } = useReactFlow();
 
   /**
    * When React Flow makes a change to the graph *nodes*, it proposes a set of
@@ -391,63 +398,107 @@ const FlowEditor = ({
 
   return (
     <FlowEditorContext.Provider value={{ openNodeContextMenu }}>
-      <div
-        onContextMenu={onContextMenu}
-        className={styles.flowContainer}
-        ref={setNodeRef}
-      >
-        {menu?.menu === ContextMenuType.CONTEXT ? (
-          <ContextMenu
-            menu={addNodeMenuItems}
-            position={menu.position}
-            onItemHover={onContextItemHover}
-            onSelect={onMenuAdd}
-            onClose={onMenuClose}
-          />
-        ) : menu?.menu === ContextMenuType.NODE_CONTEXT ? (
-          <ContextMenu
-            title="Node Actions"
-            menu={nodeContextMenu}
-            position={menu.position}
-            onItemHover={onContextItemHover}
-            onSelect={onContextSelect}
-            onClose={onMenuClose}
-          />
-        ) : null}
-        <FlowEventHack onChange={onNodeValueChange}>
-          <ReactFlow
-            defaultViewport={defaultViewport}
-            style={flowStyles}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            nodes={nodes}
-            edges={edges}
-            onMoveEnd={onMoveEnd}
-            onConnect={onConnect}
-            onReconnect={onReconnect}
-            onEdgesChange={onEdgesChange}
-            onNodesChange={onNodesChangeIntercept}
-            onNodesDelete={onNodesDelete}
-            onSelectionChange={onSelectionChange}
-            onNodeDoubleClick={onNodeDoubleClick}
-            onEdgesDelete={onEdgesDelete}
-            connectionLineComponent={ConnectionLine}
-            onConnectStart={onConnectStart}
-            onReconnectStart={onReconnectStart}
-            onReconnectEnd={onReconnectEnd}
-            onConnectEnd={onConnectEnd}
-            onNodeDragStop={onNodeDragStop}
-            onInit={setRfInstance}
-            minZoom={0.2}
+      <div className={editorStyles.shrinkGrowRows}>
+        <div className={styles.toolbar}>
+          <button
+            className="buttonauto formbutton size2 secondary m-right-10"
+            onClick={(e) => {
+              e.preventDefault();
+              setViewport(
+                {
+                  x: 0,
+                  y: 0,
+                  zoom: 0.5,
+                },
+                { duration: 800 }
+              );
+            }}
+            title="Reset Graph View"
           >
-            <Background
-              variant={BackgroundVariant.Lines}
-              gap={25}
-              size={0.5}
-              color={isOver ? '#223322' : '#222222'}
-            />
-          </ReactFlow>
-        </FlowEventHack>
+            <span className={cx('fa-layers', editorStyles.resetVeiw)}>
+              <FontAwesomeIcon icon={faArrowsRotate} size="xl" />
+              <FontAwesomeIcon icon={faMagnifyingGlass} size="1x" />
+            </span>
+          </button>
+        </div>
+        <div className={editorStyles.growShrinkRows}>
+          <div
+            onContextMenu={onContextMenu}
+            className={styles.flowContainer}
+            ref={setNodeRef}
+          >
+            {menu?.menu === ContextMenuType.CONTEXT ? (
+              <ContextMenu
+                menu={addNodeMenuItems}
+                position={menu.position}
+                onItemHover={onContextItemHover}
+                onSelect={onMenuAdd}
+                onClose={onMenuClose}
+              />
+            ) : menu?.menu === ContextMenuType.NODE_CONTEXT ? (
+              <ContextMenu
+                title="Node Actions"
+                menu={nodeContextMenu}
+                position={menu.position}
+                onItemHover={onContextItemHover}
+                onSelect={onContextSelect}
+                onClose={onMenuClose}
+              />
+            ) : null}
+            <FlowEventHack onChange={onNodeValueChange}>
+              <ReactFlow
+                defaultViewport={defaultViewport}
+                style={flowStyles}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                nodes={nodes}
+                edges={edges}
+                onMoveEnd={onMoveEnd}
+                onConnect={onConnect}
+                onReconnect={onReconnect}
+                onEdgesChange={onEdgesChange}
+                onNodesChange={onNodesChangeIntercept}
+                onNodesDelete={onNodesDelete}
+                onSelectionChange={onSelectionChange}
+                onNodeDoubleClick={onNodeDoubleClick}
+                onEdgesDelete={onEdgesDelete}
+                connectionLineComponent={ConnectionLine}
+                onConnectStart={onConnectStart}
+                onReconnectStart={onReconnectStart}
+                onReconnectEnd={onReconnectEnd}
+                onConnectEnd={onConnectEnd}
+                onNodeDragStop={onNodeDragStop}
+                onInit={setRfInstance}
+                minZoom={0.2}
+              >
+                <Background
+                  variant={BackgroundVariant.Lines}
+                  gap={25}
+                  size={0.5}
+                  color={isOver ? '#223322' : '#222222'}
+                />
+              </ReactFlow>
+            </FlowEventHack>
+          </div>
+
+          <div className={editorStyles.graphFooter}>
+            <span className={styles.footerSecondary}>Engine: </span>
+            {engine.name === 'playcanvas'
+              ? 'PlayCanvas'
+              : engine.name === 'three'
+              ? 'Three.js'
+              : engine.name === 'babylon'
+              ? 'Babylon.js'
+              : 'Wtf'}
+            {compileResult?.compileMs ? (
+              <>
+                <span className={styles.divider}>|</span>
+                <span className={styles.footerSecondary}>Compile time: </span>
+                {compileResult?.compileMs}ms
+              </>
+            ) : null}
+          </div>
+        </div>
       </div>
     </FlowEditorContext.Provider>
   );

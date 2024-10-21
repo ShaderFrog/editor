@@ -27,7 +27,7 @@ import { isMacintosh } from '@editor/util/platform';
 
 import editorStyles from '../../styles/editor.module.css';
 import styles from './floweditor.module.css';
-import { ContextMenuType, useEditorStore } from './editor-store';
+import { ContextMenuType, MouseData, useEditorStore } from './editor-store';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowsRotate,
@@ -92,12 +92,6 @@ const edgeTypes = {
   //    Record<typeof SHADERFROG_FLOW_EDGE_TYPE, React.ComponentType<EdgeProps>>
   // Then it errors on component assignment. This satisfies seems to work.
 } satisfies EdgeTypes;
-
-export type MouseData = {
-  real: XYPosition;
-  viewport: XYPosition;
-  projected: XYPosition;
-};
 
 export enum NodeContextActions {
   EDIT_SOURCE = '1',
@@ -188,6 +182,12 @@ type FlowEditorProps =
       | 'onConnectEnd'
     >;
 
+const copyMouse = (mouse: MouseData): MouseData => ({
+  projected: { ...mouse.projected },
+  real: { ...mouse.real },
+  viewport: { ...mouse.viewport },
+});
+
 const FlowEditor = ({
   mouse,
   engine,
@@ -246,12 +246,12 @@ const FlowEditor = ({
 
   useHotkeys('esc', () => hideMenu());
   useHotkeys('shift+a', () =>
-    setMenu(ContextMenuType.CONTEXT, mouse.current.viewport)
+    setMenu(ContextMenuType.CONTEXT, copyMouse(mouse.current))
   );
 
   const setContextMenu = useCallback(
     (type: ContextMenuType) => {
-      setMenu(type, mouse.current.viewport);
+      setMenu(type, copyMouse(mouse.current));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [setMenu]
@@ -430,7 +430,7 @@ const FlowEditor = ({
             {menu?.menu === ContextMenuType.CONTEXT ? (
               <ContextMenu
                 menu={addNodeMenuItems}
-                position={menu.position}
+                position={menu.position.viewport}
                 onItemHover={onContextItemHover}
                 onSelect={onMenuAdd}
                 onClose={onMenuClose}
@@ -439,7 +439,7 @@ const FlowEditor = ({
               <ContextMenu
                 title="Node Actions"
                 menu={nodeContextMenu}
-                position={menu.position}
+                position={menu.position.viewport}
                 onItemHover={onContextItemHover}
                 onSelect={onContextSelect}
                 onClose={onMenuClose}

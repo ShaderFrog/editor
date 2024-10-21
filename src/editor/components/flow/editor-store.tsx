@@ -64,6 +64,12 @@ export type PaneState = {
 
 export type PaneType = PaneState['contents']['type'];
 
+export type MouseData = {
+  real: XYPosition;
+  viewport: XYPosition;
+  projected: XYPosition;
+};
+
 // I also realize that right now this does not support vscode's concept where
 // each split can itself have its own tabs. This assumes that the top level
 // of everything is tabs.
@@ -93,7 +99,7 @@ export enum ContextMenuType {
   NODE_CONTEXT,
 }
 
-export type ContextMenu = { menu: ContextMenuType; position: XYPosition };
+export type ContextMenu = { menu: ContextMenuType; position: MouseData };
 
 export const EDITOR_BOTTOM_PANEL = {
   TEXTURE_BROWSER: 'texture-browser',
@@ -150,9 +156,10 @@ interface EditorState {
 
   // UI state
   menu: ContextMenu | undefined;
-  bottomPanelType: EDITOR_BOTTOM_PANEL | undefined;
-  setMenu: (menu: ContextMenuType, position: XYPosition) => void;
+  setMenu: (menu: ContextMenuType, position: MouseData) => void;
   hideMenu: () => void;
+
+  bottomPanelType: EDITOR_BOTTOM_PANEL | undefined;
   openEditorBottomPanel: (bottomPanelType: EDITOR_BOTTOM_PANEL) => void;
   closeEditorBottomPanel: () => void;
   setSceneDimensions: (dimensions: SceneDimensions) => void;

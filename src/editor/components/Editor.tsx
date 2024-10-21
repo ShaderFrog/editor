@@ -56,7 +56,7 @@ import {
   computeGrindex,
 } from '@core/graph';
 
-import FlowEditor, { MouseData, NodeContextActions } from './flow/FlowEditor';
+import FlowEditor, { NodeContextActions } from './flow/FlowEditor';
 
 import { EngineContext } from '@core/engine';
 
@@ -123,6 +123,7 @@ import BottomModal from './BottomModal';
 import {
   EDITOR_BOTTOM_PANEL,
   EditorProvider,
+  MouseData,
   useEditorRawStore,
   useEditorStore,
 } from './flow/editor-store';
@@ -1258,7 +1259,9 @@ const Editor = ({
         };
         mouseRef.current.viewport = {
           x: event.clientX - left,
-          y: event.clientY - top,
+          // I have no idea why this offset is needed, but without it the
+          // context menu opens up too low
+          y: event.clientY - top - 24,
         };
         mouseRef.current.projected = screenToFlowPosition(
           mouseRef.current.real
@@ -1270,7 +1273,7 @@ const Editor = ({
 
   const onMenuAdd = useCallback(
     (type: string) => {
-      const pos = screenToFlowPosition(menu?.position as XYPosition);
+      const pos = screenToFlowPosition(menu?.position?.real as XYPosition);
       addNodeAtPosition(graph, type, '', pos);
       hideMenu();
     },

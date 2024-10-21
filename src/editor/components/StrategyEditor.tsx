@@ -27,14 +27,40 @@ type StrategyEditorProps<T extends { config: any } = any> = {
   onChange: (config: T['config']) => void;
 };
 
+const VariableStrategyEditor = () => {
+  return (
+    <div className="secondary m-bottom-15">
+      Mark <b>any</b> variable as replaceable. Warning: Creates many inputs!
+    </div>
+  );
+};
+
+const TextureStrategyEditor = () => {
+  return (
+    <div className="secondary m-bottom-15">
+      Replace any call to <code>texture2D()</code>
+    </div>
+  );
+};
+
+const UniformStrategyEditor = () => {
+  return (
+    <div className="secondary m-bottom-15">Make any uniform replaceable.</div>
+  );
+};
+
 const AssignmentToStrategyEditor = ({
   config,
   onChange,
 }: StrategyEditorProps<AssignmentToStrategy>) => {
   return (
     <div>
+      <div className="secondary m-bottom-15">
+        Replace what is assigned to a varaible, at the Nth occurrence it is
+        assigned to.
+      </div>
       <label>
-        Assign To
+        Variable Name
         <input
           className="textinput"
           type="text"
@@ -42,7 +68,7 @@ const AssignmentToStrategyEditor = ({
           onChange={(e) => onChange({ ...config, assignTo: e.target.value })}
         ></input>
       </label>
-      <label>
+      <label className="block m-top-5">
         Nth
         <input
           className="textinput"
@@ -64,10 +90,14 @@ const DeclarationOfStrategyEditor = ({
 }: StrategyEditorProps<DeclarationOfStrategy>) => {
   return (
     <div>
+      <div className="secondary m-bottom-15">
+        Replace what is assigned to a varaible, when it is declared.
+      </div>
       <label>
-        Declaration Of
+        Variable Name
         <input
           className="textinput"
+          placeholder="normal"
           type="text"
           value={config.declarationOf}
           onChange={(e) =>
@@ -85,6 +115,9 @@ const NamedAttributeStrategyEditor = ({
 }: StrategyEditorProps<NamedAttributeStrategy>) => {
   return (
     <div>
+      <div className="secondary m-bottom-15">
+        Replace an attribute passed into a shader.
+      </div>
       <label>
         Attribute Name
         <input
@@ -106,6 +139,11 @@ const InjectStrategyEditor = ({
 }: StrategyEditorProps<InjectStrategy>) => {
   return (
     <div>
+      <div className="secondary m-bottom-15">
+        Equivalent of a string find and replace. Searches for a source code line
+        matching your search, and inserts the replacement before, after, or
+        replaces it.
+      </div>
       <label>
         Find
         <input
@@ -116,7 +154,7 @@ const InjectStrategyEditor = ({
           onChange={(e) => onChange({ ...config, find: e.target.value })}
         ></input>
       </label>
-      <label>
+      <label className="m-top-5 block">
         Insert
         <select
           className="select"
@@ -133,8 +171,8 @@ const InjectStrategyEditor = ({
           <option value="replace">Replace</option>
         </select>
       </label>
-      <label>
-        Count
+      <label className="m-top-5 block">
+        Nth
         <input
           className="textinput"
           type="number"
@@ -152,6 +190,9 @@ const InjectStrategyEditor = ({
 const strategyEditors: {
   [key in StrategyType]?: React.FC<StrategyEditorProps>;
 } = {
+  [StrategyType.VARIABLE]: VariableStrategyEditor,
+  [StrategyType.TEXTURE_2D]: TextureStrategyEditor,
+  [StrategyType.UNIFORM]: UniformStrategyEditor,
   [StrategyType.ASSIGNMENT_TO]: AssignmentToStrategyEditor,
   [StrategyType.DECLARATION_OF]: DeclarationOfStrategyEditor,
   [StrategyType.NAMED_ATTRIBUTE]: NamedAttributeStrategyEditor,
@@ -308,7 +349,7 @@ const StrategyEditor = ({
           }}
         >
           <h2 className={cx(styles.uiHeader, 'm-top-15')}>Add Strategy</h2>
-          <div className={styles.colcolauto}>
+          <div className={cx('grid col2 gap50')}>
             <div>
               <select
                 name="strategy"
@@ -318,11 +359,13 @@ const StrategyEditor = ({
                   setSelectedStrategy(e.target.value as StrategyType)
                 }
               >
-                {Object.entries(StrategyType).map(([name, value]) => (
-                  <option key={name} value={value}>
-                    {name}
-                  </option>
-                ))}
+                {Object.entries(StrategyType)
+                  .filter(([name]) => name !== 'HARD_CODE_INPUTS')
+                  .map(([name, value]) => (
+                    <option key={name} value={value}>
+                      {name}
+                    </option>
+                  ))}
               </select>
             </div>
             <div>
@@ -332,9 +375,8 @@ const StrategyEditor = ({
                   onChange={setStrategyConfig}
                 />
               ) : null}
-            </div>
-            <div>
-              <button className="buttonauto formbutton" type="submit">
+
+              <button className="buttonauto formbutton m-top-15 " type="submit">
                 Add
               </button>
             </div>
@@ -384,8 +426,8 @@ const StrategyEditor = ({
       <div className={styles.uiGroup}>
         <h2 className={styles.uiHeader}>Node Inputs ({inputs.length})</h2>
         <div className="secondary m-bottom-15">
-          The names of the inputs found by the node strategies. For debugging
-          only.
+          Inputs found by the node strategies. You can backfill any of these
+          inputs, or remove them.
         </div>
         {inputs.length
           ? inputs.map((i) => (

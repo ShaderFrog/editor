@@ -1882,8 +1882,6 @@ const Editor = ({
                   </BottomModal>
                 ) : null}
                 <FlowEditor
-                  nodes={flowNodes}
-                  edges={flowEdges}
                   engine={engine}
                   menuItems={menuItems}
                   mouse={mouseRef}

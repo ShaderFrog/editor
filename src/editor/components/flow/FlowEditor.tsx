@@ -157,8 +157,6 @@ const nodeContextMenuItems = (node?: FlowNode): MenuItem[] => {
 type FlowEditorProps =
   | {
       engine: { name: string };
-      nodes: FlowNode[];
-      edges: FlowEdgeOrLink[];
       menuItems: MenuItem[];
       mouse: React.MutableRefObject<MouseData>;
       onNodeValueChange: (id: string, value: any) => void;
@@ -196,8 +194,6 @@ const FlowEditor = ({
   onMenuClose,
   onNodeContextSelect,
   onNodeContextHover,
-  nodes,
-  edges,
   onConnect,
   onReconnect,
   onEdgesChange,
@@ -212,8 +208,16 @@ const FlowEditor = ({
   onNodeDragStop,
   onNodeValueChange,
 }: FlowEditorProps) => {
-  const { menu, setMenu, hideMenu, shader, onNodesChange, compileResult } =
-    useEditorStore();
+  const {
+    menu,
+    setMenu,
+    hideMenu,
+    shader,
+    onNodesChange,
+    compileResult,
+    flowNodes,
+    flowEdges,
+  } = useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
   const { getNode, setViewport } = useReactFlow();
 
@@ -387,9 +391,9 @@ const FlowEditor = ({
   const nodeContextMenu = useMemo(
     () =>
       nodeContextMenuItems(
-        (nodes || []).find((node) => node.id === contextNodeId)
+        (flowNodes || []).find((node) => node.id === contextNodeId)
       ),
-    [nodes, contextNodeId]
+    [flowNodes, contextNodeId]
   );
 
   const { isOver, setNodeRef } = useDroppable({
@@ -451,8 +455,8 @@ const FlowEditor = ({
                 style={flowStyles}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
-                nodes={nodes}
-                edges={edges}
+                nodes={flowNodes}
+                edges={flowEdges}
                 onMoveEnd={onMoveEnd}
                 onConnect={onConnect}
                 onReconnect={onReconnect}

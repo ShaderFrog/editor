@@ -329,6 +329,9 @@ a:hover {
 .gap-5 {
   grid-gap: 5px !important;
 }
+.gap-10 {
+  grid-gap: 10px !important;
+}
 .gap-s {
   grid-gap: 5px 10px;
 }

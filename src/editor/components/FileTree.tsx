@@ -114,6 +114,7 @@ export const FileTree = (props: TreeProps<TreeData>) => {
     <Tree
       disableDrag
       rowHeight={28}
+      padding={0}
       disableMultiSelection
       {...props}
       onSelect={(treeNodes) => {

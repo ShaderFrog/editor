@@ -253,8 +253,8 @@ const GlslEditor = ({
   return (
     <SplitPane split="vertical" defaultSizes={[0.2]} minSize={200}>
       <div className={styles.treePanel}>
-        <FileTree initialData={finalOutput} selection={selectedTreeId} />
         <FileTree initialData={treeNodes} selection={selectedTreeId} />
+        <FileTree initialData={finalOutput} selection={selectedTreeId} />
       </div>
       <div className="wFull relative">
         {/* Monaco split */}

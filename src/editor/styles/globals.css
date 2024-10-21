@@ -395,6 +395,9 @@ div[role='treeitem'] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+div[role='treeitem'] svg {
+  filter: drop-shadow(0px 0px 2px rgb(0, 0, 0));
+}
 
 div[role='treeitem'][aria-level='2']:before {
   content: '';

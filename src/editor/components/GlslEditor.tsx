@@ -171,6 +171,7 @@ const GlslEditor = ({
             children: [
               {
                 id: `${node.id}_${node.stage}`,
+                errored: node.id in nodeErrors,
                 nodeId: node.id,
                 name: node.stage ? capitalize(node.stage) : node.name,
                 stage: node.stage,
@@ -218,18 +219,22 @@ const GlslEditor = ({
           },
         };
       }, fragmentFolders);
-  }, [graph]);
+  }, [graph, nodeErrors]);
 
   const finalOutput: TreeData[] = [
     {
       id: FINAL_VERTEX,
       nodeId: FINAL_VERTEX,
+      errored: !!compileInfo.vertError,
+      stage: 'vertex',
       name: 'Vertex Output',
       type: 'live_edit',
     },
     {
       id: FINAL_FRAGMENT,
       nodeId: FINAL_FRAGMENT,
+      errored: !!compileInfo.fragError,
+      stage: 'fragment',
       name: 'Fragment Output',
       type: 'live_edit',
     },
@@ -253,8 +258,8 @@ const GlslEditor = ({
   return (
     <SplitPane split="vertical" defaultSizes={[0.2]} minSize={200}>
       <div className={styles.treePanel}>
-        <FileTree initialData={treeNodes} selection={selectedTreeId} />
-        <FileTree initialData={finalOutput} selection={selectedTreeId} />
+        <FileTree data={treeNodes} selection={selectedTreeId} />
+        <FileTree data={finalOutput} selection={selectedTreeId} />
       </div>
       <div className="wFull relative">
         {/* Monaco split */}

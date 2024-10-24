@@ -95,8 +95,7 @@ const EffectSearch = ({
 
   return (
     <>
-      <div>
-        <label className="label">Effect Search</label>
+      <div className={styles.searchHeader}>
         <div className="m-bottom-5">
           <SearchBox
             value={search}
@@ -104,7 +103,7 @@ const EffectSearch = ({
             placeholder="Search effects"
           />
         </div>
-        <label className={cx('label m-bottom-10 px12', styles.controlGrid)}>
+        <label className={cx('label px12', styles.controlGrid)}>
           <input
             className="checkbox"
             type="checkbox"
@@ -116,7 +115,7 @@ const EffectSearch = ({
         {suggestions.map((s) => (
           <div
             key={s}
-            className="pill pillButton"
+            className="pill pillButton m-right-5"
             onClick={() => {
               setSearch(s);
               doSearch(s);
@@ -126,13 +125,18 @@ const EffectSearch = ({
           </div>
         ))}
       </div>
-      {count && activeNode ? (
-        <div className="m-top-10 secondary px12" style={{ height: '28px' }}>
-          Replace <span className="primary">&quot;{activeNode.name}&quot;</span>{' '}
-          with&hellip;
-        </div>
-      ) : null}
-      <div className="m-top-10 relative">
+
+      <div className="relative p-5-10">
+        {count && activeNode ? (
+          <div
+            className="m-bottom-10 secondary px12"
+            style={{ height: '28px' }}
+          >
+            Replace{' '}
+            <span className="primary">&quot;{activeNode.name}&quot;</span>{' '}
+            with&hellip;
+          </div>
+        ) : null}
         {isSearching ? (
           <div className="searching flexCentered">
             <span>Searching&hellip;</span>

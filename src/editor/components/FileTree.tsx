@@ -30,6 +30,7 @@ export type TreeData = {
   children?: TreeData[];
   type: PaneType;
   stage?: ShaderStage;
+  errored?: boolean;
 };
 
 export const TreeNode = ({
@@ -57,6 +58,7 @@ export const TreeNode = ({
       // onClick={() => node.toggle()}
       className={cx(
         treeNode.isLeaf ? styles.treeLeaf : styles.treeFolder,
+        node.errored ? styles.treeErrored : '',
         node.stage === 'fragment'
           ? styles.treeFragment
           : node.stage === 'vertex'

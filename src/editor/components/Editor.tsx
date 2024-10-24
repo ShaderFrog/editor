@@ -1744,42 +1744,6 @@ const Editor = ({
               </ul>
             </div>
           ) : null}
-          <div className="m-right-15">
-            {'shadertoy' in engine.importers ? (
-              <button
-                className="buttonauto formbutton size2 secondary m-right-10"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowImport(true);
-                }}
-              >
-                Import&hellip;
-              </button>
-            ) : null}
-            {!shader.id || !isOwnShader ? null : (
-              <button
-                disabled={isSaving || isDeleting}
-                className="buttonauto formbutton size2 secondary m-right-10"
-                onClick={(e) => {
-                  e.preventDefault();
-                  saveOrFork(true);
-                }}
-              >
-                Fork
-              </button>
-            )}
-            <button
-              disabled={isSaving || isDeleting}
-              className="buttonauto formbutton size2"
-              onClick={(e) => {
-                e.preventDefault();
-                saveOrFork();
-              }}
-              title={`${isMacintosh() ? `⌘-s` : `Ctrl-s`}`}
-            >
-              {shader.id && !isOwnShader ? 'Fork' : 'Save'}
-            </button>
-          </div>
         </div>
       ) : (
         <div className={styles.tabControls}>Log in to save</div>
@@ -1958,6 +1922,45 @@ const Editor = ({
     </div>
   );
 
+  const toolbarElements = (
+    <div>
+      {'shadertoy' in engine.importers ? (
+        <button
+          className="buttonauto formbutton size2 secondary m-right-10"
+          onClick={(e) => {
+            e.preventDefault();
+            setShowImport(true);
+          }}
+        >
+          Import&hellip;
+        </button>
+      ) : null}
+      {!shader.id || !isOwnShader ? null : (
+        <button
+          disabled={isSaving || isDeleting}
+          className="buttonauto formbutton size2 secondary m-right-10"
+          onClick={(e) => {
+            e.preventDefault();
+            saveOrFork(true);
+          }}
+        >
+          Fork
+        </button>
+      )}
+      <button
+        disabled={isSaving || isDeleting}
+        className="buttonauto formbutton size2"
+        onClick={(e) => {
+          e.preventDefault();
+          saveOrFork();
+        }}
+        title={`${isMacintosh() ? `⌘-s` : `Ctrl-s`}`}
+      >
+        {shader.id && !isOwnShader ? 'Fork' : 'Save'}
+      </button>
+    </div>
+  );
+
   return (
     <FlowGraphContext.Provider
       value={{
@@ -2014,6 +2017,7 @@ const Editor = ({
             <TabGroup>
               <Tab>Scene</Tab>
               <Tab>Editor</Tab>
+              <div className={cx(styles.tabControls)}>{toolbarElements}</div>
             </TabGroup>
             <TabPanels>
               <TabPanel ref={sceneWrapRef} style={{ height: '100% ' }}>
@@ -2030,7 +2034,10 @@ const Editor = ({
             <div className={styles.splitInner}>{editorElements}</div>
             {/* 3d display split */}
             <div ref={sceneWrapRef} className={styles.splitInner}>
-              {sceneElements}
+              <div className={styles.shrinkGrowRows}>
+                <div className={cx(styles.controlBar)}>{toolbarElements}</div>
+                {sceneElements}
+              </div>
             </div>
           </SplitPane>
         )}

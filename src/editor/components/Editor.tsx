@@ -1802,6 +1802,7 @@ const Editor = ({
                 <EffectSearch
                   engine={engine.name}
                   activeNode={primarySelectedNode as SourceNode}
+                  currentUser={currentUser}
                   onSelect={(selection) =>
                     onSelectGroup(primarySelectedNode, selection)
                   }

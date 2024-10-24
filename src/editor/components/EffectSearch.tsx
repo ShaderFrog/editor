@@ -17,6 +17,7 @@ import SearchBox from './SearchBox';
 import { useApi } from '@editor/api';
 
 import styles from '../styles/editor.module.css';
+import { CurrentUser } from '@/editor/model';
 const cx = classnames.bind(styles);
 
 const DraggableShaderPreview = ({
@@ -42,10 +43,12 @@ const DraggableShaderPreview = ({
 const EffectSearch = ({
   engine,
   activeNode,
+  currentUser,
   onSelect,
 }: {
   engine: string;
   activeNode: SourceNode;
+  currentUser: CurrentUser | null | undefined;
   onSelect: (shader: Shader) => void;
 }) => {
   const api = useApi();
@@ -100,18 +103,20 @@ const EffectSearch = ({
           <SearchBox
             value={search}
             onChange={onChange}
-            placeholder="Search effects"
+            placeholder="Search composable effects"
           />
         </div>
-        <label className={cx('label px12', styles.controlGrid)}>
-          <input
-            className="checkbox"
-            type="checkbox"
-            checked={includeMy}
-            onChange={(e) => setIncludeMy(e.target.checked)}
-          ></input>
-          Include my effects
-        </label>
+        {currentUser && (
+          <label className={cx('label px12', styles.controlGrid)}>
+            <input
+              className="checkbox"
+              type="checkbox"
+              checked={includeMy}
+              onChange={(e) => setIncludeMy(e.target.checked)}
+            ></input>
+            Include my effects
+          </label>
+        )}
         {suggestions.map((s) => (
           <div
             key={s}

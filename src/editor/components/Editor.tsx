@@ -1649,9 +1649,7 @@ const Editor = ({
         )
       );
       const closestNode = flowNodes.find((n) => n.id === closestNodeId);
-      if (closestNode) {
-        setReplacingNode(closestNode);
-      }
+      setReplacingNode(closestNode || null);
     }
   };
 

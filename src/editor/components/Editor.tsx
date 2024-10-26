@@ -899,7 +899,7 @@ const Editor = ({
 
       // Create a new edge connected to the primary created node ("newNodeId")
       // and then make sure the edge business logic is enforced
-      let newEdges = expanded.edges;
+      let newEdges = [...graph.edges, ...expanded.edges];
       if (newEdgeData && newNodeId) {
         newEdges = addEdgeAndPruneRestrictions(
           graph.edges,
@@ -916,8 +916,8 @@ const Editor = ({
 
       setFlowEdges(newEdges.map(graphEdgeToFlowEdge));
 
-      setFlowNodes((nodes) => [
-        ...nodes,
+      setFlowNodes((flowNodes) => [
+        ...flowNodes,
         ...expanded!.nodes.map((newGn, index) =>
           graphNodeToFlowNode(
             newGn,

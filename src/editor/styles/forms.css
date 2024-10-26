@@ -85,8 +85,6 @@
 }
 .formbutton:active {
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 1px 5px inset #000000aa;
-  padding-top: 7px;
-  padding-bottom: 5px;
 }
 .buttonauto {
   width: auto;
@@ -234,9 +232,6 @@
 .linkbutton {
   width: auto;
   display: inline-block;
-}
-.linkbutton:active {
-  padding: 6px 12px;
 }
 
 .linkbutton:hover {

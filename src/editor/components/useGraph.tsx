@@ -174,9 +174,8 @@ const createGraphNode = (
   name: string,
   position: { x: number; y: number },
   engine: Engine,
-  newEdgeData?: Omit<GraphEdge, 'id' | 'from'>,
   defaultValue?: any
-): [Set<string>, Graph] => {
+): [Set<string>, Graph, string] => {
   const makeName = (type: string) => name || type;
   const id = makeId();
 
@@ -314,24 +313,12 @@ gl_Position = vec4(1.0);
     );
   }
 
-  if (newEdgeData) {
-    newEdges = newEdges.concat([
-      makeEdge(
-        makeId(),
-        id,
-        newEdgeData.to,
-        newEdgeData.output,
-        newEdgeData.input,
-        newEdgeData.type
-      ),
-    ]);
-  }
-
   // Expand uniforms on new nodes automatically
   const originalNodes = new Set<string>(newGns.map((n) => n.id));
   return [
     originalNodes,
     expandUniformDataNodes({ nodes: newGns, edges: newEdges }),
+    id,
   ];
 };
 

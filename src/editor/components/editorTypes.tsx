@@ -10,6 +10,7 @@ import {
 } from '@editor/model/Shader';
 import { CurrentUser } from '@editor/model';
 import { AnyFn } from '@editor/util/types';
+import { AddEngineNode } from '../editor-types';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -69,13 +70,7 @@ export type EngineProps = {
   examples: Record<string, string>;
   makeExampleGraph: (example: string) => [Graph, AnySceneConfig];
   menuItems: MenuItem[];
-  addEngineNode: (
-    nodeDataType: string,
-    name: string,
-    position: { x: number; y: number },
-    newEdgeData?: Omit<Edge, 'id' | 'from'>,
-    defaultValue?: any
-  ) => [Set<string>, Graph] | undefined;
+  addEngineNode: AddEngineNode;
   sceneComponent: FunctionComponent<SceneProps>;
 };
 

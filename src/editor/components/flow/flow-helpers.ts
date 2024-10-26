@@ -319,23 +319,12 @@ export const updateFlowNodeInput = <T extends FlowNode>(
   },
 });
 
-export const addGraphEdge = (graph: Graph, newEdge: GraphEdge): Graph => {
-  const updatedEdges = graph.edges.filter(
-    (edge) =>
-      // Prevent one input handle from having multiple inputs
-      !(
-        (edge.to === newEdge.to && edge.input === newEdge.input)
-        // Prevent one output handle from having multiple lines out
-      ) && !(edge.from === newEdge.from && edge.output === newEdge.output)
-  );
-
-  const updatedGraph: Graph = {
-    ...graph,
-    edges: [...updatedEdges, newEdge],
-  };
-  return collapseBinaryGraphEdges(updatedGraph);
-};
-
+/**
+ * Adds an edge to the graph and enforces graph edge business logic rules:
+ * - Makes sure "binary" (add/multiply) nodes edges are collapsed
+ * - Makes sure two edges can't flow into the same input.
+ * See also @core#addGraphEdge
+ */
 export const addFlowEdge = (
   flowElements: FlowElements,
   newEdge: XYFlowEdge
@@ -344,17 +333,9 @@ export const addFlowEdge = (
     (element) =>
       // Prevent one input handle from having multiple inputs
       !(
-        (
-          'targetHandle' in element &&
-          element.targetHandle === newEdge.targetHandle &&
-          element.target === newEdge.target
-        )
-        // Prevent one output handle from having multiple lines out
-      ) &&
-      !(
-        'sourceHandle' in element &&
-        element.sourceHandle === newEdge.sourceHandle &&
-        element.source === newEdge.source
+        'targetHandle' in element &&
+        element.targetHandle === newEdge.targetHandle &&
+        element.target === newEdge.target
       )
   );
 
@@ -363,48 +344,6 @@ export const addFlowEdge = (
     edges: [...updatedEdges, newEdge],
   });
   return collapseBinaryFlowEdges(updatedFlowElements);
-};
-
-/**
- * A binary node automatically adds/removes inputs based on how many edges
- * connect to it. If a binary node has edges to "a" and "b", removing the edge
- * to "a" means the edge to "b" needs to be moved down to the "a" one. This
- * function essentially groups edges by target node id, and resets the edge
- * target to its index. This doesn't feel good to do here but I don't have a
- * better idea at the moment. One reason the inputs to binary nodes are
- * automatically updated after compile, but the edges are updated here
- * at the editor layer, before compile. This also hard codes assumptions about
- * (binary) node inputs into the graph, namely they can't have blank inputs.
- */
-export const collapseBinaryGraphEdges = (graph: Graph): Graph => {
-  // Find all edges that flow into a binary node, grouped by the target node's
-  // id, since we need to know the total number of edges per node first
-  const binaryEdges = graph.edges.reduce<Record<string, GraphEdge[]>>(
-    (acc, edge) => {
-      const toNode = findNode(graph, edge.to);
-      return toNode.type === NodeType.BINARY
-        ? {
-            ...acc,
-            [toNode.id]: [...(acc[toNode.id] || []), edge],
-          }
-        : acc;
-    },
-    {}
-  );
-
-  // Then collapse them
-  const updatedEdges = graph.edges.map((edge) => {
-    return edge.to in binaryEdges
-      ? {
-          ...edge,
-          input: alphabet.charAt(binaryEdges[edge.to].indexOf(edge)),
-        }
-      : edge;
-  });
-  return {
-    ...graph,
-    edges: updatedEdges,
-  };
 };
 
 export const collapseBinaryFlowEdges = (

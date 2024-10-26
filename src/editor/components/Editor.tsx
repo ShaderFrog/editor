@@ -54,6 +54,8 @@ import {
   isError,
   TextureNode,
   computeGrindex,
+  addGraphEdge,
+  addEdgeAndPruneRestrictions,
 } from '@core/graph';
 
 import FlowEditor, { NodeContextActions } from './flow/FlowEditor';
@@ -91,7 +93,6 @@ import {
   updateFlowNodeInput as updateFlowInputInternal,
   updateFlowNodeData as updateFlowNodeDataInternal,
   addFlowEdge,
-  addGraphEdge,
   updateGraphFromFlowGraph,
   updateFlowEdgeData,
   markInputsConnected,
@@ -878,34 +879,42 @@ const Editor = ({
 
       let originalNodes: Set<string> | undefined;
       let expanded: Graph | undefined;
+      let newNodeId: string | undefined;
 
       if (addEngineNode) {
-        [originalNodes, expanded] =
-          addEngineNode(
-            nodeDataType,
-            name,
-            position,
-            newEdgeData,
-            defaultValue
-          ) || [];
+        [originalNodes, expanded, newNodeId] =
+          addEngineNode(nodeDataType, name, position, defaultValue) || [];
       }
 
       if (!originalNodes || !expanded) {
         // Expand uniforms on new nodes automatically
-        [originalNodes, expanded] = createGraphNode(
+        [originalNodes, expanded, newNodeId] = createGraphNode(
           nodeDataType,
           name,
           position,
           engine,
-          newEdgeData,
           defaultValue
         );
       }
 
-      setFlowEdges((edges) => [
-        ...edges,
-        ...expanded!.edges.map(graphEdgeToFlowEdge),
-      ]);
+      // Create a new edge connected to the primary created node ("newNodeId")
+      // and then make sure the edge business logic is enforced
+      let newEdges = expanded.edges;
+      if (newEdgeData && newNodeId) {
+        newEdges = addEdgeAndPruneRestrictions(
+          graph.edges,
+          makeEdge(
+            makeId(),
+            newNodeId,
+            newEdgeData.to,
+            newEdgeData.output,
+            newEdgeData.input,
+            newEdgeData.type
+          )
+        );
+      }
+
+      setFlowEdges(newEdges.map(graphEdgeToFlowEdge));
 
       setFlowNodes((nodes) => [
         ...nodes,
@@ -927,7 +936,7 @@ const Editor = ({
 
       const updatedGraph = {
         ...graph,
-        edges: [...graph.edges, ...expanded!.edges],
+        edges: newEdges,
         nodes: [...graph.nodes, ...expanded!.nodes],
       };
       // Create new inputs for new nodes added to the graph

@@ -13,6 +13,7 @@ import { engine as playengine } from '@core/plugins/playcanvas';
 import { expandUniformDataNodes } from '@editor-components/useGraph';
 import { MenuItem } from '@editor-components/ContextMenu';
 import { AnySceneConfig } from '@editor-components/editorTypes';
+import { AddEngineNode } from '@/editor/editor/editor-types';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',
@@ -85,13 +86,12 @@ export const menuItems: MenuItem[] = [
   },
 ];
 
-export const addEngineNode = (
-  nodeDataType: string,
-  name: string,
-  position: { x: number; y: number },
-  newEdgeData?: Omit<Edge, 'id' | 'from'>,
-  defaultValue?: any
-): [Set<string>, Graph] | undefined => {
+export const addEngineNode: AddEngineNode = (
+  nodeDataType,
+  name,
+  position,
+  defaultValue
+) => {
   const id = makeId();
 
   let newGns: GraphNode[] = [];
@@ -121,24 +121,12 @@ export const addEngineNode = (
   }
 
   if (newGns.length) {
-    if (newEdgeData) {
-      newEdges = newEdges.concat([
-        makeEdge(
-          makeId(),
-          id,
-          newEdgeData.to,
-          newEdgeData.output,
-          newEdgeData.input,
-          newEdgeData.type
-        ),
-      ]);
-    }
-
     // Expand uniforms on new nodes automatically
     const originalNodes = new Set<string>(newGns.map((n) => n.id));
     return [
       originalNodes,
       expandUniformDataNodes({ nodes: newGns, edges: newEdges }),
+      id,
     ];
   }
 };

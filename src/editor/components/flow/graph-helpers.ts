@@ -1,4 +1,4 @@
-import indexById from '@/core/util/indexByid';
+import indexById from '@core/util/indexByid';
 import {
   Graph,
   GraphNode,

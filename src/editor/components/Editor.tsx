@@ -139,7 +139,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import MetadataEditor from './MetadataEditor';
 import ConvertShadertoy from './ConvertShadertoy';
-import { truncate } from '@/util/string';
+import { truncate } from '@editor/util/string';
 import indexById from '@core/util/indexByid';
 
 const log = (...args: any[]) =>

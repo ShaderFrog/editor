@@ -11,8 +11,8 @@ import {
   type OnConnect,
 } from '@xyflow/react';
 
-import { ValueOf } from '@/editor/util/types';
-import { makeId } from '@/core/util/id';
+import { ValueOf } from '@editor/util/types';
+import { makeId } from '@core/util/id';
 import {
   CompileResult,
   EngineContext,
@@ -20,7 +20,7 @@ import {
   GraphNode,
   NodeErrors,
   NodeInput,
-} from '@/core';
+} from '@core';
 import {
   updateFlowNodeInput,
   updateFlowNodeData,
@@ -36,7 +36,7 @@ import {
   FlowEdgeOrLink,
   FlowNode,
 } from './flow-types';
-import { Shader } from '@/editor/model';
+import { Shader } from '@editor/model';
 import { AnySceneConfig } from '../editorTypes';
 
 /*******************************************************************************

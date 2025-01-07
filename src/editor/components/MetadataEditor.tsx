@@ -4,7 +4,7 @@ import cx from 'classnames';
 import { useReactFlow } from '@xyflow/react';
 
 import { useMemo, useState } from 'react';
-import { computeGrindex, SourceNode } from '@/core';
+import { computeGrindex, SourceNode } from '@core';
 import { FlowNodeSourceData } from './flow/flow-types';
 import { useEditorStore } from './flow/editor-store';
 

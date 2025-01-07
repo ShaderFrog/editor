@@ -24,6 +24,10 @@ Navigate to [http://localhost:3000](http://localhost:3000).
 
 ## Local development
 
+Shaderfrog is built on a nested tech stack, sometimes called "open core" software.
+
+![shaderfrog module structure](shaderfrog-site-structure.png)
+
 The code struture:
 ```bash
 src/ # All source code

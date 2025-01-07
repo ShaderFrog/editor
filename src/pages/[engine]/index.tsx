@@ -1,7 +1,13 @@
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 
-import { stubApi, ClientApiContext, withSWR, STUB_USER } from '@editor/api';
+import {
+  stubApi,
+  ClientApiContext,
+  withSWR,
+  STUB_USER,
+  stubApiData,
+} from '@editor/api';
 import Loading from '@editor-components/Loading';
 
 export const Babylon = dynamic(
@@ -50,4 +56,4 @@ function Editor() {
   );
 }
 
-export default withSWR(Editor);
+export default withSWR(Editor, stubApiData);

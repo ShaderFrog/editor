@@ -139,8 +139,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import MetadataEditor from './MetadataEditor';
 import ConvertShadertoy from './ConvertShadertoy';
-import { truncate } from '@/util/string';
+import { truncate } from '@editor/util/string';
 import indexById from '@core/util/indexByid';
+import { stubDefaultShader } from '@/api';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
@@ -2070,30 +2071,7 @@ const EditorWithProviders = (props: EditorProps & EngineProps) => {
   const sensors = useSensors(mouseSensor);
 
   const defaultShader = useMemo(
-    () => ({
-      user: {
-        name: 'Fake User',
-        isPro: false,
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      engine: props.engine.name as 'three',
-      name: randomShaderName(),
-      visibility: 0,
-      imageData: '',
-      tags: [],
-      config: {
-        graph: {
-          nodes: [],
-          edges: [],
-        },
-        scene: {
-          bg: '',
-          lights: 'point',
-          previewObject: 'sphere',
-        },
-      },
-    }),
+    () => stubDefaultShader(props.engine.name as 'three'),
     [props.engine]
   );
 

@@ -9,7 +9,7 @@ import { Engine } from '@core/engine';
 import { count, makeId } from '../../util/id';
 
 import { linkNodes } from './useGraph';
-import { texture2DStrategy, uniformStrategy } from '@/core';
+import { texture2DStrategy, uniformStrategy } from '@core';
 import { generate, parser } from '@shaderfrog/glsl-parser';
 import { Program } from '@shaderfrog/glsl-parser/ast';
 

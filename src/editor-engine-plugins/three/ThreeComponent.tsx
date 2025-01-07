@@ -82,7 +82,7 @@ import { SceneProps } from '@editor-components/editorTypes';
 import { useAssetsAndGroups } from '@editor/api';
 
 import styles from '../../editor/styles/editor.module.css';
-import clamp from '@/editor/util/clamp';
+import clamp from '@editor/util/clamp';
 import { extractProperties } from './three-graph';
 
 export const THREE_IMAGE_ENCODINGS = {

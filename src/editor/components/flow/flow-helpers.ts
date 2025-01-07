@@ -18,7 +18,7 @@ import {
   EdgeLink,
 } from '@core/graph';
 import { OutputNodeHandle, SHADERFROG_FLOW_EDGE_TYPE } from './flow-types';
-import indexById from '@/core/util/indexByid';
+import indexById from '@core/util/indexByid';
 import {
   FlowNode,
   FlowSourceNode,

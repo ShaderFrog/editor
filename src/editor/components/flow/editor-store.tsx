@@ -180,6 +180,7 @@ interface EditorState {
 
   glslEditorTabs: (PaneState | SplitPaneState)[];
   addEditorTab: (nodeId: string, type: PaneType) => void;
+  removeEditorTabByNodeIds: (nodeIds: Set<string>) => void;
   removeEditorTabPaneId: (paneId: string) => void;
 
   // Node errors state
@@ -354,6 +355,21 @@ const createEditorStore = (
             glslEditorActivePaneId: id,
           };
         }
+      }),
+    removeEditorTabByNodeIds: (nodeIds) =>
+      set(({ glslEditorTabs, glslEditorActivePaneId }) => {
+        const filtered = glslEditorTabs.filter(
+          (pane) => pane.type !== 'pane' || !nodeIds.has(pane.contents.nodeId)
+        );
+        return {
+          glslEditorTabs: filtered,
+          glslEditorActivePaneId: glslEditorTabs.some(
+            (p) =>
+              p.type === 'pane' && p.contents.nodeId === glslEditorActivePaneId
+          )
+            ? filtered[0]?.id
+            : glslEditorActivePaneId,
+        };
       }),
     removeEditorTabPaneId: (paneId) =>
       set(({ glslEditorTabs, glslEditorActivePaneId }) => {

@@ -118,7 +118,6 @@ import {
 import EffectSearch from './EffectSearch';
 import ShaderPreview from './ShaderPreview';
 import TextureBrowser from './TextureBrowser';
-import randomShaderName from '@editor/util/randomShaderName';
 import { Shader } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
 import {
@@ -141,7 +140,7 @@ import MetadataEditor from './MetadataEditor';
 import ConvertShadertoy from './ConvertShadertoy';
 import { truncate } from '@editor/util/string';
 import indexById from '@core/util/indexByid';
-import { stubDefaultShader } from '@/api';
+import { stubDefaultShader } from '@editor/api';
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
@@ -192,6 +191,7 @@ const Editor = ({
     primarySelectedNodeId,
     setPrimarySelectedNodeId,
     addEditorTab,
+    removeEditorTabByNodeIds,
     setSceneDimensions,
     compileInfo,
     setCompileInfo,
@@ -1484,8 +1484,10 @@ const Editor = ({
         nodes: graph.nodes.filter((node) => !nodesToRemoveIds.has(node.id)),
         edges: graph.edges.filter((edge) => !edgesToRemoveIds.has(edge.id)),
       }));
+
+      removeEditorTabByNodeIds(nodesToRemoveIds);
     },
-    [graph, setGraph, setFlowEdges, setFlowNodes]
+    [graph, setGraph, setFlowEdges, setFlowNodes, removeEditorTabByNodeIds]
   );
 
   const getClosestNodeToPosition = useCallback(

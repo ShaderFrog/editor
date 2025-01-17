@@ -1,4 +1,4 @@
-import randomShaderName from '@/util/randomShaderName';
+import randomShaderName from '@editor/util/randomShaderName';
 import { CurrentUser, Shader } from '../model';
 import { ClientApi } from './ClientApi';
 import { API } from './api';

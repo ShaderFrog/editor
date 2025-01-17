@@ -25,7 +25,7 @@ import {
   useEditorStore,
   useGlslEditorTabIndex,
 } from './flow/editor-store';
-import { capitalize } from '@/util/string';
+import { capitalize } from '@editor/util/string';
 import StrategyEditor from './StrategyEditor';
 import debounce from 'lodash.debounce';
 import { FileTree, findInTree, TreeData } from './FileTree';

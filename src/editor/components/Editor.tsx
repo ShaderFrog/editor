@@ -1992,6 +1992,7 @@ const Editor = ({
             <ConvertShadertoy
               engine={engine}
               onImport={() => {
+                compile();
                 setShowImport(false);
               }}
             />

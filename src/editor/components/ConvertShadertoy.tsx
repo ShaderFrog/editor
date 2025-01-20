@@ -73,11 +73,11 @@ const ConvertShadertoy = ({
                 onChange={(e) => setImportType('uv')}
               />
               UV Plane
+              <div className="m-top-5 m-left-20 secondary px12">
+                Maps the Shadertoy shader onto a plane, using UV coordinates
+                instead of screen position.
+              </div>
             </label>
-            <div className="m-top-5 secondary px12">
-              Maps the Shadertoy shader onto a plane, using UV coordinates
-              instead of screen position.
-            </div>
           </div>
           <div>
             <label className={styles.radioLabel}>
@@ -88,18 +88,19 @@ const ConvertShadertoy = ({
                 onChange={(e) => setImportType('screen')}
               />
               Screen
+              <div className="m-top-5 m-left-20 secondary px12">
+                Keep the shader in screen space, not mapped to seleced the 3D
+                object.
+              </div>
             </label>
-            <div className="m-top-5 secondary px12">
-              Keep the shader in screen space, not mapped to seleced the 3D
-              object.
-            </div>
           </div>
         </div>
       </div>
-      <div className="m-top-10">
+      <div className="m-top-20">
         <textarea
           ref={textAreaRef}
           className="textinput"
+          style={{ minHeight: '200px' }}
           placeholder="Paste your ShaderToy GLSL here"
         ></textarea>
       </div>

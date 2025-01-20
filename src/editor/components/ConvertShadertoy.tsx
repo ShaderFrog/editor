@@ -28,14 +28,13 @@ const ConvertShadertoy = ({
     setSceneConfig,
     graph,
     setGraph,
-    flowNodes,
-    flowEdges,
     setFlowNodes,
     setFlowEdges,
   } = useEditorStore();
 
   const [importError, setImportError] = useState<string | null>(null);
   const [importType, setImportType] = useState<'uv' | 'screen'>('uv');
+  const [importName, setImportName] = useState('Shadertoy Import');
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
@@ -52,6 +51,16 @@ const ConvertShadertoy = ({
         <li>Mouse input</li>
         <li>Audio input</li>
       </ul>
+      <div className="m-top-10">
+        <label>
+          Node Name
+          <input
+            type="text"
+            value={importName}
+            onChange={(e) => setImportName(e.target.value)}
+          />
+        </label>
+      </div>
       <textarea
         ref={textAreaRef}
         className="textinput"
@@ -96,7 +105,7 @@ const ConvertShadertoy = ({
             try {
               const value = textAreaRef.current!.value;
               ast = parser.parse(preprocess(value, {}));
-              engine.importers.shadertoy.convertAst(ast);
+              engine.importers.shadertoy.convertAst(ast, { importType });
             } catch (e) {
               console.error('Error importing shader', e);
               setImportError(
@@ -115,7 +124,7 @@ const ConvertShadertoy = ({
             const c = count();
             const fragment = sourceNode(
               makeId(),
-              'Shadertoy Import ' + c,
+              importName || 'Shadertoy Import ' + c,
               { x: 0, y: 0 },
               {
                 version: 2,
@@ -129,7 +138,7 @@ const ConvertShadertoy = ({
             );
             const vertex = sourceNode(
               makeId(),
-              'Shadertoy Import ' + c,
+              importName || 'Shadertoy Import ' + c,
               { x: 0, y: 299 },
               {
                 version: 2,

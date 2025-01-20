@@ -31,7 +31,7 @@ import { babylengine } from '@core/plugins/babylon/bablyengine';
 import { expandUniformDataNodes } from '@editor-components/useGraph';
 import { MenuItem } from '@editor-components/ContextMenu';
 import { AnySceneConfig } from '@editor-components/editorTypes';
-import { AddEngineNode } from '@/editor/editor/editor-types';
+import { AddEngineNode } from '@editor/editor/editor-types';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

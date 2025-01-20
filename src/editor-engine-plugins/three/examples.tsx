@@ -55,7 +55,7 @@ import { MenuItem } from '@editor-components/ContextMenu';
 import { AnySceneConfig } from '@editor-components/editorTypes';
 import { faCube } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AddEngineNode } from '@/editor/editor/editor-types';
+import { AddEngineNode } from '@editor/editor/editor-types';
 
 export enum Example {
   GLASS_FIREBALL = 'Glass Fireball',

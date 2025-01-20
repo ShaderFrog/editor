@@ -17,7 +17,7 @@ import SearchBox from './SearchBox';
 import { useApi } from '@editor/api';
 
 import styles from '../styles/editor.module.css';
-import { CurrentUser } from '@/editor/model';
+import { CurrentUser } from '@editor/model';
 const cx = classnames.bind(styles);
 
 const DraggableShaderPreview = ({

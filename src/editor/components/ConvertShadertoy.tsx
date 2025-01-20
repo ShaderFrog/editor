@@ -2,7 +2,7 @@ import styles from '../styles/editor.module.css';
 import cx from 'classnames';
 import { useRef, useState } from 'react';
 
-import { GraphNode, Edge, sourceNode, Graph } from '@core/graph';
+import { GraphNode, Edge, sourceNode, Graph, makeEdge } from '@core/graph';
 
 import { Engine } from '@core/engine';
 
@@ -42,55 +42,70 @@ const ConvertShadertoy = ({
       <h2 className={cx(styles.uiHeader)}>
         Import from Shadertoy (experimental)
       </h2>
-      <p className="blerfiarie">
+      <p className="secondary px12">
         Paste your Shadertoy code below. The following are <b>not</b> currently
         supported:
       </p>
-      <ul className="blerfiarie">
+      <ul className="secondary px12">
         <li>Multiple buffers</li>
         <li>Mouse input</li>
         <li>Audio input</li>
       </ul>
       <div className="m-top-10">
-        <label>
-          Node Name
+        <label className="label">
+          Imported Shader Name
           <input
             type="text"
+            className="textinput"
             value={importName}
             onChange={(e) => setImportName(e.target.value)}
           />
         </label>
       </div>
-      <textarea
-        ref={textAreaRef}
-        className="textinput"
-        placeholder="Paste your ShaderToy GLSL here"
-      ></textarea>
+      <div className="m-top-10">
+        <div className="grid col2 gap25">
+          <div>
+            <label className={styles.radioLabel}>
+              <input
+                type="radio"
+                name="importType"
+                checked={importType === 'uv'}
+                onChange={(e) => setImportType('uv')}
+              />
+              UV Plane
+            </label>
+            <div className="m-top-5 secondary px12">
+              Maps the Shadertoy shader onto a plane, using UV coordinates
+              instead of screen position.
+            </div>
+          </div>
+          <div>
+            <label className={styles.radioLabel}>
+              <input
+                type="radio"
+                name="importType"
+                checked={importType === 'screen'}
+                onChange={(e) => setImportType('screen')}
+              />
+              Screen
+            </label>
+            <div className="m-top-5 secondary px12">
+              Keep the shader in screen space, not mapped to seleced the 3D
+              object.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="m-top-10">
+        <textarea
+          ref={textAreaRef}
+          className="textinput"
+          placeholder="Paste your ShaderToy GLSL here"
+        ></textarea>
+      </div>
       {importError ? (
         <div className={cx(styles.errored, `m-top-10`)}>{importError}</div>
       ) : null}
-      <div className="m-top-10">
-        <div className="grid col2 shrinkGrow gap25">
-          <label className={styles.radioLabel}>
-            <input
-              type="radio"
-              name="importType"
-              checked={importType === 'uv'}
-              onChange={(e) => setImportType('uv')}
-            />
-            UV Plane
-          </label>
-          <label className={styles.radioLabel}>
-            <input
-              type="radio"
-              name="importType"
-              checked={importType === 'screen'}
-              onChange={(e) => setImportType('screen')}
-            />
-            Screen
-          </label>
-        </div>
-      </div>
       <div className="m-top-10">
         <button
           className="buttonauto formbutton size2"
@@ -160,6 +175,24 @@ const ConvertShadertoy = ({
                     edge.to !== outputFrag.id && edge.to !== outputVert.id
                 )
                 .concat(newEdges)
+                .concat([
+                  makeEdge(
+                    makeId(),
+                    vertex.id,
+                    outputVert.id,
+                    vertex.outputs[0].id,
+                    outputVert.inputs[0].id,
+                    'vertex'
+                  ),
+                  makeEdge(
+                    makeId(),
+                    fragment.id,
+                    outputFrag.id,
+                    fragment.outputs[0].id,
+                    outputFrag.inputs[0].id,
+                    'fragment'
+                  ),
+                ])
                 .flat(2),
             };
 

@@ -157,7 +157,7 @@ const ConvertShadertoy = ({
               edges: graph.edges
                 .filter(
                   (edge) =>
-                    edge.to === outputFrag.id || edge.to === outputVert.id
+                    edge.to !== outputFrag.id && edge.to !== outputVert.id
                 )
                 .concat(newEdges)
                 .flat(2),

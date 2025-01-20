@@ -100,7 +100,7 @@ const ConvertShadertoy = ({
         <textarea
           ref={textAreaRef}
           className="textinput"
-          style={{ minHeight: '200px' }}
+          style={{ minHeight: '100px' }}
           placeholder="Paste your ShaderToy GLSL here"
         ></textarea>
       </div>

@@ -1991,18 +1991,7 @@ const Editor = ({
           <Modal onClose={() => setShowImport(false)}>
             <ConvertShadertoy
               engine={engine}
-              onImport={(newNodes, newEdges) => {
-                const newGraph: Graph = {
-                  nodes: graph.nodes.concat(newNodes).flat(2),
-                  edges: graph.edges.concat(newEdges).flat(2),
-                };
-
-                const newFlowGraph = graphToFlowGraph(newGraph);
-
-                setFlowNodes(newFlowGraph.nodes);
-                setFlowEdges(newFlowGraph.edges);
-                setGraph(newGraph);
-
+              onImport={() => {
                 setShowImport(false);
               }}
             />

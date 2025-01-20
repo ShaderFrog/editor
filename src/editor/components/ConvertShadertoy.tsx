@@ -2,7 +2,7 @@ import styles from '../styles/editor.module.css';
 import cx from 'classnames';
 import { useRef, useState } from 'react';
 
-import { GraphNode, Edge, sourceNode } from '@core/graph';
+import { GraphNode, Edge, sourceNode, Graph } from '@core/graph';
 
 import { Engine } from '@core/engine';
 
@@ -12,15 +12,30 @@ import { linkNodes } from './useGraph';
 import { texture2DStrategy, uniformStrategy } from '@core';
 import { generate, parser } from '@shaderfrog/glsl-parser';
 import { Program } from '@shaderfrog/glsl-parser/ast';
+import preprocess from '@shaderfrog/glsl-parser/preprocessor';
+import { useEditorStore } from './flow/editor-store';
+import { graphToFlowGraph } from './flow/flow-helpers';
 
 const ConvertShadertoy = ({
   engine,
   onImport,
 }: {
   engine: Engine;
-  onImport: (n: GraphNode[], e: Edge[]) => void;
+  onImport: () => void;
 }) => {
+  const {
+    sceneConfig,
+    setSceneConfig,
+    graph,
+    setGraph,
+    flowNodes,
+    flowEdges,
+    setFlowNodes,
+    setFlowEdges,
+  } = useEditorStore();
+
   const [importError, setImportError] = useState<string | null>(null);
+  const [importType, setImportType] = useState<'uv' | 'screen'>('uv');
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
@@ -46,20 +61,41 @@ const ConvertShadertoy = ({
         <div className={cx(styles.errored, `m-top-10`)}>{importError}</div>
       ) : null}
       <div className="m-top-10">
+        <div className="grid col2 shrinkGrow gap25">
+          <label className={styles.radioLabel}>
+            <input
+              type="radio"
+              name="importType"
+              checked={importType === 'uv'}
+              onChange={(e) => setImportType('uv')}
+            />
+            UV Plane
+          </label>
+          <label className={styles.radioLabel}>
+            <input
+              type="radio"
+              name="importType"
+              checked={importType === 'screen'}
+              onChange={(e) => setImportType('screen')}
+            />
+            Screen
+          </label>
+        </div>
+      </div>
+      <div className="m-top-10">
         <button
           className="buttonauto formbutton size2"
           onClick={(e) => {
             e.preventDefault();
+            setSceneConfig({
+              ...sceneConfig,
+              previewObject: 'plane',
+            });
             let ast: Program;
 
             try {
               const value = textAreaRef.current!.value;
-              // SAD HACK to catch variables in preprocessor lines
-              ast = parser.parse(
-                value
-                  .replace(/\biTime\b/g, 'time')
-                  .replace(/\biResolution\b/g, 'renderResolution')
-              );
+              ast = parser.parse(preprocess(value, {}));
               engine.importers.shadertoy.convertAst(ast);
             } catch (e) {
               console.error('Error importing shader', e);
@@ -68,6 +104,13 @@ const ConvertShadertoy = ({
               );
               return;
             }
+
+            const outputFrag = graph.nodes.find(
+              (node) => node.type === 'output' && node.stage === 'fragment'
+            )!;
+            const outputVert = graph.nodes.find(
+              (node) => node.type === 'output' && node.stage === 'vertex'
+            )!;
 
             const c = count();
             const fragment = sourceNode(
@@ -99,7 +142,25 @@ const ConvertShadertoy = ({
               engine.name
             );
             const [newEdges, newGns] = linkNodes(fragment, vertex);
-            onImport(newGns, newEdges);
+
+            const newGraph: Graph = {
+              nodes: graph.nodes.concat(newGns).flat(2),
+              edges: graph.edges
+                .filter(
+                  (edge) =>
+                    edge.to === outputFrag.id || edge.to === outputVert.id
+                )
+                .concat(newEdges)
+                .flat(2),
+            };
+
+            const newFlowGraph = graphToFlowGraph(newGraph);
+
+            setFlowNodes(newFlowGraph.nodes);
+            setFlowEdges(newFlowGraph.edges);
+            setGraph(newGraph);
+
+            onImport();
           }}
           title="Import"
         >

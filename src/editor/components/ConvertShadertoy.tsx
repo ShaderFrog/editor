@@ -65,7 +65,7 @@ const ConvertShadertoy = ({
       <div className="m-top-10">
         <div className="grid col2 gap25">
           <div>
-            <label className={styles.radioLabel}>
+            <label className="secondary">
               <input
                 type="radio"
                 name="importType"
@@ -73,14 +73,14 @@ const ConvertShadertoy = ({
                 onChange={(e) => setImportType('uv')}
               />
               UV Plane
-              <div className="m-top-5 m-left-20 secondary px12">
+              <div className="m-top-5 m-left-20 px12">
                 Maps the Shadertoy shader onto a plane, using UV coordinates
                 instead of screen position.
               </div>
             </label>
           </div>
           <div>
-            <label className={styles.radioLabel}>
+            <label className="secondary">
               <input
                 type="radio"
                 name="importType"
@@ -88,7 +88,7 @@ const ConvertShadertoy = ({
                 onChange={(e) => setImportType('screen')}
               />
               Screen
-              <div className="m-top-5 m-left-20 secondary px12">
+              <div className="m-top-5 m-left-20 px12">
                 Keep the shader in screen space, not mapped to seleced the 3D
                 object.
               </div>

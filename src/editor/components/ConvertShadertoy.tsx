@@ -10,7 +10,7 @@ import { count, makeId } from '../../util/id';
 
 import { linkNodes } from './useGraph';
 import { texture2DStrategy, uniformStrategy } from '@core';
-import { generate, parser } from '@shaderfrog/glsl-parser';
+import { generate, parse } from '@shaderfrog/glsl-parser';
 import { Program } from '@shaderfrog/glsl-parser/ast';
 import preprocess from '@shaderfrog/glsl-parser/preprocessor';
 import { useEditorStore } from './flow/editor-store';
@@ -120,7 +120,7 @@ const ConvertShadertoy = ({
 
             try {
               const value = textAreaRef.current!.value;
-              ast = parser.parse(preprocess(value, {}));
+              ast = parse(preprocess(value, {}));
               engine.importers.shadertoy.convertAst(ast, { importType });
             } catch (e) {
               console.error('Error importing shader', e);

@@ -1,6 +1,6 @@
 {
   "name": "@shaderfrog/editor",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "scripts": {
     "dev": "next dev",
     "deploy": "./deploy.sh",
@@ -19,7 +19,7 @@
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@monaco-editor/react": "^4.6.0",
     "@react-hook/resize-observer": "^1.2.6",
-    "@shaderfrog/core": "^3.0.0",
+    "@shaderfrog/core": "^3.0.1",
     "@shaderfrog/glsl-parser": "^6.0.0-beta.7",
     "@svgr/webpack": "^8.1.0",
     "@types/lodash.groupby": "^4.6.7",

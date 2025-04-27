@@ -28,7 +28,7 @@ import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
 import { useAssetsAndGroups } from '@editor/api';
 
 import { TextureNodeValueData } from '@core/graph';
-import { randomBetween } from '@editor/util/math';
+import { randomBetween } from '@core/util/math';
 
 import { NODRAG_CLASS } from '../editorTypes';
 import LabeledInput from '../LabeledInput';

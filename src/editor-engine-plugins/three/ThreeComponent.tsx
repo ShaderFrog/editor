@@ -116,6 +116,7 @@ export type SceneConfig = {
   autoRotateSpeed: number;
   coneResolution: [number, number];
   cylinderResolution: [number, number];
+  lightIntensity: number;
 };
 
 const maxResolution = 10000;
@@ -1049,7 +1050,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     let helpers: Object3D[] = [];
     let newLights: Object3D[] = [];
     if (sceneConfig.lights === LIGHT_SETTINGS.POINT) {
-      const pointLight = new PointLight(0xffffff, 1);
+      const pointLight = new PointLight(0xffffff, sceneConfig.lightIntensity);
       pointLight.position.set(0, 0, 2);
 
       newLights = [pointLight];
@@ -1057,13 +1058,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
     } else if (sceneConfig.lights === LIGHT_SETTINGS.THREE_POINT) {
       const group = new Group();
 
-      const light1 = new PointLight(0xffffff, 1, 0);
+      const light1 = new PointLight(0xffffff, sceneConfig.lightIntensity, 0);
       light1.position.set(2, 2, 5);
 
-      const light2 = new PointLight(0xffffff, 1, 0);
+      const light2 = new PointLight(0xffffff, sceneConfig.lightIntensity, 0);
       light2.position.set(-2, 5, -5);
 
-      const light3 = new PointLight(0xffffff, 1, 0);
+      const light3 = new PointLight(0xffffff, sceneConfig.lightIntensity, 0);
       light3.position.set(5, -5, -5);
 
       group.add(light1);
@@ -1077,10 +1078,22 @@ const ThreeComponent: React.FC<SceneProps> = ({
         group.add(new PointLightHelper(light3, 0.1));
       }
     } else if (sceneConfig.lights === LIGHT_SETTINGS.SPOT) {
-      const light1 = new SpotLight(0x00ff00, 1, 3, 0.4, 1);
+      const light1 = new SpotLight(
+        0x00ff00,
+        sceneConfig.lightIntensity,
+        3,
+        0.4,
+        1
+      );
       light1.position.set(0, 0, 2);
 
-      const light2 = new SpotLight(0xff0000, 1, 4, 0.4, 1);
+      const light2 = new SpotLight(
+        0xff0000,
+        sceneConfig.lightIntensity,
+        4,
+        0.4,
+        1
+      );
       light2.position.set(0, 0, 2);
 
       newLights = [light1, light2];
@@ -1327,7 +1340,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
             </div>
           </TabPanel>
 
-          <TabPanel className={styles.sceneControls}>
+          <TabPanel className={cx(styles.sceneControls, 'condensed')}>
             <div className={cx(styles.controlGrid, 'm-top-5')}>
               <div>
                 <label htmlFor="Lightingsfs" className="label noselect">
@@ -1355,6 +1368,34 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   </option>
                   <option value={LIGHT_SETTINGS.SPOT}>Spot Lights</option>
                 </select>
+              </div>
+            </div>
+
+            <div className={cx(styles.controlGrid, 'm-top-5')}>
+              <div>
+                <label htmlFor="lightIntensity" className="label noselect">
+                  <span>Light Intensity</span>
+                </label>
+              </div>
+              <div>
+                <input
+                  id="lightIntensity"
+                  type="range"
+                  className="range"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={sceneConfig.lightIntensity || 1}
+                  onChange={(event) =>
+                    setSceneConfig({
+                      ...sceneConfig,
+                      lightIntensity: parseFloat(event.target.value),
+                    })
+                  }
+                />
+                <div className="rangeValue">
+                  {(sceneConfig.lightIntensity || 1).toFixed(1)}
+                </div>
               </div>
             </div>
 

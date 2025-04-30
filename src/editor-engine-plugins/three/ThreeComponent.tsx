@@ -13,6 +13,8 @@ import {
   BufferGeometry,
   CineonToneMapping,
   Color,
+  ConeGeometry,
+  CylinderGeometry,
   CubeTexture,
   CubeTextureLoader,
   DoubleSide,
@@ -112,6 +114,8 @@ export type SceneConfig = {
   icosahedronResolution: [number];
   autoRotate: boolean;
   autoRotateSpeed: number;
+  coneResolution: [number, number];
+  cylinderResolution: [number, number];
 };
 
 const maxResolution = 10000;
@@ -122,6 +126,8 @@ const defaultResolution = {
   planeResolution: [64, 64],
   sphereResolution: [128, 128],
   icosahedronResolution: [0],
+  coneResolution: [32, 32],
+  cylinderResolution: [32, 32],
 };
 
 const LIGHT_SETTINGS = {
@@ -158,6 +164,14 @@ const resolutionConfigMapping: Record<
   icosahedron: {
     labels: ['Detail'],
     key: 'icosahedronResolution',
+  },
+  cone: {
+    labels: ['Radial Segments', 'Height Segments'],
+    key: 'coneResolution',
+  },
+  cylinder: {
+    labels: ['Radial Segments', 'Height Segments'],
+    key: 'cylinderResolution',
   },
 };
 
@@ -578,6 +592,54 @@ const ThreeComponent: React.FC<SceneProps> = ({
   );
   textures.skyImage = skyImage;
 
+  const roglandImage = useEnvMap(
+    renderer,
+    sceneConfig.bg,
+    'roglandImage',
+    path('/envmaps/rogland_clear_night_2k.hdr')
+  );
+  textures.roglandImage = roglandImage;
+
+  const drachenfelsImage = useEnvMap(
+    renderer,
+    sceneConfig.bg,
+    'drachenfelsImage',
+    path('/envmaps/drachenfels_cellar_2k.hdr')
+  );
+  textures.drachenfelsImage = drachenfelsImage;
+
+  const kloofendalImage = useEnvMap(
+    renderer,
+    sceneConfig.bg,
+    'kloofendalImage',
+    path('/envmaps/kloofendal_48d_partly_cloudy_puresky_2k.hdr')
+  );
+  textures.kloofendalImage = kloofendalImage;
+
+  const metroImage = useEnvMap(
+    renderer,
+    sceneConfig.bg,
+    'metroImage',
+    path('/envmaps/metro_noord_2k.hdr')
+  );
+  textures.metroImage = metroImage;
+
+  const rustigImage = useEnvMap(
+    renderer,
+    sceneConfig.bg,
+    'rustigImage',
+    path('/envmaps/rustig_koppie_puresky_2k.hdr')
+  );
+  textures.rustigImage = rustigImage;
+
+  const warmRestaurantImage = useEnvMap(
+    renderer,
+    sceneConfig.bg,
+    'warmRestaurantImage',
+    path('/envmaps/warm_restaurant_2k.hdr')
+  );
+  textures.warmRestaurantImage = warmRestaurantImage;
+
   const previousSceneConfig = usePrevious(sceneConfig);
   useEffect(() => {
     if (
@@ -591,7 +653,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
       previousSceneConfig?.planeResolution === sceneConfig.planeResolution &&
       previousSceneConfig?.sphereResolution === sceneConfig.sphereResolution &&
       previousSceneConfig?.icosahedronResolution ===
-        sceneConfig.icosahedronResolution
+        sceneConfig.icosahedronResolution &&
+      previousSceneConfig?.coneResolution === sceneConfig.coneResolution &&
+      previousSceneConfig?.cylinderResolution === sceneConfig.cylinderResolution
     ) {
       return;
     }
@@ -638,6 +702,20 @@ const ThreeComponent: React.FC<SceneProps> = ({
         ...(sceneConfig.icosahedronResolution ||
           defaultResolution.icosahedronResolution)
       );
+    } else if (sceneConfig.previewObject === 'cone') {
+      geometry = new ConeGeometry(
+        0.5, // radius
+        1, // height
+        ...(sceneConfig.coneResolution || defaultResolution.coneResolution)
+      );
+    } else if (sceneConfig.previewObject === 'cylinder') {
+      geometry = new CylinderGeometry(
+        0.5, // radiusTop
+        0.5, // radiusBottom
+        1, // height
+        ...(sceneConfig.cylinderResolution ||
+          defaultResolution.cylinderResolution)
+      );
     } else {
       throw new Error(
         `Wtf there is no preview object named ${sceneConfig.previewObject}`
@@ -671,6 +749,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
     sceneConfig.planeResolution,
     sceneConfig.sphereResolution,
     sceneConfig.icosahedronResolution,
+    sceneConfig.coneResolution,
+    sceneConfig.cylinderResolution,
     scene,
   ]);
 
@@ -678,12 +758,24 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const previousWarehouseImage = usePrevious(warehouseImage);
   const previousPondCubeMap = usePrevious(pondCubeMap);
   const previousSkyImage = usePrevious(skyImage);
+  const previousRoglandImage = usePrevious(roglandImage);
+  const previousDrachenfelsImage = usePrevious(drachenfelsImage);
+  const previousKloofendalImage = usePrevious(kloofendalImage);
+  const previousMetroImage = usePrevious(metroImage);
+  const previousRustigImage = usePrevious(rustigImage);
+  const previousWarmRestaurantImage = usePrevious(warmRestaurantImage);
   useEffect(() => {
     if (
       sceneConfig.bg === previousBg &&
       warehouseImage === previousWarehouseImage &&
       pondCubeMap === previousPondCubeMap &&
-      skyImage === previousSkyImage
+      skyImage === previousSkyImage &&
+      roglandImage === previousRoglandImage &&
+      drachenfelsImage === previousDrachenfelsImage &&
+      kloofendalImage === previousKloofendalImage &&
+      metroImage === previousMetroImage &&
+      rustigImage === previousRustigImage &&
+      warmRestaurantImage === previousWarmRestaurantImage
     ) {
       return;
     }
@@ -719,6 +811,18 @@ const ThreeComponent: React.FC<SceneProps> = ({
     pondCubeMap,
     previousPondCubeMap,
     textures,
+    roglandImage,
+    previousRoglandImage,
+    drachenfelsImage,
+    previousDrachenfelsImage,
+    kloofendalImage,
+    previousKloofendalImage,
+    metroImage,
+    previousMetroImage,
+    rustigImage,
+    previousRustigImage,
+    warmRestaurantImage,
+    previousWarmRestaurantImage,
   ]);
 
   useEffect(() => {
@@ -1061,31 +1165,35 @@ const ThreeComponent: React.FC<SceneProps> = ({
           </div>
         </TabGroup>
         <TabPanels>
-          <TabPanel className={styles.sceneControls}>
-            <div>
-              <label htmlFor="Modelsfs" className="label noselect">
-                <span>Model</span>
-              </label>
-            </div>
-            <div>
-              <select
-                id="Modelsfs"
-                className="select"
-                onChange={(event) => {
-                  setSceneConfig({
-                    ...sceneConfig,
-                    previewObject: event.target.value,
-                  });
-                }}
-                value={sceneConfig.previewObject}
-              >
-                <option value="sphere">Sphere</option>
-                <option value="cube">Cube</option>
-                <option value="plane">Plane</option>
-                <option value="torus">Torus</option>
-                <option value="torusknot">Torus Knot</option>
-                <option value="icosahedron">Icosahedron</option>
-              </select>
+          <TabPanel className={cx(styles.sceneControls, 'condensed')}>
+            <div className={cx(styles.controlGrid, 'm-top-5')}>
+              <div>
+                <label htmlFor="Modelsfs" className="label noselect">
+                  <span>Model</span>
+                </label>
+              </div>
+              <div>
+                <select
+                  id="Modelsfs"
+                  className="select"
+                  onChange={(event) => {
+                    setSceneConfig({
+                      ...sceneConfig,
+                      previewObject: event.target.value,
+                    });
+                  }}
+                  value={sceneConfig.previewObject}
+                >
+                  <option value="sphere">Sphere</option>
+                  <option value="cube">Cube</option>
+                  <option value="plane">Plane</option>
+                  <option value="torus">Torus</option>
+                  <option value="torusknot">Torus Knot</option>
+                  <option value="icosahedron">Icosahedron</option>
+                  <option value="cone">Cone</option>
+                  <option value="cylinder">Cylinder</option>
+                </select>
+              </div>
             </div>
 
             <div className={cx(styles.controlGrid, 'm-top-5')}>
@@ -1333,6 +1441,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   <option value="warehouseImage">Warehouse</option>
                   <option value="pondCubeMap">Pond Cube Map</option>
                   <option value="modelviewer">Model Viewer</option>
+                  <option value="roglandImage">Rogland Clear Night</option>
+                  <option value="drachenfelsImage">Drachenfels Cellar</option>
+                  <option value="kloofendalImage">
+                    Kloofendal Partly Cloudy
+                  </option>
+                  <option value="metroImage">Metro Noord</option>
+                  <option value="rustigImage">Rustig Koppie</option>
+                  <option value="warmRestaurantImage">Warm Restaurant</option>
                 </select>
               </div>
             </div>

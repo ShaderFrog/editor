@@ -1419,7 +1419,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   onChange={(event) =>
                     setSceneConfig({
                       ...sceneConfig,
-                      lightIntensity: event.target.value,
+                      lightIntensity: parseFloat(event.target.value),
                     })
                   }
                 />

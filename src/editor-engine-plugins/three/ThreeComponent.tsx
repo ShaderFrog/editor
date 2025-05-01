@@ -1397,7 +1397,11 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     min="0"
                     max="3"
                     step="0.1"
-                    value={sceneConfig.lightIntensity}
+                    value={
+                      sceneConfig.lightIntensity === undefined
+                        ? 1.0
+                        : sceneConfig.lightIntensity
+                    }
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,

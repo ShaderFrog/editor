@@ -1479,7 +1479,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
               )}
             </div>
 
-            <div className={cx(styles.controlGrid, 'm-top-10')}>
+            <div className={cx(styles.controlGrid, 'm-top-5')}>
               <div>
                 <label htmlFor="Backgroundsfs" className="label noselect">
                   <span>Background</span>
@@ -1520,7 +1520,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
             <div
               className={cx(
                 styles.controlGrid,
-                'm-top-10 bottomDivide m-bottom-10'
+                'm-top-5 bottomDivide m-bottom-5'
               )}
             >
               <div>

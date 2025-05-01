@@ -21,7 +21,7 @@
   padding: 6px 12px;
   background: linear-gradient(45deg, #1a1a1a, rgb(41, 41, 41));
 }
-:global(.condensed) .sceneControls {
+:global(.condensed).sceneControls {
   padding: 3px 6px 2px;
 }
 

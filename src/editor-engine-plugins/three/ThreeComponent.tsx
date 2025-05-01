@@ -401,7 +401,10 @@ const ThreeComponent: React.FC<SceneProps> = ({
       sceneData.lights.forEach(
         (light) =>
           'intensity' in light &&
-          ((light as PointLight).intensity = sceneConfig.lightIntensity)
+          ((light as PointLight).intensity =
+            sceneConfig.lightIntensity === undefined
+              ? 1.0
+              : sceneConfig.lightIntensity)
       );
 
       if (sceneConfig.animatedLights) {

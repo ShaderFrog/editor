@@ -1392,7 +1392,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     type="range"
                     className="range"
                     min="0"
-                    max="50"
+                    max="3"
                     step="0.1"
                     value={sceneConfig.lightIntensity}
                     onChange={(event) =>
@@ -1403,19 +1403,19 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     }
                   />
                 </div>
-                <div>
-                  <input
-                    type="number"
-                    className="textinput"
-                    value={sceneConfig.lightIntensity}
-                    onChange={(event) =>
-                      setSceneConfig({
-                        ...sceneConfig,
-                        lightIntensity: event.target.value,
-                      })
-                    }
-                  />
-                </div>
+              </div>
+              <div>
+                <input
+                  type="number"
+                  className="textinput"
+                  value={sceneConfig.lightIntensity}
+                  onChange={(event) =>
+                    setSceneConfig({
+                      ...sceneConfig,
+                      lightIntensity: event.target.value,
+                    })
+                  }
+                />
               </div>
             </div>
 

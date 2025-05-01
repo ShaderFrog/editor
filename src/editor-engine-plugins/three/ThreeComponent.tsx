@@ -398,6 +398,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
         shadersUpdated.current = false;
       }
 
+      sceneData.lights.forEach(
+        (light) =>
+          'intensity' in light &&
+          ((light as PointLight).intensity = sceneConfig.lightIntensity)
+      );
+
       if (sceneConfig.animatedLights) {
         if (
           sceneConfig.lights === LIGHT_SETTINGS.POINT &&
@@ -1132,6 +1138,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     prevLights,
     previousShowHelpers,
     sceneConfig.showHelpers,
+    sceneConfig.lightIntensity,
   ]);
 
   useEffect(() => {
@@ -1213,8 +1220,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
               {resolutionConfig ? (
                 <VectorEditor
                   value={
-                    sceneConfig[resolutionConfig.key] ||
-                    defaultResolution[resolutionConfig.key]
+                    sceneConfig[resolutionConfig.key] === undefined
+                      ? defaultResolution[resolutionConfig.key]
+                      : sceneConfig[resolutionConfig.key]
                   }
                   placeholder={defaultResolution[resolutionConfig.key]}
                   labels={resolutionConfig.labels}
@@ -1372,29 +1380,41 @@ const ThreeComponent: React.FC<SceneProps> = ({
             </div>
 
             <div className={cx(styles.controlGrid, 'm-top-5')}>
-              <div>
-                <label htmlFor="lightIntensity" className="label noselect">
-                  <span>Light Intensity</span>
-                </label>
-              </div>
-              <div>
-                <input
-                  id="lightIntensity"
-                  type="range"
-                  className="range"
-                  min="0"
-                  max="5"
-                  step="0.1"
-                  value={sceneConfig.lightIntensity || 1}
-                  onChange={(event) =>
-                    setSceneConfig({
-                      ...sceneConfig,
-                      lightIntensity: parseFloat(event.target.value),
-                    })
-                  }
-                />
-                <div className="rangeValue">
-                  {(sceneConfig.lightIntensity || 1).toFixed(1)}
+              <div className={cx(styles.controlGrid)}>
+                <div>
+                  <label htmlFor="lightIntensity" className="label noselect">
+                    <span>Light Intensity</span>
+                  </label>
+                </div>
+                <div>
+                  <input
+                    id="lightIntensity"
+                    type="range"
+                    className="range"
+                    min="0"
+                    max="50"
+                    step="0.1"
+                    value={sceneConfig.lightIntensity}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        lightIntensity: parseFloat(event.target.value),
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    className="textinput"
+                    value={sceneConfig.lightIntensity}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        lightIntensity: event.target.value,
+                      })
+                    }
+                  />
                 </div>
               </div>
             </div>
@@ -1551,25 +1571,31 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   </label>
                 </div>
               </div>
-              <label className="label noselect">
-                Auto Rotate Speed
-                <input
-                  className="textinput"
-                  id="ars"
-                  type="text"
-                  checked={sceneConfig.autoRotateSpeed}
-                  onChange={(event) =>
-                    setSceneConfig({
-                      ...sceneConfig,
-                      autoRotateSpeed: clamp(
-                        parseFloat(event.target.value),
-                        -AUTO_ROTATE_LIMIT,
-                        AUTO_ROTATE_LIMIT
-                      ),
-                    })
-                  }
-                />
-              </label>
+              <div className={styles.controlGrid}>
+                <div>
+                  <label className="label noselect" htmlFor="ars">
+                    Speed
+                  </label>
+                </div>
+                <div>
+                  <input
+                    className="textinput"
+                    id="ars"
+                    type="text"
+                    checked={sceneConfig.autoRotateSpeed}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        autoRotateSpeed: clamp(
+                          parseFloat(event.target.value),
+                          -AUTO_ROTATE_LIMIT,
+                          AUTO_ROTATE_LIMIT
+                        ),
+                      })
+                    }
+                  />
+                </div>
+              </div>
             </div>
           </TabPanel>
         </TabPanels>

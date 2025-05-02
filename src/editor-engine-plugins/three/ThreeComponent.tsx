@@ -56,6 +56,7 @@ import {
   computeGrindex,
 } from '@core/graph';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
+import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader';
 import { EngineContext } from '@core/engine';
 import { ThreeRuntime, createMaterial } from '@core/plugins/three/threngine';
 
@@ -86,6 +87,11 @@ import { useAssetsAndGroups } from '@editor/api';
 import styles from '../../editor/styles/editor.module.css';
 import clamp from '@editor/util/clamp';
 import { extractProperties } from './three-graph';
+import {
+  Dropdown,
+  DropdownOption,
+  DropdownHeader,
+} from '@editor-components//Dropdown';
 
 export const THREE_IMAGE_ENCODINGS = {
   SRGB: 'srgb',
@@ -99,6 +105,11 @@ const log = (...args: any[]) =>
   console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
 
 const loadingMaterial = new MeshBasicMaterial({ color: 'pink' });
+
+const defaultLightIntensity = (intensity: number | undefined) =>
+  intensity === undefined ? 1.0 : intensity;
+const defaultBackgroundBlur = (blur: number | undefined) =>
+  blur === undefined ? 0.0 : blur;
 
 export type SceneConfig = {
   showTangents: boolean;
@@ -117,6 +128,7 @@ export type SceneConfig = {
   coneResolution: [number, number];
   cylinderResolution: [number, number];
   lightIntensity: number;
+  backgroundBlur: number;
 };
 
 const maxResolution = 10000;
@@ -269,7 +281,11 @@ const useEnvMap = (
     if (hdrImage || bg !== key) {
       return;
     }
-    new RGBELoader().load(assetPath, (texture) => {
+
+    const isEXR = assetPath.toLowerCase().endsWith('.exr');
+    const loader = isEXR ? new EXRLoader() : new RGBELoader();
+
+    loader.load(assetPath, (texture) => {
       const pmremGenerator = new PMREMGenerator(renderer);
       pmremGenerator.compileEquirectangularShader();
       const envMap = pmremGenerator.fromEquirectangular(texture).texture;
@@ -401,11 +417,16 @@ const ThreeComponent: React.FC<SceneProps> = ({
       sceneData.lights.forEach(
         (light) =>
           'intensity' in light &&
-          ((light as PointLight).intensity =
-            sceneConfig.lightIntensity === undefined
-              ? 1.0
-              : sceneConfig.lightIntensity)
+          ((light as PointLight).intensity = defaultLightIntensity(
+            sceneConfig.lightIntensity
+          ))
       );
+
+      if (scene.background) {
+        (scene.background as any).blurriness = defaultBackgroundBlur(
+          sceneConfig.backgroundBlur
+        );
+      }
 
       if (sceneConfig.animatedLights) {
         if (
@@ -650,6 +671,22 @@ const ThreeComponent: React.FC<SceneProps> = ({
   );
   textures.warmRestaurantImage = warmRestaurantImage;
 
+  const nightSky008Image = useEnvMap(
+    renderer,
+    sceneConfig.bg,
+    'nightSky008Image',
+    path('/envmaps/NightSkyHDRI008_2K-HDR.exr')
+  );
+  textures.nightSky008Image = nightSky008Image;
+
+  const nightSky014Image = useEnvMap(
+    renderer,
+    sceneConfig.bg,
+    'nightSky014Image',
+    path('/envmaps/NightSkyHDRI014_2K-HDR.exr')
+  );
+  textures.nightSky014Image = nightSky014Image;
+
   const previousSceneConfig = usePrevious(sceneConfig);
   useEffect(() => {
     if (
@@ -774,6 +811,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const previousMetroImage = usePrevious(metroImage);
   const previousRustigImage = usePrevious(rustigImage);
   const previousWarmRestaurantImage = usePrevious(warmRestaurantImage);
+  const previousNightSky008Image = usePrevious(nightSky008Image);
+  const previousNightSky014Image = usePrevious(nightSky014Image);
   useEffect(() => {
     if (
       sceneConfig.bg === previousBg &&
@@ -785,7 +824,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
       kloofendalImage === previousKloofendalImage &&
       metroImage === previousMetroImage &&
       rustigImage === previousRustigImage &&
-      warmRestaurantImage === previousWarmRestaurantImage
+      warmRestaurantImage === previousWarmRestaurantImage &&
+      nightSky008Image === previousNightSky008Image &&
+      nightSky014Image === previousNightSky014Image
     ) {
       return;
     }
@@ -833,6 +874,10 @@ const ThreeComponent: React.FC<SceneProps> = ({
     previousRustigImage,
     warmRestaurantImage,
     previousWarmRestaurantImage,
+    nightSky008Image,
+    previousNightSky008Image,
+    nightSky014Image,
+    previousNightSky014Image,
   ]);
 
   useEffect(() => {
@@ -1352,6 +1397,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
           </TabPanel>
 
           <TabPanel className={cx(styles.sceneControls, 'condensed')}>
+            {graph.nodes.find(
+              (node) => (node as any).engine === true
+            ) ? null : (
+              <div className="secondary m-top-5 px12">
+                <FontAwesomeIcon icon={faInfoCircle} /> Lights have no effect
+                without a Three.js material in the graph.
+              </div>
+            )}
             <div className={cx(styles.controlGrid, 'm-top-5')}>
               <div>
                 <label htmlFor="Lightingsfs" className="label noselect">
@@ -1397,11 +1450,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     min="0"
                     max="3"
                     step="0.1"
-                    value={
-                      sceneConfig.lightIntensity === undefined
-                        ? 1.0
-                        : sceneConfig.lightIntensity
-                    }
+                    value={defaultLightIntensity(sceneConfig.lightIntensity)}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1415,7 +1464,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                 <input
                   type="number"
                   className="textinput"
-                  value={sceneConfig.lightIntensity}
+                  value={defaultLightIntensity(sceneConfig.lightIntensity)}
                   onChange={(event) =>
                     setSceneConfig({
                       ...sceneConfig,
@@ -1472,15 +1521,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   </div>
                 </div>
               </div>
-
-              {graph.nodes.find(
-                (node) => (node as any).engine === true
-              ) ? null : (
-                <div className="secondary m-top-5 px12">
-                  <FontAwesomeIcon icon={faInfoCircle} /> Lights have no effect
-                  without a Three.js material in the graph.
-                </div>
-              )}
             </div>
 
             <div className={cx(styles.controlGrid, 'm-top-5')}>
@@ -1490,34 +1530,97 @@ const ThreeComponent: React.FC<SceneProps> = ({
                 </label>
               </div>
               <div>
-                <select
-                  id="Backgroundsfs"
-                  className="select"
-                  onChange={(event) => {
+                <Dropdown
+                  value={sceneConfig.bg || 'none'}
+                  onChange={(value) =>
                     setSceneConfig({
                       ...sceneConfig,
-                      bg:
-                        event.target.value === 'none'
-                          ? null
-                          : event.target.value,
-                    });
-                  }}
-                  value={sceneConfig.bg ? sceneConfig.bg : 'none'}
+                      bg: value === 'none' ? null : value,
+                    })
+                  }
+                  placeholder="None"
                 >
-                  <option value="none">None</option>
-                  <option value="skyImage">Sky</option>
-                  <option value="warehouseImage">Warehouse</option>
-                  <option value="pondCubeMap">Pond Cube Map</option>
-                  <option value="modelviewer">Model Viewer</option>
-                  <option value="roglandImage">Rogland Clear Night</option>
-                  <option value="drachenfelsImage">Drachenfels Cellar</option>
-                  <option value="kloofendalImage">
-                    Kloofendal Partly Cloudy
-                  </option>
-                  <option value="metroImage">Metro Noord</option>
-                  <option value="rustigImage">Rustig Koppie</option>
-                  <option value="warmRestaurantImage">Warm Restaurant</option>
-                </select>
+                  <DropdownHeader>Neutral</DropdownHeader>
+                  <DropdownOption value="none">None</DropdownOption>
+                  <DropdownOption
+                    value="modelviewer"
+                    thumbnail="/envmaps/thumbnails/modelviewer.jpg"
+                  >
+                    Model Viewer
+                  </DropdownOption>
+
+                  <DropdownHeader>Indoor</DropdownHeader>
+                  <DropdownOption
+                    value="warehouseImage"
+                    thumbnail="/envmaps/thumbnails/warehouse.jpg"
+                  >
+                    Warehouse
+                  </DropdownOption>
+                  <DropdownOption
+                    value="metroImage"
+                    thumbnail="/envmaps/thumbnails/metro.jpg"
+                  >
+                    Metro Noord
+                  </DropdownOption>
+                  <DropdownOption
+                    value="warmRestaurantImage"
+                    thumbnail="/envmaps/thumbnails/warmrestaraunt.jpg"
+                  >
+                    Warm Restaurant
+                  </DropdownOption>
+
+                  <DropdownHeader>Outdoor</DropdownHeader>
+                  <DropdownOption
+                    value="roglandImage"
+                    thumbnail="/envmaps/thumbnails/roland.jpg"
+                  >
+                    Rogland Clear Night
+                  </DropdownOption>
+                  <DropdownOption
+                    value="drachenfelsImage"
+                    thumbnail="/envmaps/thumbnails/cellar.jpg"
+                  >
+                    Drachenfels Cellar
+                  </DropdownOption>
+                  <DropdownOption
+                    value="pondCubeMap"
+                    thumbnail="/envmaps/thumbnails/pond.jpg"
+                  >
+                    Pond Cube Map
+                  </DropdownOption>
+
+                  <DropdownHeader>Skies &amp; Space</DropdownHeader>
+                  <DropdownOption
+                    value="nightSky008Image"
+                    thumbnail="/envmaps/thumbnails/miklyway.jpg"
+                  >
+                    Mikly Way
+                  </DropdownOption>
+                  <DropdownOption
+                    value="nightSky014Image"
+                    thumbnail="/envmaps/thumbnails/spacestars.jpg"
+                  >
+                    Space Stars
+                  </DropdownOption>
+                  <DropdownOption
+                    value="skyImage"
+                    thumbnail="/envmaps/thumbnails/sunrise.jpg"
+                  >
+                    Sunrise
+                  </DropdownOption>
+                  <DropdownOption
+                    value="rustigImage"
+                    thumbnail="/envmaps/thumbnails/bluesky.jpg"
+                  >
+                    Blue Sky
+                  </DropdownOption>
+                  <DropdownOption
+                    value="kloofendalImage"
+                    thumbnail="/envmaps/thumbnails/partlycloudy.jpg"
+                  >
+                    Partly Cloudy
+                  </DropdownOption>
+                </Dropdown>
               </div>
             </div>
 
@@ -1602,6 +1705,47 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     }
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className={cx(styles.controlGrid, 'm-top-5')}>
+              <div className={cx(styles.controlGrid)}>
+                <div>
+                  <label htmlFor="backgroundBlur" className="label noselect">
+                    <span>Background Blur</span>
+                  </label>
+                </div>
+                <div>
+                  <input
+                    id="backgroundBlur"
+                    type="range"
+                    className="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={sceneConfig.backgroundBlur || 0}
+                    onChange={(event) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        backgroundBlur: parseFloat(event.target.value),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div>
+                <input
+                  type="number"
+                  className="textinput"
+                  value={defaultLightIntensity(sceneConfig.backgroundBlur)}
+                  onChange={(event) =>
+                    setSceneConfig({
+                      ...sceneConfig,
+                      backgroundBlur: parseFloat(event.target.value),
+                    })
+                  }
+                />
               </div>
             </div>
           </TabPanel>

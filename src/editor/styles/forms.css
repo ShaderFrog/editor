@@ -49,6 +49,19 @@
   background: rgb(46, 46, 46);
 }
 
+.selectoptions {
+  background: linear-gradient(#222, #111 40%);
+  color: #fff;
+  border-radius: 8px;
+  border: 1px solid #444;
+  user-select: none;
+  font-size: 12px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  padding: 4px 8px;
+  border: 1px solid #3e3e3e;
+  border-top: none;
+}
+
 .checkbox {
   padding: 4px;
 }

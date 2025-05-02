@@ -1,0 +1,128 @@
+.dropdownContainer {
+  position: relative;
+  width: 100%;
+  user-select: none;
+}
+
+.dropdownHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropdownContainer:not(.disabled):hover .dropdownHeader {
+  border-color: var(--border-hover);
+}
+
+.dropdownContainer.open .dropdownHeader {
+  border-color: var(--accent);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.selectedText {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrow {
+  color: var(--text-secondary);
+  font-size: 12px;
+  transition: transform 0.2s ease;
+}
+
+.arrow.open {
+  transform: rotate(180deg);
+}
+
+.optionsList {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 50vh;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.option {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.option:hover {
+  background: linear-gradient(#42982d, #265314) !important;
+  cursor: pointer;
+}
+
+.option.selected {
+  background-color: var(--accent-transparent);
+  color: var(--accent);
+}
+
+.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.disabled .dropdownHeader {
+  cursor: not-allowed;
+}
+
+/* Custom scrollbar styles */
+.optionsList::-webkit-scrollbar {
+  width: 8px;
+}
+
+.optionsList::-webkit-scrollbar-track {
+  background: var(--input-bg);
+  border-bottom-right-radius: 4px;
+}
+
+.optionsList::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.optionsList::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+.header {
+  padding: 4px 12px;
+  margin: 8px 0;
+  border-top: 1px solid #444;
+  border-bottom: 1px solid #444;
+  background: #333;
+  font-weight: bold;
+  cursor: default;
+  user-select: none;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.option.withThumbnail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.thumbnail {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.label {
+  flex: 1;
+}

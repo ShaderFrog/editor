@@ -1538,7 +1538,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   <DropdownOption value="none">None</DropdownOption>
                   <DropdownOption
                     value="modelviewer"
-                    thumbnail="/envmaps/thumbnails/modelviewer.jpg"
+                    thumbnail={path('/envmaps/thumbnails/modelviewer.jpg')}
                   >
                     Model Viewer
                   </DropdownOption>
@@ -1546,19 +1546,19 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   <DropdownHeader>Indoor</DropdownHeader>
                   <DropdownOption
                     value="warehouseImage"
-                    thumbnail="/envmaps/thumbnails/warehouse.jpg"
+                    thumbnail={path('/envmaps/thumbnails/warehouse.jpg')}
                   >
                     Warehouse
                   </DropdownOption>
                   <DropdownOption
                     value="metroImage"
-                    thumbnail="/envmaps/thumbnails/metro.jpg"
+                    thumbnail={path('/envmaps/thumbnails/metro.jpg')}
                   >
                     Metro Noord
                   </DropdownOption>
                   <DropdownOption
                     value="warmRestaurantImage"
-                    thumbnail="/envmaps/thumbnails/warmrestaraunt.jpg"
+                    thumbnail={path('/envmaps/thumbnails/warmrestaraunt.jpg')}
                   >
                     Warm Restaurant
                   </DropdownOption>
@@ -1566,19 +1566,19 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   <DropdownHeader>Outdoor</DropdownHeader>
                   <DropdownOption
                     value="roglandImage"
-                    thumbnail="/envmaps/thumbnails/roland.jpg"
+                    thumbnail={path('/envmaps/thumbnails/roland.jpg')}
                   >
                     Rogland Clear Night
                   </DropdownOption>
                   <DropdownOption
                     value="drachenfelsImage"
-                    thumbnail="/envmaps/thumbnails/cellar.jpg"
+                    thumbnail={path('/envmaps/thumbnails/cellar.jpg')}
                   >
                     Drachenfels Cellar
                   </DropdownOption>
                   <DropdownOption
                     value="pondCubeMap"
-                    thumbnail="/envmaps/thumbnails/pond.jpg"
+                    thumbnail={path('/envmaps/thumbnails/pond.jpg')}
                   >
                     Pond Cube Map
                   </DropdownOption>
@@ -1586,37 +1586,37 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   <DropdownHeader>Skies &amp; Space</DropdownHeader>
                   <DropdownOption
                     value="nightSky008Image"
-                    thumbnail="/envmaps/thumbnails/miklyway.jpg"
+                    thumbnail={path('/envmaps/thumbnails/miklyway.jpg')}
                   >
                     Milky Way
                   </DropdownOption>
                   <DropdownOption
                     value="nightSky007Image"
-                    thumbnail="/envmaps/thumbnails/aura.jpg"
+                    thumbnail={path('/envmaps/thumbnails/aura.jpg')}
                   >
                     Aura Space
                   </DropdownOption>
                   <DropdownOption
                     value="nightSky014Image"
-                    thumbnail="/envmaps/thumbnails/spacestars.jpg"
+                    thumbnail={path('/envmaps/thumbnails/spacestars.jpg')}
                   >
                     Space Stars
                   </DropdownOption>
                   <DropdownOption
                     value="skyImage"
-                    thumbnail="/envmaps/thumbnails/sunrise.jpg"
+                    thumbnail={path('/envmaps/thumbnails/sunrise.jpg')}
                   >
                     Sunrise
                   </DropdownOption>
                   <DropdownOption
                     value="rustigImage"
-                    thumbnail="/envmaps/thumbnails/bluesky.jpg"
+                    thumbnail={path('/envmaps/thumbnails/bluesky.jpg')}
                   >
                     Blue Sky
                   </DropdownOption>
                   <DropdownOption
                     value="kloofendalImage"
-                    thumbnail="/envmaps/thumbnails/partlycloudy.jpg"
+                    thumbnail={path('/envmaps/thumbnails/partlycloudy.jpg')}
                   >
                     Partly Cloudy
                   </DropdownOption>

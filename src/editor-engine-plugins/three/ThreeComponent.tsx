@@ -111,6 +111,33 @@ const defaultLightIntensity = (intensity: number | undefined) =>
 const defaultBackgroundBlur = (blur: number | undefined) =>
   blur === undefined ? 0.0 : blur;
 
+type BackgroundKey =
+  | 'warehouseImage'
+  | 'metroImage'
+  | 'warmRestaurantImage'
+  | 'roglandImage'
+  | 'drachenfelsImage'
+  | 'pondCubeMap'
+  | 'nightSky008Image'
+  | 'nightSky014Image'
+  | 'skyImage'
+  | 'rustigImage'
+  | 'kloofendalImage';
+
+const backgroundKeys = new Set<BackgroundKey>([
+  'warehouseImage',
+  'metroImage',
+  'warmRestaurantImage',
+  'roglandImage',
+  'drachenfelsImage',
+  'pondCubeMap',
+  'nightSky008Image',
+  'nightSky014Image',
+  'skyImage',
+  'rustigImage',
+  'kloofendalImage',
+]);
+
 export type SceneConfig = {
   showTangents: boolean;
   showNormals: boolean;
@@ -247,8 +274,8 @@ export const CameraDistances: Record<string, number> = {
   cone: 0.35,
 };
 
-const useCubeMap = (path: string) => {
-  const [cubeMap, setCubeMap] = useState<CubeTexture>();
+const useCubeMap = (path: string, cb: (t: CubeTexture) => void) => {
+  const cbRef = useRef(cb);
   useEffect(() => {
     new CubeTextureLoader()
       .setPath(path)
@@ -261,40 +288,42 @@ const useCubeMap = (path: string) => {
           'posz.jpg',
           'negz.jpg',
         ],
-        (cubeTexture) => {
-          setCubeMap(cubeTexture);
-        }
+        cbRef.current
       );
-  }, [path]);
-
-  return cubeMap;
+  }, [path, cbRef]);
 };
 
 const useEnvMap = (
   renderer: WebGLRenderer,
-  bg: string | null,
-  key: string,
-  assetPath: string
+  bg: BackgroundKey | null,
+  key: BackgroundKey,
+  assetPath: string,
+  cb: (t: Texture) => void
 ) => {
-  const [hdrImage, setHdrImage] = useState<Texture>();
+  const cbRef = useRef(cb);
   useEffect(() => {
-    if (hdrImage || bg !== key) {
+    if (bg !== key) {
       return;
     }
 
-    const isEXR = assetPath.toLowerCase().endsWith('.exr');
-    const loader = isEXR ? new EXRLoader() : new RGBELoader();
-
-    loader.load(assetPath, (texture) => {
-      const pmremGenerator = new PMREMGenerator(renderer);
-      pmremGenerator.compileEquirectangularShader();
-      const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-      pmremGenerator.dispose();
-      setHdrImage(envMap);
-    });
-  }, [assetPath, key, renderer, setHdrImage, hdrImage, bg]);
-
-  return hdrImage;
+    if (assetPath.toLowerCase().endsWith('.exr')) {
+      new EXRLoader().load(assetPath, (texture) => {
+        const pmremGenerator = new PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
+        const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+        pmremGenerator.dispose();
+        cbRef.current(envMap);
+      });
+    } else {
+      new RGBELoader().load(assetPath, (texture) => {
+        const pmremGenerator = new PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
+        const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+        pmremGenerator.dispose();
+        cbRef.current(envMap);
+      });
+    }
+  }, [assetPath, key, renderer, cbRef, bg]);
 };
 
 const repeat = (t: Texture, x: number, y: number) => {
@@ -364,6 +393,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   assetPrefix,
   takeScreenshotRef,
 }) => {
+  const sceneBg = sceneConfig.bg as BackgroundKey;
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
   const shadersUpdated = useRef<boolean>(false);
   const sceneWrapper = useRef<HTMLDivElement>(null);
@@ -414,19 +444,17 @@ const ThreeComponent: React.FC<SceneProps> = ({
         shadersUpdated.current = false;
       }
 
-      sceneData.lights.forEach(
-        (light) =>
-          'intensity' in light &&
-          ((light as PointLight).intensity = defaultLightIntensity(
+      scene.traverse(function (object) {
+        if ((object as PointLight).isLight) {
+          (object as PointLight).intensity = defaultLightIntensity(
             sceneConfig.lightIntensity
-          ))
-      );
+          );
+        }
+      });
 
-      if (scene.background) {
-        (scene.background as any).blurriness = defaultBackgroundBlur(
-          sceneConfig.backgroundBlur
-        );
-      }
+      (scene as any).backgroundBlurriness = defaultBackgroundBlur(
+        sceneConfig.backgroundBlur
+      );
 
       if (sceneConfig.animatedLights) {
         if (
@@ -603,89 +631,90 @@ const ThreeComponent: React.FC<SceneProps> = ({
     [loadTexture, assets]
   );
 
-  const [textures] = useState<Record<string, any>>({});
-  const pondCubeMap = useCubeMap(path('/envmaps/pond/'));
-  textures.pondCubeMap = pondCubeMap;
+  const [textures, setTextures] = useState<Record<string, any>>({});
+  useCubeMap(path('/envmaps/pond/'), (t) =>
+    setTextures({ ...textures, pondCubeMap: t })
+  );
 
-  const warehouseImage = useEnvMap(
+  useEnvMap(
     renderer,
-    sceneConfig.bg,
+    sceneBg,
     'warehouseImage',
-    path('/envmaps/empty_warehouse_01_1k.hdr')
+    path('/envmaps/empty_warehouse_01_1k.hdr'),
+    (t) => setTextures({ ...textures, warehouseImage: t })
   );
-  textures.warehouseImage = warehouseImage;
 
-  const skyImage = useEnvMap(
+  useEnvMap(
     renderer,
-    sceneConfig.bg,
+    sceneBg,
     'skyImage',
-    path('/envmaps/industrial_sunset_puresky_1k.hdr')
+    path('/envmaps/industrial_sunset_puresky_1k.hdr'),
+    (t) => setTextures({ ...textures, skyImage: t })
   );
-  textures.skyImage = skyImage;
 
-  const roglandImage = useEnvMap(
+  useEnvMap(
     renderer,
-    sceneConfig.bg,
+    sceneBg,
     'roglandImage',
-    path('/envmaps/rogland_clear_night_2k.hdr')
+    path('/envmaps/rogland_clear_night_2k.hdr'),
+    (t) => setTextures({ ...textures, roglandImage: t })
   );
-  textures.roglandImage = roglandImage;
 
-  const drachenfelsImage = useEnvMap(
+  useEnvMap(
     renderer,
-    sceneConfig.bg,
+    sceneBg,
     'drachenfelsImage',
-    path('/envmaps/drachenfels_cellar_2k.hdr')
+    path('/envmaps/drachenfels_cellar_2k.hdr'),
+    (t) => setTextures({ ...textures, drachenfelsImage: t })
   );
-  textures.drachenfelsImage = drachenfelsImage;
 
-  const kloofendalImage = useEnvMap(
+  useEnvMap(
     renderer,
-    sceneConfig.bg,
+    sceneBg,
     'kloofendalImage',
-    path('/envmaps/kloofendal_48d_partly_cloudy_puresky_2k.hdr')
+    path('/envmaps/kloofendal_48d_partly_cloudy_puresky_2k.hdr'),
+    (t) => setTextures({ ...textures, kloofendalImage: t })
   );
-  textures.kloofendalImage = kloofendalImage;
 
-  const metroImage = useEnvMap(
+  useEnvMap(
     renderer,
-    sceneConfig.bg,
+    sceneBg,
     'metroImage',
-    path('/envmaps/metro_noord_2k.hdr')
+    path('/envmaps/metro_noord_2k.hdr'),
+    (t) => setTextures({ ...textures, metroImage: t })
   );
-  textures.metroImage = metroImage;
 
-  const rustigImage = useEnvMap(
+  useEnvMap(
     renderer,
-    sceneConfig.bg,
+    sceneBg,
     'rustigImage',
-    path('/envmaps/rustig_koppie_puresky_2k.hdr')
+    path('/envmaps/rustig_koppie_puresky_2k.hdr'),
+    (t) => setTextures({ ...textures, rustigImage: t })
   );
-  textures.rustigImage = rustigImage;
 
-  const warmRestaurantImage = useEnvMap(
+  useEnvMap(
     renderer,
-    sceneConfig.bg,
+    sceneBg,
     'warmRestaurantImage',
-    path('/envmaps/warm_restaurant_2k.hdr')
+    path('/envmaps/warm_restaurant_2k.hdr'),
+    (t) => setTextures({ ...textures, warmRestaurantImage: t })
   );
-  textures.warmRestaurantImage = warmRestaurantImage;
 
-  const nightSky008Image = useEnvMap(
+  useEnvMap(
     renderer,
-    sceneConfig.bg,
+    sceneBg,
     'nightSky008Image',
-    path('/envmaps/NightSkyHDRI008_2K-HDR.exr')
+    path('/envmaps/NightSkyHDRI008_2K-HDR.exr'),
+    (t) => setTextures({ ...textures, nightSky008Image: t })
   );
-  textures.nightSky008Image = nightSky008Image;
 
-  const nightSky014Image = useEnvMap(
+  useEnvMap(
     renderer,
-    sceneConfig.bg,
+    sceneBg,
     'nightSky014Image',
-    path('/envmaps/NightSkyHDRI014_2K-HDR.exr')
+    path('/envmaps/NightSkyHDRI014_2K-HDR.exr'),
+    (t) => setTextures({ ...textures, nightSky014Image: t })
   );
-  textures.nightSky014Image = nightSky014Image;
 
   const previousSceneConfig = usePrevious(sceneConfig);
   useEffect(() => {
@@ -802,32 +831,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
   ]);
 
   const previousBg = usePrevious(sceneConfig.bg);
-  const previousWarehouseImage = usePrevious(warehouseImage);
-  const previousPondCubeMap = usePrevious(pondCubeMap);
-  const previousSkyImage = usePrevious(skyImage);
-  const previousRoglandImage = usePrevious(roglandImage);
-  const previousDrachenfelsImage = usePrevious(drachenfelsImage);
-  const previousKloofendalImage = usePrevious(kloofendalImage);
-  const previousMetroImage = usePrevious(metroImage);
-  const previousRustigImage = usePrevious(rustigImage);
-  const previousWarmRestaurantImage = usePrevious(warmRestaurantImage);
-  const previousNightSky008Image = usePrevious(nightSky008Image);
-  const previousNightSky014Image = usePrevious(nightSky014Image);
+  const previousTextures = usePrevious(textures);
   useEffect(() => {
-    if (
-      sceneConfig.bg === previousBg &&
-      warehouseImage === previousWarehouseImage &&
-      pondCubeMap === previousPondCubeMap &&
-      skyImage === previousSkyImage &&
-      roglandImage === previousRoglandImage &&
-      drachenfelsImage === previousDrachenfelsImage &&
-      kloofendalImage === previousKloofendalImage &&
-      metroImage === previousMetroImage &&
-      rustigImage === previousRustigImage &&
-      warmRestaurantImage === previousWarmRestaurantImage &&
-      nightSky008Image === previousNightSky008Image &&
-      nightSky014Image === previousNightSky014Image
-    ) {
+    if (sceneConfig.bg === previousBg && textures === previousTextures) {
       return;
     }
 
@@ -843,41 +849,24 @@ const ThreeComponent: React.FC<SceneProps> = ({
         scene.background = textures[sceneConfig.bg];
         scene.environment = textures[sceneConfig.bg];
       }
+
+      (scene as any).backgroundBlurriness = defaultBackgroundBlur(
+        sceneConfig.backgroundBlur
+      );
     } else {
       scene.environment = null;
       scene.background = null;
     }
   }, [
     sceneConfig,
+    textures,
+    previousTextures,
     previousBg,
     renderer,
     previousSceneConfig,
     sceneData,
     sceneConfig.previewObject,
     scene,
-    previousSkyImage,
-    skyImage,
-    previousWarehouseImage,
-    warehouseImage,
-    pondCubeMap,
-    previousPondCubeMap,
-    textures,
-    roglandImage,
-    previousRoglandImage,
-    drachenfelsImage,
-    previousDrachenfelsImage,
-    kloofendalImage,
-    previousKloofendalImage,
-    metroImage,
-    previousMetroImage,
-    rustigImage,
-    previousRustigImage,
-    warmRestaurantImage,
-    previousWarmRestaurantImage,
-    nightSky008Image,
-    previousNightSky008Image,
-    nightSky014Image,
-    previousNightSky014Image,
   ]);
 
   useEffect(() => {
@@ -929,18 +918,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
       // for shaders with envmaps. On first page load, the shader compiles
       // before the envmap is loaded, and then the envmap loads, but the cached
       // shader in threngine doesn't support an envMap, so it's locked out.
-      ((sceneConfig.bg !== 'warehouseImage' &&
-        sceneConfig.bg !== 'pondCubeMap' &&
-        sceneConfig.bg !== 'skyImage') ||
-        (sceneConfig.bg === 'warehouseImage' && warehouseImage) ||
-        (sceneConfig.bg === 'pondCubeMap' && pondCubeMap) ||
-        (sceneConfig.bg === 'skyImage' && skyImage))
+      (!backgroundKeys.has(sceneBg) || textures[sceneBg])
     ) {
       ctx.runtime.loaded = true;
       // Inform parent our context is created
       setCtx(ctx);
     }
-  }, [ctx, setCtx, sceneConfig.bg, warehouseImage, pondCubeMap, skyImage]);
+  }, [ctx, setCtx, sceneBg, textures]);
 
   takeScreenshotRef.current = useCallback(async () => {
     const viewAngle = SceneDefaultAngles[sceneConfig.previewObject];
@@ -1594,7 +1578,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     value="nightSky008Image"
                     thumbnail="/envmaps/thumbnails/miklyway.jpg"
                   >
-                    Mikly Way
+                    Milky Way
                   </DropdownOption>
                   <DropdownOption
                     value="nightSky014Image"
@@ -1723,7 +1707,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     min="0"
                     max="1"
                     step="0.01"
-                    value={sceneConfig.backgroundBlur || 0}
+                    value={defaultBackgroundBlur(sceneConfig.backgroundBlur)}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1738,7 +1722,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                 <input
                   type="number"
                   className="textinput"
-                  value={defaultLightIntensity(sceneConfig.backgroundBlur)}
+                  value={defaultBackgroundBlur(sceneConfig.backgroundBlur)}
                   onChange={(event) =>
                     setSceneConfig({
                       ...sceneConfig,

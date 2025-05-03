@@ -98,7 +98,6 @@
 
 .header {
   padding: 4px 12px;
-  margin: 8px 0;
   border-top: 1px solid #444;
   border-bottom: 1px solid #444;
   background: #333;
@@ -114,6 +113,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 5px 8px;
 }
 
 .thumbnail {

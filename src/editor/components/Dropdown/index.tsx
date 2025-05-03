@@ -36,7 +36,21 @@ export const Dropdown: React.FC<DropdownProps> = ({
   disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedContent, setSelectedContent] = useState<React.ReactNode>(null);
+  const [selectedContent, setSelectedContent] = useState<React.ReactNode>(
+    () => {
+      let content = null;
+      React.Children.forEach(children, (child) => {
+        if (
+          React.isValidElement(child) &&
+          'value' in child.props &&
+          child.props.value === value
+        ) {
+          content = child.props.children;
+        }
+      });
+      return content;
+    }
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleClickOutside = useCallback((event: MouseEvent) => {

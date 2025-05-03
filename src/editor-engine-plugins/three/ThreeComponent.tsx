@@ -118,6 +118,7 @@ type BackgroundKey =
   | 'roglandImage'
   | 'drachenfelsImage'
   | 'pondCubeMap'
+  | 'nightSky007Image'
   | 'nightSky008Image'
   | 'nightSky014Image'
   | 'skyImage'
@@ -131,6 +132,7 @@ const backgroundKeys = new Set<BackgroundKey>([
   'roglandImage',
   'drachenfelsImage',
   'pondCubeMap',
+  'nightSky007Image',
   'nightSky008Image',
   'nightSky014Image',
   'skyImage',
@@ -703,8 +705,16 @@ const ThreeComponent: React.FC<SceneProps> = ({
   useEnvMap(
     renderer,
     sceneBg,
+    'nightSky007Image',
+    path('/envmaps/NightSkyHDRI007_4K-HDR.exr'),
+    (t) => setTextures({ ...textures, nightSky007Image: t })
+  );
+
+  useEnvMap(
+    renderer,
+    sceneBg,
     'nightSky008Image',
-    path('/envmaps/NightSkyHDRI008_2K-HDR.exr'),
+    path('/envmaps/NightSkyHDRI008_4K-HDR.exr'),
     (t) => setTextures({ ...textures, nightSky008Image: t })
   );
 
@@ -1579,6 +1589,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     thumbnail="/envmaps/thumbnails/miklyway.jpg"
                   >
                     Milky Way
+                  </DropdownOption>
+                  <DropdownOption
+                    value="nightSky007Image"
+                    thumbnail="/envmaps/thumbnails/aura.jpg"
+                  >
+                    Aura Space
                   </DropdownOption>
                   <DropdownOption
                     value="nightSky014Image"

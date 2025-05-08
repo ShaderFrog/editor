@@ -38,7 +38,7 @@ export type InputNodeHandle = {
   name: string;
   id: string;
   type: string;
-  dataType?: GraphDataType;
+  dataType: GraphDataType | undefined;
   validTarget: boolean;
   connected: boolean;
   accepts?: InputCategory[];
@@ -47,6 +47,7 @@ export type InputNodeHandle = {
 };
 
 export type OutputNodeHandle = {
+  dataType: GraphDataType | undefined;
   validTarget: boolean;
   connected: boolean;
   category?: InputCategory;

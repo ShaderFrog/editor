@@ -14,6 +14,8 @@ import {
   EdgeTypes,
   NodeChange,
   useReactFlow,
+  Connection,
+  Edge,
 } from '@xyflow/react';
 
 import ConnectionLine from './ConnectionLine';
@@ -47,7 +49,9 @@ import {
   FlowNode,
   FlowEdgeOrLink,
   SHADERFROG_FLOW_EDGE_TYPE,
+  FlowNodeDataData,
 } from './flow-types';
+import { canMapType } from '@/core/graph/data-nodes';
 
 // Terrible hack to make the flow graph full height minus the tab height - I
 // need better layoutting of the tabs + graph
@@ -220,6 +224,23 @@ const FlowEditor = ({
   } = useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
   const { getNode, setViewport } = useReactFlow();
+
+  const isValidConnection = useCallback(
+    (c: Connection | Edge) => {
+      const sourceData = getNode(c.source)?.data as FlowNodeDataData;
+      const sourceHandle = sourceData.outputs.find(
+        (o) => o.id === c.sourceHandle
+      );
+
+      const targetData = getNode(c.target)?.data as FlowNodeDataData;
+      const targetHandle = targetData.inputs.find(
+        (i) => i.id === c.targetHandle
+      );
+
+      return canMapType(sourceHandle?.dataType, targetHandle?.dataType);
+    },
+    [getNode]
+  );
 
   /**
    * When React Flow makes a change to the graph *nodes*, it proposes a set of
@@ -474,6 +495,7 @@ const FlowEditor = ({
                 onNodeDragStop={onNodeDragStop}
                 onInit={setRfInstance}
                 minZoom={0.2}
+                isValidConnection={isValidConnection}
               >
                 <Background
                   variant={BackgroundVariant.Lines}

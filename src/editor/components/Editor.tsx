@@ -56,6 +56,8 @@ import {
   computeGrindex,
   addGraphEdge,
   addEdgeAndPruneRestrictions,
+  GraphDataType,
+  canMapType,
 } from '@core/graph';
 
 import FlowEditor, { NodeContextActions } from './flow/FlowEditor';
@@ -754,9 +756,15 @@ const Editor = ({
   );
 
   const setValidHandleTargets = useCallback(
-    (nodeId: string, handleType: string) => {
+    (
+      draggingFromNodeId: string,
+      handleType: string,
+      draggingDataType: GraphDataType | undefined
+    ) => {
       setFlowNodes((nodes) => {
-        const source = graph.nodes.find(({ id }) => id === nodeId) as GraphNode;
+        const source = graph.nodes.find(
+          ({ id }) => id === draggingFromNodeId
+        ) as GraphNode;
         return nodes.map((n) => {
           const node = n as FlowNode;
           if (
@@ -769,14 +777,19 @@ const Editor = ({
           ) {
             return node;
           }
+
           return updateFlowNodeDataInternal(node, {
             inputs: node.data.inputs.map((input) => ({
               ...input,
-              validTarget: handleType === 'source',
+              validTarget:
+                handleType === 'source' &&
+                canMapType(draggingDataType, input.dataType),
             })),
             outputs: node.data.outputs.map((output) => ({
               ...output,
-              validTarget: handleType === 'target',
+              validTarget:
+                handleType === 'target' &&
+                canMapType(draggingDataType, output.dataType),
             })),
           });
         });
@@ -806,14 +819,14 @@ const Editor = ({
   const edgeUpdateSuccessful = useRef(true);
 
   const onReconnectStart = useCallback(
-    (event: any, edge: any) => {
+    (event: any, edge: FlowEdgeOrLink) => {
       edgeUpdateSuccessful.current = false;
 
       const g = event.target.parentElement;
       const handleType =
         [...g.parentElement.children].indexOf(g) === 3 ? 'source' : 'target';
       const nodeId = handleType === 'source' ? edge.source : edge.target;
-      setValidHandleTargets(nodeId, handleType);
+      setValidHandleTargets(nodeId, handleType, edge.type as GraphDataType);
     },
     [setValidHandleTargets]
   );
@@ -833,14 +846,17 @@ const Editor = ({
         return;
       }
       const node = ensure(graph.nodes.find((n) => n.id === nodeId));
+      let draggingDataType = node.outputs[0]?.dataType;
 
       if (handleType !== 'source') {
+        const input = ensure(node.inputs.find((i) => i.id === handleId));
+        draggingDataType = input.dataType;
         createNodeOnDragRef.current = {
           node,
-          input: ensure(node.inputs.find((i) => i.id === handleId)),
+          input,
         };
       }
-      setValidHandleTargets(nodeId, handleType);
+      setValidHandleTargets(nodeId, handleType, draggingDataType);
     },
     [graph, setValidHandleTargets]
   );

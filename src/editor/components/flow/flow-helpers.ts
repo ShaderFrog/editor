@@ -16,6 +16,7 @@ import {
   alphabet,
   Edge as GraphEdge,
   EdgeLink,
+  GraphDataType,
 } from '@core/graph';
 import { OutputNodeHandle, SHADERFROG_FLOW_EDGE_TYPE } from './flow-types';
 import indexById from '@core/util/indexByid';
@@ -165,7 +166,9 @@ export const graphNodeToFlowNode = (
           biStage: node.biStage || false,
           engine: node.engine || false,
           inputs: toFlowInputs(node),
-          outputs: node.outputs.map((o) => flowOutput(o.name, o.id)),
+          outputs: node.outputs.map((o) =>
+            flowOutput(o.name, o.id, o.dataType)
+          ),
         },
       }
     : {
@@ -175,7 +178,9 @@ export const graphNodeToFlowNode = (
           dataType: node.type,
           value: node.value,
           inputs: toFlowInputs(node),
-          outputs: node.outputs.map((o) => flowOutput(o.name, o.id)),
+          outputs: node.outputs.map((o) =>
+            flowOutput(o.name, o.id, o.dataType)
+          ),
           config: { ...node },
         },
       };
@@ -433,9 +438,14 @@ export const updateGraphFromFlowGraph = (
   };
 };
 
-export const flowOutput = (name: string, id?: string): OutputNodeHandle => ({
+export const flowOutput = (
+  name: string,
+  id?: string,
+  dataType?: GraphDataType
+): OutputNodeHandle => ({
   connected: false,
   validTarget: false,
+  dataType,
   id: id || name,
   name,
 });

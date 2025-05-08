@@ -238,6 +238,10 @@ const StrategyEditor = ({
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     node.sourceType = event.target.value as typeof node.sourceType;
+    // With an expression it can be any type - so remove the type, otherwise
+    // assume main function with vec4 output
+    node.outputs[0].dataType =
+      node.sourceType === 'Expression' ? undefined : 'vector4';
   };
 
   const sibling = findLinkedNode(graph, node.id);

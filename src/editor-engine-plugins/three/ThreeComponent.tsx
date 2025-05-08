@@ -924,6 +924,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
   );
 
   useEffect(() => {
+    log(
+      'checking context',
+      !backgroundKeys.has(sceneBg),
+      { sceneBg, textures },
+      textures[sceneBg]
+    );
     if (
       // I originally had this to let the three child scene load images, which I
       // thought was a blocking requirement for creating envMap textures. Now I

@@ -304,24 +304,31 @@ const useEnvMap = (
 ) => {
   const cbRef = useRef(cb);
   useEffect(() => {
+    log('#useEnvMap', { bg, key });
     if (bg !== key) {
       return;
     }
 
     if (assetPath.toLowerCase().endsWith('.exr')) {
+      log('#useEnvMap exr');
       new EXRLoader().load(assetPath, (texture) => {
+        log('#useEnvMap exr', { texture });
         const pmremGenerator = new PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
         const envMap = pmremGenerator.fromEquirectangular(texture).texture;
         pmremGenerator.dispose();
+        log('#useEnvMap exr callback');
         cbRef.current(envMap);
       });
     } else {
+      log('#useEnvMap rgb');
       new RGBELoader().load(assetPath, (texture) => {
+        log('#useEnvMap rgb', { texture });
         const pmremGenerator = new PMREMGenerator(renderer);
         pmremGenerator.compileEquirectangularShader();
         const envMap = pmremGenerator.fromEquirectangular(texture).texture;
         pmremGenerator.dispose();
+        log('#useEnvMap rgb callback');
         cbRef.current(envMap);
       });
     }

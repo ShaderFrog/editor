@@ -142,7 +142,7 @@ export const toFlowInputs = (node: GraphNode): InputNodeHandle[] =>
       dataType: input.dataType,
       baked: input.baked,
       bakeable: input.bakeable,
-      validTarget: false,
+      validTarget: null,
       connected: false,
       accepts: input.accepts,
     }));
@@ -444,7 +444,7 @@ export const flowOutput = (
   dataType?: GraphDataType
 ): OutputNodeHandle => ({
   connected: false,
-  validTarget: false,
+  validTarget: null,
   dataType,
   id: id || name,
   name,

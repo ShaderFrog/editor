@@ -804,11 +804,11 @@ const Editor = ({
         updateFlowNodeDataInternal(node, {
           inputs: node.data.inputs.map((input) => ({
             ...input,
-            validTarget: false,
+            validTarget: null,
           })),
           outputs: node.data.outputs.map((output) => ({
             ...output,
-            validTarget: false,
+            validTarget: null,
           })),
         })
       )

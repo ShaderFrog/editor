@@ -92,6 +92,7 @@ import {
   DropdownOption,
   DropdownHeader,
 } from '@editor-components//Dropdown';
+import { useTexture } from './useTexture';
 
 export const THREE_IMAGE_ENCODINGS = {
   SRGB: 'srgb',
@@ -274,65 +275,6 @@ export const CameraDistances: Record<string, number> = {
   plane: 0.24,
   cylinder: 0.38,
   cone: 0.35,
-};
-
-const useCubeMap = (path: string, cb: (t: CubeTexture) => void) => {
-  const cbRef = useRef(cb);
-  useEffect(() => {
-    new CubeTextureLoader()
-      .setPath(path)
-      .load(
-        [
-          'posx.jpg',
-          'negx.jpg',
-          'posy.jpg',
-          'negy.jpg',
-          'posz.jpg',
-          'negz.jpg',
-        ],
-        cbRef.current
-      );
-  }, [path, cbRef]);
-};
-
-const useEnvMap = (
-  renderer: WebGLRenderer,
-  bg: BackgroundKey | null,
-  key: BackgroundKey,
-  assetPath: string,
-  cb: (t: Texture) => void
-) => {
-  const cbRef = useRef(cb);
-  useEffect(() => {
-    log('#useEnvMap', { bg, key });
-    if (bg !== key) {
-      return;
-    }
-
-    if (assetPath.toLowerCase().endsWith('.exr')) {
-      log('#useEnvMap exr');
-      new EXRLoader().load(assetPath, (texture) => {
-        log('#useEnvMap exr', { texture });
-        const pmremGenerator = new PMREMGenerator(renderer);
-        pmremGenerator.compileEquirectangularShader();
-        const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-        pmremGenerator.dispose();
-        log('#useEnvMap exr callback');
-        cbRef.current(envMap);
-      });
-    } else {
-      log('#useEnvMap rgb');
-      new RGBELoader().load(assetPath, (texture) => {
-        log('#useEnvMap rgb', { texture });
-        const pmremGenerator = new PMREMGenerator(renderer);
-        pmremGenerator.compileEquirectangularShader();
-        const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-        pmremGenerator.dispose();
-        log('#useEnvMap rgb callback');
-        cbRef.current(envMap);
-      });
-    }
-  }, [assetPath, key, renderer, cbRef, bg]);
 };
 
 const repeat = (t: Texture, x: number, y: number) => {
@@ -561,6 +503,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
     isPaused
   );
 
+  const [textures] = useTexture(renderer, sceneBg, path);
+
   const { assets } = useAssetsAndGroups();
   const textureCacheKey = (value: TextureNodeValueData) =>
     `${value.assetId}-${value.versionId}`;
@@ -638,99 +582,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
       return texture;
     },
     [loadTexture, assets]
-  );
-
-  const [textures, setTextures] = useState<Record<string, any>>({});
-  useCubeMap(path('/envmaps/pond/'), (t) =>
-    setTextures({ ...textures, pondCubeMap: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'warehouseImage',
-    path('/envmaps/empty_warehouse_01_1k.hdr'),
-    (t) => setTextures({ ...textures, warehouseImage: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'skyImage',
-    path('/envmaps/industrial_sunset_puresky_1k.hdr'),
-    (t) => setTextures({ ...textures, skyImage: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'roglandImage',
-    path('/envmaps/rogland_clear_night_2k.hdr'),
-    (t) => setTextures({ ...textures, roglandImage: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'drachenfelsImage',
-    path('/envmaps/drachenfels_cellar_2k.hdr'),
-    (t) => setTextures({ ...textures, drachenfelsImage: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'kloofendalImage',
-    path('/envmaps/kloofendal_48d_partly_cloudy_puresky_2k.hdr'),
-    (t) => setTextures({ ...textures, kloofendalImage: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'metroImage',
-    path('/envmaps/metro_noord_2k.hdr'),
-    (t) => setTextures({ ...textures, metroImage: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'rustigImage',
-    path('/envmaps/rustig_koppie_puresky_2k.hdr'),
-    (t) => setTextures({ ...textures, rustigImage: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'warmRestaurantImage',
-    path('/envmaps/warm_restaurant_2k.hdr'),
-    (t) => setTextures({ ...textures, warmRestaurantImage: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'nightSky007Image',
-    path('/envmaps/NightSkyHDRI007_4K-HDR.exr'),
-    (t) => setTextures({ ...textures, nightSky007Image: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'nightSky008Image',
-    path('/envmaps/NightSkyHDRI008_4K-HDR.exr'),
-    (t) => setTextures({ ...textures, nightSky008Image: t })
-  );
-
-  useEnvMap(
-    renderer,
-    sceneBg,
-    'nightSky014Image',
-    path('/envmaps/NightSkyHDRI014_2K-HDR.exr'),
-    (t) => setTextures({ ...textures, nightSky014Image: t })
   );
 
   const previousSceneConfig = usePrevious(sceneConfig);
@@ -924,23 +775,17 @@ const ThreeComponent: React.FC<SceneProps> = ({
   );
 
   useEffect(() => {
-    log(
-      'checking context',
-      !backgroundKeys.has(sceneBg),
-      { sceneBg, textures },
-      textures[sceneBg]
-    );
     if (
       // I originally had this to let the three child scene load images, which I
       // thought was a blocking requirement for creating envMap textures. Now I
       // see this can be done synchrounously. Not sure if this is needed, but
       // it sends context to parent, so keeping for now
       !ctx?.runtime?.loaded &&
-      // Obviously this needs to be refactored, but this is my stopgap solution
-      // for waiting for the env map to load before the context is set. This is
-      // for shaders with envmaps. On first page load, the shader compiles
-      // before the envmap is loaded, and then the envmap loads, but the cached
-      // shader in threngine doesn't support an envMap, so it's locked out.
+      // This is my stopgap solution for waiting for the env map to load before
+      // the context is set. This is for shaders with envmaps. On first page
+      // load, the shader compiles before the envmap is loaded, and then the
+      // envmap loads, but the cached shader in threngine doesn't support an
+      // envMap, so it's locked out.
       (!backgroundKeys.has(sceneBg) || textures[sceneBg])
     ) {
       ctx.runtime.loaded = true;

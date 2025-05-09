@@ -166,19 +166,22 @@
   right: -7px;
 }
 
-.react-flow__handle.react-flow__handle-connecting + .react-flow_handle_label {
+.react-flow__handle.connectingto + .react-flow_handle_label {
   box-shadow: 0 0 10px 4px rgb(70, 70, 70);
   background: rgb(70, 70, 70);
   border-radius: 4px;
 }
 
 .react-flow__handle.validTarget {
-  box-shadow: 0 0 10px #fff;
+  box-shadow: 0 5px 5px #fff;
   border-color: #d4bcbc;
   background: #bfbfbf;
 }
+.react-flow__handle.invalidTarget {
+  opacity: 0.5;
+}
 
-.react-flow__handle.react-flow__handle-connecting {
+.react-flow__handle:not(.invalidTarget).connectingto {
   box-shadow: 0 0 10px #fff;
   background: #fff;
 }
@@ -439,13 +442,11 @@
   border-color: #d4ff00;
   background: #333d00;
 }
-.fragment.flownode .react-flow__handle.react-flow__handle-connecting {
+.fragment.flownode .react-flow__handle.connectingto {
   border-color: #fff;
   background: #22ff00;
 }
-.fragment.flownode
-  .react-flow__handle.react-flow__handle-connecting
-  .react-flow_handle_label {
+.fragment.flownode .react-flow__handle.connectingto .react-flow_handle_label {
   color: #fff;
 }
 
@@ -454,11 +455,11 @@
 }
 
 .fragment .react-flow__handle.validTarget {
-  box-shadow: 0 0 5px 2px #0f0;
+  box-shadow: 0 0 5px 5px #0f0;
   outline: 2px solid #0f0;
 }
 
-.fragment .react-flow__handle.validTarget.react-flow__handle-connecting {
+.fragment .react-flow__handle.validTarget.connectingto {
   box-shadow: 0 0 5px 2px #efe;
   border-color: #efe;
   background: #efe;
@@ -562,13 +563,11 @@
   background: #3a1919;
   transition: all 0.2s ease-in;
 }
-.vertex.flownode .react-flow__handle.react-flow__handle-connecting {
+.vertex.flownode .react-flow__handle.connectingto {
   border-color: #fff;
   background: #ff2525;
 }
-.vertex.flownode
-  .react-flow__handle.react-flow__handle-connecting
-  .react-flow_handle_label {
+.vertex.flownode .react-flow__handle.connectingto .react-flow_handle_label {
   color: #fff;
 }
 
@@ -580,7 +579,7 @@
   background: #ff2525;
 }
 
-.vertex .react-flow__handle.validTarget.react-flow__handle-connecting {
+.vertex .react-flow__handle.validTarget.connectingto {
   box-shadow: 0 0 5px 2px #fee;
   border-color: #fee;
   background: #fee;

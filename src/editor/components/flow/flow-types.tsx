@@ -39,7 +39,7 @@ export type InputNodeHandle = {
   id: string;
   type: string;
   dataType: GraphDataType | undefined;
-  validTarget: boolean;
+  validTarget: boolean | null;
   connected: boolean;
   accepts?: InputCategory[];
   baked?: boolean;
@@ -48,7 +48,7 @@ export type InputNodeHandle = {
 
 export type OutputNodeHandle = {
   dataType: GraphDataType | undefined;
-  validTarget: boolean;
+  validTarget: boolean | null;
   connected: boolean;
   category?: InputCategory;
   id: string;

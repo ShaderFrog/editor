@@ -81,7 +81,8 @@ const InputHande = ({
     id={input.id}
     type="target"
     className={cx({
-      validTarget: input.validTarget,
+      validTarget: input.validTarget === true,
+      invalidTarget: input.validTarget === false,
       connected: input.connected,
     })}
     position={Position.Left}
@@ -726,7 +727,8 @@ const DataNodeComponent = memo(
               isConnectable
               id={output.id}
               className={cx({
-                validTarget: output.validTarget,
+                validTarget: output.validTarget === true,
+                invalidTarget: output.validTarget === false,
                 connected: output.connected,
               })}
               type="source"
@@ -850,7 +852,8 @@ const SourceNodeComponent = memo(
                 isConnectable
                 id={output.id}
                 className={cx({
-                  validTarget: output.validTarget,
+                  validTarget: output.validTarget === true,
+                  invalidTarget: output.validTarget === false,
                   connected: output.connected,
                 })}
                 style={{

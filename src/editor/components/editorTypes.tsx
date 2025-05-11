@@ -33,6 +33,7 @@ export type SceneProps = {
   compileResult: CompileResult | undefined;
   graph: Graph;
   setCtx: (ctx: EngineContext) => void;
+  setLoadingMsg: (msg: string) => void;
   sceneConfig: AnySceneConfig;
   setSceneConfig: (config: AnySceneConfig) => void;
   setGlResult: AnyFn;

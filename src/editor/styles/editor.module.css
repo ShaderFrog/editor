@@ -428,8 +428,10 @@ textarea.error {
 /* Toolbar row for save/fork/import */
 .controlBar {
   text-align: right;
-  padding: 4px 10px;
-  background: linear-gradient(#222, #111);
+  background: linear-gradient(to bottom, #202020 0, #222 60%);
+  color: #fff;
+  border-bottom: 1px solid #383d3f;
+  padding: 2px 8px 3px;
 }
 
 /*******************************************************************************
@@ -678,6 +680,7 @@ textarea.error {
   transform: translateX(-50%);
   z-index: 2;
   box-shadow: 0 0 4px #000, 0 0 0 1px #9f9f9f91;
+  background: #333;
   cursor: pointer;
   font-size: 14px;
   font-weight: bold;

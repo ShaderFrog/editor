@@ -92,7 +92,9 @@ const loadEnvMap = (
 export const useTexture = (
   renderer: WebGLRenderer,
   key: BackgroundKey,
-  path: (src: string) => string
+  path: (src: string) => string,
+  setLoading: () => void,
+  setLoaded: () => void
 ) => {
   const [textures, setTextures] = useState<
     Record<string, Texture | CubeTexture>
@@ -102,14 +104,18 @@ export const useTexture = (
     if (textures[key]) {
       return;
     }
-    const cb = (t: Texture | CubeTexture) =>
+    const cb = (t: Texture | CubeTexture) => {
       setTextures((textures) => ({ ...textures, [key]: t }));
+      setLoaded();
+    };
     if (key in CubeMaps) {
+      setLoading();
       loadCubeMap(path(CubeMaps[key]!), cb);
     } else if (key in HdrMaps) {
+      setLoading();
       loadEnvMap(renderer, path(HdrMaps[key]!), cb);
     }
-  }, [key, path, textures, setTextures, renderer]);
+  }, [key, path, textures, setTextures, renderer, setLoading, setLoaded]);
 
   return [textures, setTextures] as const;
 };

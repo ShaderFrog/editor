@@ -132,7 +132,7 @@ const MetadataEditor = ({
             });
           }}
         ></input>
-        <h2 className={cx(styles.uiHeader, 'm-top-25')}>Description</h2>
+        <h2 className={cx(styles.uiHeader, 'm-top-15')}>Description</h2>
         <textarea
           className="textinput"
           value={shader?.description || ''}
@@ -143,8 +143,8 @@ const MetadataEditor = ({
             });
           }}
         ></textarea>
-        <h2 className={cx(styles.uiHeader, 'm-top-25')}>Graph Integrity</h2>
-        <div className="m-top-15">
+        <h2 className={cx(styles.uiHeader, 'm-top-15')}>Graph Integrity</h2>
+        <div className="m-top-10 secondary">
           {graphIntegrity.length ? (
             <div>
               {graphIntegrity.map((t) => (
@@ -170,7 +170,7 @@ const MetadataEditor = ({
         </div>
 
         {shader?.id && isOwnShader ? (
-          <div className="m-top-25">
+          <div className="m-top-15">
             <h2 className={cx(styles.uiHeader)}>Delete</h2>
             <div className="m-top-15">
               <form
@@ -190,7 +190,7 @@ const MetadataEditor = ({
                 ></input>
                 <button
                   disabled={!canDelete || isDeleting}
-                  className="buttonauto formbutton size2 m-top-10"
+                  className="buttonauto formbutton secondary size2 m-top-10"
                   type="submit"
                 >
                   Delete Shader

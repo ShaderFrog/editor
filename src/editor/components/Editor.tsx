@@ -259,6 +259,7 @@ const Editor = ({
   const [editorTabIndex, setEditorTabIndex] = useState<number>(0);
   const [smallScreenEditorTabIndex, setSmallScreenEditorTabIndex] =
     useState<number>(0);
+  const [loadingMsg, setLoadingMsg] = useState<string>('');
   const [contexting, setContexting] = useState<boolean>(false);
   const [compiling, setCompiling] = useState<boolean>(false);
   const [guiError, setGuiError] = useState<string>('');
@@ -1799,7 +1800,7 @@ const Editor = ({
           <Tab>
             <FontAwesomeIcon
               icon={faDiagramProject}
-              color="#aca"
+              color="#fff"
               className="m-right-5"
             />{' '}
             Graph
@@ -1809,7 +1810,7 @@ const Editor = ({
               [styles.errored]: compileInfo.vertError || compileInfo.fragError,
             })}
           >
-            <FontAwesomeIcon icon={faCode} color="#aca" className="m-right-5" />
+            <FontAwesomeIcon icon={faCode} color="#fff" className="m-right-5" />
             GLSL Editor
           </Tab>
         </TabGroup>
@@ -1918,7 +1919,11 @@ const Editor = ({
 
   const sceneElements = (
     <div className={styles.sceneElements}>
-      {contexting ? (
+      {loadingMsg ? (
+        <div className={styles.compiling}>
+          <span>{loadingMsg}</span>
+        </div>
+      ) : contexting ? (
         <div className={styles.compiling}>
           <span>Building Context&hellip;</span>
         </div>
@@ -1936,6 +1941,7 @@ const Editor = ({
           sceneConfig={sceneConfig}
           setSceneConfig={setSceneConfigAndRecompile}
           setCtx={setCtx}
+          setLoadingMsg={setLoadingMsg}
           graph={graph}
           compile={compile}
           compileResult={compileResult}
@@ -1953,7 +1959,7 @@ const Editor = ({
     <div>
       {'shadertoy' in engine.importers ? (
         <button
-          className="buttonauto formbutton size2 secondary m-right-10"
+          className="buttonauto formbutton size2 secondary m-right-5"
           onClick={(e) => {
             e.preventDefault();
             setShowImport(true);
@@ -1965,7 +1971,7 @@ const Editor = ({
       {!shader.id || !isOwnShader ? null : (
         <button
           disabled={isSaving || isDeleting}
-          className="buttonauto formbutton size2 secondary m-right-10"
+          className="buttonauto formbutton size2 secondary m-right-5"
           onClick={(e) => {
             e.preventDefault();
             saveOrFork(true);

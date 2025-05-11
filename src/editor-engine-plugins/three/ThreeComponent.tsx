@@ -343,6 +343,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   setGlResult,
   assetPrefix,
   takeScreenshotRef,
+  setLoadingMsg,
 }) => {
   const sceneBg = sceneConfig.bg as BackgroundKey;
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
@@ -503,7 +504,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
     isPaused
   );
 
-  const [textures] = useTexture(renderer, sceneBg, path);
+  const setLoading = useCallback(() => {
+    setLoadingMsg('Loading textures…');
+  }, [setLoadingMsg]);
+  const setLoaded = useCallback(() => {
+    setLoadingMsg('');
+  }, [setLoadingMsg]);
+  const [textures] = useTexture(renderer, sceneBg, path, setLoading, setLoaded);
 
   const { assets } = useAssetsAndGroups();
   const textureCacheKey = (value: TextureNodeValueData) =>
@@ -1062,10 +1069,10 @@ const ThreeComponent: React.FC<SceneProps> = ({
       <Tabs onTabSelect={setEditorTabIndex} selected={editorTabIndex}>
         <TabGroup className={styles.tabBar}>
           <Tab>
-            <FontAwesomeIcon icon={faCube} color="#aca" /> Object
+            <FontAwesomeIcon icon={faCube} color="#fff" /> Object
           </Tab>
           <Tab>
-            <FontAwesomeIcon icon={faCamera} color="#aca" /> Scene
+            <FontAwesomeIcon icon={faCamera} color="#fff" /> Scene
           </Tab>
           <div className={styles.sceneTabControls}>
             <button

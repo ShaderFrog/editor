@@ -153,9 +153,9 @@ const CodeEditor = ({
       ).map((error) => ({
         range: {
           startLineNumber: error?.location?.start?.line || 0,
-          startColumn: error?.location?.start?.column || 0,
+          startColumn: 0,
           endLineNumber: error?.location?.end?.line || 0,
-          endColumn: error?.location?.end?.column || 0,
+          endColumn: 1000,
         },
         options: {
           isWholeLine: true,
@@ -180,9 +180,9 @@ const CodeEditor = ({
             }
           : {
               startLineNumber: error?.location?.start?.line,
-              startColumn: error?.location?.start?.column,
+              startColumn: 0, // error?.location?.start?.column,
               endLineNumber: error?.location?.end?.line,
-              endColumn: error?.location?.end?.column,
+              endColumn: 1000, // error?.location?.end?.column,
               message: error.message,
               severity: monacoRef.current!.MarkerSeverity.Error,
             }

@@ -14,8 +14,9 @@
   border-right: 1px solid #000;
   margin: 3px 1px 0 0;
   background: #383d3f;
-  border-radius: 4px 4px 0 0;
-  padding: 3px 10px 4px;
+  color: #ddd;
+  border-radius: 5px 5px 0 0;
+  padding: 3px 11px 4px;
   font-size: 14px;
   cursor: pointer;
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.9), inset 0 1px rgba(255, 255, 255, 0.15);

@@ -769,6 +769,13 @@ const SourceNodeComponent = memo(
         uniform: 'Uniforms',
         filler: 'Code',
       };
+      if (data.display?.visibilities?.Code === 'hidden') {
+        delete labels.filler;
+      } else if (data.display?.visibilities?.Uniforms === 'hidden') {
+        delete labels.uniform;
+      } else if (data.display?.visibilities?.Properties === 'hidden') {
+        delete labels.property;
+      }
       const group = groupBy<InputNodeHandle>(data.inputs, 'type');
       let offset = 0;
 
@@ -787,7 +794,7 @@ const SourceNodeComponent = memo(
           }),
         offset,
       ];
-    }, [data.inputs]);
+    }, [data.inputs, data.display]);
 
     return (
       <FlowWrap

@@ -15,6 +15,8 @@ import {
   SourceType,
   findLinkedNode,
   Backfillers,
+  NodeInputSectionVisibility,
+  NodeInputSection,
 } from '@core/graph';
 
 import styles from '../styles/editor.module.css';
@@ -211,6 +213,12 @@ const sourceTypeText: Record<SourceType, any> = {
   ),
   'Shader Program': <>A full shader program (default).</>,
 };
+
+const sectionVisibilities: NodeInputSection[] = [
+  'Properties',
+  'Uniforms',
+  'Code',
+] as const;
 
 const StrategyEditor = ({
   node,
@@ -490,7 +498,7 @@ const StrategyEditor = ({
                     </form>
                   ) : (
                     <button
-                      className="buttonauto formbutton"
+                      className="buttonauto secondary formbutton"
                       onClick={() => {
                         node.backfillers = {
                           ...(node.backfillers || {}),
@@ -519,6 +527,39 @@ const StrategyEditor = ({
               </div>
             ))
           : 'No inputs found'}
+      </div>
+
+      <div className={styles.uiGroup}>
+        <h2 className={styles.uiHeader}>Node Input Visibility</h2>
+        <div className="secondary m-bottom-15">
+          Control the visibility of the node&apos;s inputs.
+        </div>
+        <div className="grid col3 gap-10">
+          {sectionVisibilities.map((section) => (
+            <div key={section}>
+              <label>
+                {section}
+                <select
+                  className="select m-top-5"
+                  value={node.display?.visibilities?.[section]}
+                  onChange={(e) => {
+                    node.display = {
+                      ...(node.display || {}),
+                      visibilities: {
+                        ...(node.display?.visibilities || {}),
+                        [section]: e.target.value as NodeInputSectionVisibility,
+                      },
+                    };
+                    onGraphChange();
+                  }}
+                >
+                  <option value="visible">Visible</option>
+                  <option value="hidden">Hidden</option>
+                </select>
+              </label>
+            </div>
+          ))}
+        </div>
       </div>
     </>
   );

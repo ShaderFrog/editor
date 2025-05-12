@@ -332,6 +332,18 @@ a:hover {
 .gap-10 {
   grid-gap: 10px !important;
 }
+.gap-15 {
+  grid-gap: 15px !important;
+}
+.gap-20 {
+  grid-gap: 20px !important;
+}
+.gap-25 {
+  grid-gap: 25px !important;
+}
+.gap-50 {
+  grid-gap: 50px !important;
+}
 .gap-s {
   grid-gap: 5px 10px;
 }

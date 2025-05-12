@@ -7,6 +7,8 @@ import {
   ShaderStage,
   GraphDataType,
   InputCategory,
+  NodeInputSectionVisibility,
+  NodeInputSection,
 } from '@core/graph';
 
 export const SHADERFROG_FLOW_EDGE_TYPE = 'special';
@@ -60,6 +62,9 @@ export type CoreFlowNode = {
   ghost?: boolean;
   outputs: OutputNodeHandle[];
   inputs: InputNodeHandle[];
+  display?: {
+    visibilities: Partial<Record<NodeInputSection, NodeInputSectionVisibility>>;
+  };
 };
 export type FlowNodeDataData = {
   dataType: GraphDataType;

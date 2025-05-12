@@ -169,6 +169,7 @@ export const graphNodeToFlowNode = (
           outputs: node.outputs.map((o) =>
             flowOutput(o.name, o.id, o.dataType)
           ),
+          display: node.display,
         },
       }
     : {
@@ -182,6 +183,7 @@ export const graphNodeToFlowNode = (
             flowOutput(o.name, o.id, o.dataType)
           ),
           config: { ...node },
+          display: node.display,
         },
       };
 };

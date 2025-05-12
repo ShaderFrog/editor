@@ -771,7 +771,12 @@ const SourceNodeComponent = memo(
       };
       if (data.display?.visibilities?.Code === 'hidden') {
         delete labels.filler;
-      } else if (data.display?.visibilities?.Uniforms === 'hidden') {
+      } else if (
+        data.display?.visibilities?.Uniforms === 'hidden' ||
+        // Default to hiding engine shader uniforms - legacy / migration case
+        // instead of trying to migrate every shader
+        (data.engine && !data.display)
+      ) {
         delete labels.uniform;
       } else if (data.display?.visibilities?.Properties === 'hidden') {
         delete labels.property;

@@ -647,10 +647,17 @@ textarea.error {
 }
 
 .tabAnnotation {
-  font-size: 12px;
-  color: #ccc;
+  font-size: 10px;
+  color: #ddd;
   display: inline-block;
   margin-left: 0.25em;
+  text-transform: uppercase;
+}
+.fragAnnote {
+  color: #a0ff5d;
+}
+.vertAnnote {
+  color: #ff5f5f;
 }
 
 .sceneTabControls {

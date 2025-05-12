@@ -42,7 +42,13 @@ const isReadOnly = (node: SourceNode) =>
 
 const tabName = (name: string, type: PaneType, stage: ShaderStage) => {
   const isConfig = type === 'config';
-  const annotation = isConfig ? 'Config' : stage ? capitalize(stage) : '';
+  const annotation = isConfig
+    ? 'Conf'
+    : stage
+    ? stage === 'vertex'
+      ? 'Vert'
+      : 'Frag'
+    : '';
   return (
     <>
       <FontAwesomeIcon
@@ -56,11 +62,18 @@ const tabName = (name: string, type: PaneType, stage: ShaderStage) => {
         )}
       />
       {name}
-      {annotation ? (
-        <span className={styles.tabAnnotation}>({annotation})</span>
+      {/* {annotation ? (
+        <span
+          className={cx(styles.tabAnnotation, {
+            [styles.fragAnnote]: !isConfig && stage === 'fragment',
+            [styles.vertAnnote]: !isConfig && stage === 'vertex',
+          })}
+        >
+          ({annotation})
+        </span>
       ) : (
         ''
-      )}
+      )} */}
     </>
   );
 };

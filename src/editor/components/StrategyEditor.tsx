@@ -321,7 +321,7 @@ const StrategyEditor = ({
               </div>
               <div>
                 <button
-                  className="buttonauto formbutton"
+                  className="buttonauto formbutton secondary"
                   onClick={() => {
                     node.config.strategies = [
                       ...node.config.strategies.slice(0, index),

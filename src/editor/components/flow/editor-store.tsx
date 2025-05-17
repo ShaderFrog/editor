@@ -431,7 +431,7 @@ export const EditorProvider = ({
   children,
   ...props
 }: React.PropsWithChildren<EditorProviderProps>) => {
-  const storeRef = useRef<EditorStore>();
+  const storeRef = useRef<EditorStore | null>(null);
   if (!storeRef.current) {
     storeRef.current = createEditorStore(props);
   }

@@ -1,4 +1,4 @@
-import { MutableRefObject, FunctionComponent } from 'react';
+import { RefObject, FunctionComponent } from 'react';
 
 import { Graph, Edge, CompileResult } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
@@ -40,7 +40,7 @@ export type SceneProps = {
   width: number;
   height: number;
   assetPrefix: string;
-  takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
+  takeScreenshotRef: RefObject<(() => Promise<string> | undefined) | undefined>;
 };
 
 /**

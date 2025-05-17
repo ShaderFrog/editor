@@ -103,8 +103,8 @@ const CodeEditor = ({
   };
 
   const lastDecorators = useRef<string[]>([]);
-  const editorRef = useRef<editor.IStandaloneCodeEditor>();
-  const monacoRef = useRef<Monaco>();
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<Monaco | null>(null);
 
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;

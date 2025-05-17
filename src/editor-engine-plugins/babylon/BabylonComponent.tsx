@@ -190,7 +190,6 @@ const BabylonComponent: React.FC<SceneProps> = ({
   const checkForCompileErrors = useRef<boolean>(false);
   const lastCompile = useRef<any>({});
   const sceneWrapper = useRef<HTMLDivElement>(null);
-  const size = useSize(sceneWrapper);
 
   const {
     canvas,
@@ -464,7 +463,7 @@ const BabylonComponent: React.FC<SceneProps> = ({
 
   const previousPreviewObject = usePrevious(sceneConfig.previewObject);
   const previousBg = usePrevious(sceneConfig.bg);
-  const skybox = useRef<Nullable<Mesh>>();
+  const skybox = useRef<Nullable<Mesh>>(null);
   useEffect(() => {
     if (sceneConfig.bg === previousBg) {
       return;

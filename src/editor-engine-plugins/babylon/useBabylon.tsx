@@ -58,8 +58,10 @@ export const useBabylon = (callback: Callback) => {
       };
     });
 
-  const [babylonDom, setBabylonDom] = useState<HTMLCanvasElement | null>(null);
-  const babylonDomRef = useCallback((node) => setBabylonDom(node), []);
+  const [babylonDom, setBabylonDom] = useState<HTMLDivElement | null>(null);
+  const babylonDomRef = useCallback((node: HTMLDivElement | null) => {
+    setBabylonDom(node);
+  }, []);
 
   const frameRef = useRef<number>(0);
 

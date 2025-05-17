@@ -141,24 +141,24 @@ class OrbitCameraInputMouse {
     this.app = app;
     this.orbitCamera = orbitCamera;
 
-    this.app.mouse.on(EVENT_MOUSEDOWN, this.onMouseDown, this);
-    this.app.mouse.on(EVENT_MOUSEUP, this.onMouseUp, this);
-    this.app.mouse.on(EVENT_MOUSEMOVE, this.onMouseMove, this);
-    this.app.mouse.on(EVENT_MOUSEWHEEL, this.onMouseWheel, this);
+    this.app.mouse!.on(EVENT_MOUSEDOWN, this.onMouseDown, this);
+    this.app.mouse!.on(EVENT_MOUSEUP, this.onMouseUp, this);
+    this.app.mouse!.on(EVENT_MOUSEMOVE, this.onMouseMove, this);
+    this.app.mouse!.on(EVENT_MOUSEWHEEL, this.onMouseWheel, this);
 
     // Listen to when the mouse travels out of the window
     window.addEventListener('mouseout', this.onMouseOutFunc, false);
 
     // Disabling the context menu stops the browser displaying a menu when
     // you right-click the page
-    this.app.mouse.disableContextMenu();
+    this.app.mouse!.disableContextMenu();
   }
 
   destroy() {
-    this.app.mouse.off(EVENT_MOUSEDOWN, this.onMouseDown, this);
-    this.app.mouse.off(EVENT_MOUSEUP, this.onMouseUp, this);
-    this.app.mouse.off(EVENT_MOUSEMOVE, this.onMouseMove, this);
-    this.app.mouse.off(EVENT_MOUSEWHEEL, this.onMouseWheel, this);
+    this.app.mouse!.off(EVENT_MOUSEDOWN, this.onMouseDown, this);
+    this.app.mouse!.off(EVENT_MOUSEUP, this.onMouseUp, this);
+    this.app.mouse!.off(EVENT_MOUSEMOVE, this.onMouseMove, this);
+    this.app.mouse!.off(EVENT_MOUSEWHEEL, this.onMouseWheel, this);
 
     window.removeEventListener('mouseout', this.onMouseOutFunc, false);
   }
@@ -257,19 +257,19 @@ class OrbitCameraInputTouch {
     if (this.app.touch) {
       // Use the same callback for the touchStart, touchEnd and touchCancel events as they
       // all do the same thing which is to deal the possible multiple touches to the screen
-      this.app.touch.on(EVENT_TOUCHSTART, this.onTouchStartEndCancel, this);
-      this.app.touch.on(EVENT_TOUCHEND, this.onTouchStartEndCancel, this);
-      this.app.touch.on(EVENT_TOUCHCANCEL, this.onTouchStartEndCancel, this);
+      this.app.touch!.on(EVENT_TOUCHSTART, this.onTouchStartEndCancel, this);
+      this.app.touch!.on(EVENT_TOUCHEND, this.onTouchStartEndCancel, this);
+      this.app.touch!.on(EVENT_TOUCHCANCEL, this.onTouchStartEndCancel, this);
 
-      this.app.touch.on(EVENT_TOUCHMOVE, this.onTouchMove, this);
+      this.app.touch!.on(EVENT_TOUCHMOVE, this.onTouchMove, this);
     }
   }
 
   destroy() {
-    this.app.touch.off(EVENT_TOUCHSTART, this.onTouchStartEndCancel, this);
-    this.app.touch.off(EVENT_TOUCHEND, this.onTouchStartEndCancel, this);
-    this.app.touch.off(EVENT_TOUCHCANCEL, this.onTouchStartEndCancel, this);
-    this.app.touch.off(EVENT_TOUCHMOVE, this.onTouchMove, this);
+    this.app.touch!.off(EVENT_TOUCHSTART, this.onTouchStartEndCancel, this);
+    this.app.touch!.off(EVENT_TOUCHEND, this.onTouchStartEndCancel, this);
+    this.app.touch!.off(EVENT_TOUCHCANCEL, this.onTouchStartEndCancel, this);
+    this.app.touch!.off(EVENT_TOUCHMOVE, this.onTouchMove, this);
   }
 
   getPinchDistance(pointA: Touch, pointB: Touch) {
@@ -366,7 +366,7 @@ class OrbitCameraInputKeyboard {
     this.app = app;
     this.orbitCamera = orbitCamera;
 
-    app.keyboard.on('keydown', (event: KeyboardEvent) => {
+    app.keyboard!.on('keydown', (event: KeyboardEvent) => {
       switch (event.key) {
         case KEY_W:
           this.controls[0] = true;
@@ -389,7 +389,7 @@ class OrbitCameraInputKeyboard {
       }
     });
 
-    app.keyboard.on('keyup', (event: KeyboardEvent) => {
+    app.keyboard!.on('keyup', (event: KeyboardEvent) => {
       switch (event.key) {
         case KEY_W:
           this.controls[0] = false;
@@ -420,7 +420,7 @@ class OrbitCameraInputKeyboard {
       this.orbitCamera.focalPoint.goto(vec);
     };
 
-    const speed = this.app.keyboard.isPressed(KEY_SHIFT) ? 10 : 2;
+    const speed = this.app.keyboard!.isPressed(KEY_SHIFT) ? 10 : 2;
 
     if (this.controls[0]) {
       move(this.orbitCamera.cameraNode.forward, speed);

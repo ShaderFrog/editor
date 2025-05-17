@@ -47,7 +47,7 @@ const ContextMenu = ({
   // The number is used to calculate the relative offset of the child menu
   const [childMenu, setChildMenu] = useState<[MenuItem[], number]>();
 
-  const timeout = useRef<NodeJS.Timeout>();
+  const timeout = useRef<NodeJS.Timeout | null>(null);
   const onItemMouseEnter = useCallback(
     (name: string) => {
       if (childMenu) {

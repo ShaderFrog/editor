@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import classnames from 'classnames';
+import { useComponentSize } from 'react-use-size';
 import {
   ACESFilmicToneMapping,
   PMREMGenerator,
@@ -348,8 +349,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const sceneBg = sceneConfig.bg as BackgroundKey;
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
   const shadersUpdated = useRef<boolean>(false);
-  const sceneWrapper = useRef<HTMLDivElement>(null);
-  const sceneWrapperSize = useSize(sceneWrapper);
+  const { ref, width, height } = useComponentSize();
+  // const sceneWrapper = useRef<HTMLDivElement>(null);
+  // const sceneWrapperSize = useSize(sceneWrapper);
   const [isPaused, setIsPaused] = useState(false);
 
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
@@ -1049,16 +1051,17 @@ const ThreeComponent: React.FC<SceneProps> = ({
   ]);
 
   useEffect(() => {
-    if (ctx.runtime?.camera && sceneWrapperSize) {
+    if (ctx.runtime?.camera && (width || height)) {
       const { camera, renderer } = ctx.runtime;
 
-      const canvasWidth = sceneWrapperSize.width;
-      const canvasHeight = sceneWrapperSize.height;
+      const canvasWidth = width;
+      const canvasHeight = height;
+      renderer.setSize(canvasWidth, canvasHeight);
+
       camera.aspect = canvasWidth / canvasHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(canvasWidth, canvasHeight);
     }
-  }, [sceneWrapperSize, ctx.runtime]);
+  }, [width, height, ctx.runtime]);
 
   const [editorTabIndex, setEditorTabIndex] = useState(0);
 
@@ -1616,7 +1619,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
           </TabPanel>
         </TabPanels>
       </Tabs>
-      <div ref={sceneWrapper} className={styles.sceneContainer}>
+      <div ref={ref} className={styles.sceneContainer}>
         <div ref={threeDomCbRef}></div>
       </div>
     </>

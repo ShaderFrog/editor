@@ -6,11 +6,19 @@ export const useSize = (target: React.RefObject<HTMLDivElement>) => {
 
   useLayoutEffect(() => {
     if (target.current) {
+      console.log(
+        'resize',
+        target.current,
+        target.current.getBoundingClientRect()
+      );
       setSize(target.current.getBoundingClientRect());
     }
   }, [target]);
 
   // Where the magic happens
-  useResizeObserver(target, (entry) => setSize(entry.contentRect));
+  useResizeObserver(target, (entry) => {
+    console.log('resize', target, entry.contentRect);
+    setSize(entry.contentRect);
+  });
   return size;
 };

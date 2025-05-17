@@ -140,7 +140,7 @@ const makeLightHelper = () => {
   entity.setLocalScale(0.1, 0.1, 0.1);
   entity.rotate(45, 45, 0);
   entity.model!.model.generateWireframe();
-  entity.model!.meshInstances.forEach((mi) => {
+  entity.model!.meshInstances!.forEach((mi) => {
     mi.renderStyle = 1;
     mi.material = mi.material.clone();
     // @ts-ignore lol
@@ -200,7 +200,6 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
 }) => {
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
   const sceneWrapper = useRef<HTMLDivElement>(null);
-  const size = useSize(sceneWrapper);
 
   useEffect(() => {
     callback = (msg: string) => {

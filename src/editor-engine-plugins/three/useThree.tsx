@@ -79,10 +79,13 @@ export const useThree = (callback: Callback, isPaused = false) => {
   const [threeDomElement, setThreeDom] = useState<HTMLDivElement | null>(null);
   // We use a callback ref to handle re-attaching scene controls when the
   // scene unmounts or re-mounts
-  const threeDomCbRef = useCallback((node) => setThreeDom(node), []);
+  const threeDomCbRef = useCallback(
+    (node: HTMLDivElement | null) => setThreeDom(node),
+    []
+  );
 
   const frameRef = useRef<number>(0);
-  const controlsRef = useRef<OrbitControls>();
+  const controlsRef = useRef<OrbitControls | undefined>(undefined);
 
   // Add the camera to the scene if not already present. I don't remember why
   // I do all of this work in effects rather than in the ini
@@ -116,7 +119,10 @@ export const useThree = (callback: Callback, isPaused = false) => {
 
   useEffect(() => {
     if (!controlsRef.current) {
-      const controls = new OrbitControls(camera, renderer.domElement);
+      const controls = new OrbitControls(
+        camera,
+        renderer.domElement as unknown as HTMLElement
+      );
       controls.update();
       controlsRef.current = controls;
     }

@@ -4,7 +4,7 @@ import { useRef } from 'react';
 // *all* useMemo and useEffect and useCallbacks rerun during a fast-refresh
 // https://nextjs.org/docs/basic-features/fast-refresh
 const useOnce = <T extends unknown>(creator: (...args: any) => T): T => {
-  const ref = useRef<T | undefined>();
+  const ref = useRef<T | undefined>(undefined);
   if (ref.current) {
     return ref.current;
   }

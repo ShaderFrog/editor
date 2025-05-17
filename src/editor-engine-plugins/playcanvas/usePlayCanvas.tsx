@@ -67,8 +67,8 @@ export const usePlayCanvas = (callback: Callback) => {
 
     log('Creating new Playcanvas Application!');
     const app = new Application(canvas, {
-      mouse: new Mouse(canvas),
-      touch: new TouchDevice(canvas),
+      mouse: new Mouse(canvas as unknown as Element),
+      touch: new TouchDevice(canvas as unknown as Element),
       keyboard: new Keyboard(window),
     });
     // fill the available space at full resolution
@@ -87,23 +87,23 @@ export const usePlayCanvas = (callback: Callback) => {
 
     // All of the orbitcamera stuff is hacked up from
     // https://github.com/playcanvas/model-viewer/blob/61e8f51207dd8e7a676e1d55cb70e894fa20e337/src/viewer.ts#L166
-    const origMouseHandler = app.mouse._moveHandler;
-    app.mouse.detach();
-    app.mouse._moveHandler = (event: MouseEvent) => {
+    const origMouseHandler = app.mouse!._moveHandler;
+    app.mouse!.detach();
+    app.mouse!._moveHandler = (event: MouseEvent) => {
       if (event.target === canvas) {
         origMouseHandler(event);
       }
     };
-    app.mouse.attach(canvas);
+    app.mouse!.attach(canvas as unknown as Element);
 
-    const origTouchHandler = app.touch._moveHandler;
-    app.touch.detach();
-    app.touch._moveHandler = (event: MouseEvent) => {
+    const origTouchHandler = app.touch!._moveHandler;
+    app.touch!.detach();
+    app.touch!._moveHandler = (event: MouseEvent) => {
       if (event.target === canvas) {
         origTouchHandler(event);
       }
     };
-    app.touch.attach(canvas);
+    app.touch!.attach(canvas as unknown as Element);
 
     const orbitCamera = new OrbitCamera(camera, 1);
     const orbitCameraInputMouse = new OrbitCameraInputMouse(app, orbitCamera);
@@ -143,7 +143,9 @@ export const usePlayCanvas = (callback: Callback) => {
   });
 
   const [pcDom, setPcDom] = useState<HTMLDivElement | null>(null);
-  const pcDomRef = useCallback((node) => setPcDom(node), []);
+  const pcDomRef = useCallback((node: HTMLDivElement | null) => {
+    setPcDom(node);
+  }, []);
 
   useEffect(() => {
     if (pcDom && !pcDom.childNodes.length) {

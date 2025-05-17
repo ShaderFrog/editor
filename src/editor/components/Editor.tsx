@@ -20,6 +20,7 @@ import React, {
   useRef,
   useState,
   MouseEvent,
+  TouchEvent,
 } from 'react';
 
 import {
@@ -237,13 +238,16 @@ const Editor = ({
   const isLocal = window.location.href.indexOf('localhost') > 111;
 
   const [screenshotData, setScreenshotData] = useState<string>('');
-  const takeScreenshotRef = useRef<() => Promise<string>>();
+  const takeScreenshotRef =
+    useRef<() => Promise<string> | undefined>(undefined);
   const takeScreenshot = useCallback(async () => {
     if (!takeScreenshotRef.current) {
       return;
     }
     const data = await takeScreenshotRef.current();
-    setScreenshotData(data);
+    if (data) {
+      setScreenshotData(data);
+    }
   }, []);
 
   const updateNodeInternals = useUpdateNodeInternals();
@@ -573,22 +577,23 @@ const Editor = ({
     }
   }, [isSmallScreen]);
 
-  const syncSceneSize = useThrottle(() => {
-    if (sceneWrapRef.current) {
-      const { width, height } = sceneWrapRef.current.getBoundingClientRect();
-      setSceneDimensions({ width: width, height: height });
-    }
-  }, 100);
+  // const syncSceneSize = useThrottle(() => {
+  //   if (sceneWrapRef.current) {
+  //     const { width, height } = sceneWrapRef.current.getBoundingClientRect();
+  //     console.log({ height }, sceneWrapRef.current);
+  //     setSceneDimensions({ width: width, height: 50 });
+  //   }
+  // }, 100);
 
-  useEffect(() => {
-    const listener = () => syncSceneSize();
-    window.addEventListener('resize', listener);
-    return () => {
-      window.removeEventListener('resize', listener);
-    };
-  }, [syncSceneSize]);
+  // useEffect(() => {
+  //   const listener = () => syncSceneSize();
+  //   window.addEventListener('resize', listener);
+  //   return () => {
+  //     window.removeEventListener('resize', listener);
+  //   };
+  // }, [syncSceneSize]);
 
-  useEffect(() => syncSceneSize(), [defaultMainSplitSize, syncSceneSize]);
+  // useEffect(() => syncSceneSize(), [defaultMainSplitSize, syncSceneSize]);
 
   /**
    * React flow
@@ -721,7 +726,7 @@ const Editor = ({
   );
 
   const onNodeDoubleClick = useCallback(
-    (event, flowNode: XyFlowNode) => {
+    (event: MouseEvent, flowNode: XyFlowNode) => {
       const node = graph.nodes.find((n) => n.id === flowNode.id) as SourceNode;
 
       addSelectedNodes([node.id]);
@@ -835,7 +840,7 @@ const Editor = ({
   const createNodeOnDragRef = useRef<{
     node: GraphNode;
     input: NodeInput;
-  } | null>();
+  } | null>(null);
 
   /**
    * Called when dragging from any handle, input and output
@@ -866,7 +871,7 @@ const Editor = ({
    * Called after edge drag finishes, for succssful and unsuccessfull connections
    */
   const onReconnectEnd = useCallback(
-    (_, edge) => {
+    (_: any, edge: XyFlowEdge) => {
       resetTargets();
 
       // Delete edge dragged off node
@@ -999,10 +1004,12 @@ const Editor = ({
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const onConnectEnd = useCallback(
-    (event) => {
+    (event: any) => {
       resetTargets();
       // Make sure we only drop over the grid, not over a node
-      const targetIsPane = event.target.classList.contains('react-flow__pane');
+      const targetIsPane = (event.target as HTMLElement).classList.contains(
+        'react-flow__pane'
+      );
 
       if (
         targetIsPane &&
@@ -1042,8 +1049,8 @@ const Editor = ({
           guessedType,
           input.displayName,
           screenToFlowPosition({
-            x: event.clientX,
-            y: event.clientY,
+            x: (event as MouseEvent).clientX,
+            y: (event as MouseEvent).clientY,
           } as XYPosition),
           {
             to: node.id,
@@ -1451,7 +1458,7 @@ const Editor = ({
   );
 
   const onContainerClick = useCallback(
-    (event: React.MouseEvent<HTMLElement>) => {
+    (event: MouseEvent<HTMLElement>) => {
       if (
         !hasParent(event.target as HTMLElement, '#x-context-menu, .nodeConfig')
       ) {
@@ -1731,11 +1738,11 @@ const Editor = ({
     ]
   );
 
-  useEffect(() => {
-    if (isSmallScreen) {
-      syncSceneSize();
-    }
-  }, [isSmallScreen, syncSceneSize]);
+  // useEffect(() => {
+  //   if (isSmallScreen) {
+  //     syncSceneSize();
+  //   }
+  // }, [isSmallScreen, syncSceneSize]);
 
   useHotkeys(isMacintosh() ? `cmd+'` : `ctrl+'`, () => {
     compile();
@@ -2051,7 +2058,7 @@ const Editor = ({
           </Tabs>
         ) : (
           <SplitPane
-            onChange={syncSceneSize}
+            // onChange={syncSceneSize}
             defaultSizes={defaultMainSplitSize}
           >
             <div className={styles.splitInner}>{editorElements}</div>

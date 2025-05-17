@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useRef } from 'react';
+import {
+  createContext,
+  PropsWithChildren,
+  useContext,
+  useEffect,
+  useRef,
+} from 'react';
 
 // WARNING: This file is duplicated in site and editor
 
@@ -15,7 +21,7 @@ export const useHoisty = () => {
   };
 };
 
-export const Hoisty: React.FC = ({ children }) => {
+export const Hoisty = ({ children }: PropsWithChildren) => {
   const refData = useRef<{ [key: string]: any }>({});
 
   // TODO: I've had to hard code "three" / "babylon" in the respective places

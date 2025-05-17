@@ -27,6 +27,13 @@ type DropdownProps = {
   disabled?: boolean;
 };
 
+// Add this type guard to check if a child is a DropdownOption
+const isDropdownOption = (
+  child: React.ReactElement
+): child is React.ReactElement<DropdownOptionProps> => {
+  return child.type === DropdownOption;
+};
+
 export const Dropdown: React.FC<DropdownProps> = ({
   value,
   onChange,
@@ -42,7 +49,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       React.Children.forEach(children, (child) => {
         if (
           React.isValidElement(child) &&
-          'value' in child.props &&
+          isDropdownOption(child) &&
           child.props.value === value
         ) {
           content = child.props.children;

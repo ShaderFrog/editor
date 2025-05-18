@@ -349,7 +349,11 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const sceneBg = sceneConfig.bg as BackgroundKey;
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
   const shadersUpdated = useRef<boolean>(false);
-  const { ref, width, height } = useComponentSize();
+  const {
+    ref: sceneWrapperRef,
+    width: sceneWrapperWidth,
+    height: sceneWrapperHeight,
+  } = useComponentSize();
   // const sceneWrapper = useRef<HTMLDivElement>(null);
   // const sceneWrapperSize = useSize(sceneWrapper);
   const [isPaused, setIsPaused] = useState(false);
@@ -1051,17 +1055,15 @@ const ThreeComponent: React.FC<SceneProps> = ({
   ]);
 
   useEffect(() => {
-    if (ctx.runtime?.camera && (width || height)) {
+    if (ctx.runtime?.camera && (sceneWrapperWidth || sceneWrapperHeight)) {
       const { camera, renderer } = ctx.runtime;
 
-      const canvasWidth = width;
-      const canvasHeight = height;
-      renderer.setSize(canvasWidth, canvasHeight);
+      renderer.setSize(sceneWrapperWidth, sceneWrapperHeight);
 
-      camera.aspect = canvasWidth / canvasHeight;
+      camera.aspect = sceneWrapperWidth / sceneWrapperHeight;
       camera.updateProjectionMatrix();
     }
-  }, [width, height, ctx.runtime]);
+  }, [sceneWrapperWidth, sceneWrapperHeight, ctx.runtime]);
 
   const [editorTabIndex, setEditorTabIndex] = useState(0);
 
@@ -1619,7 +1621,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
           </TabPanel>
         </TabPanels>
       </Tabs>
-      <div ref={ref} className={styles.sceneContainer}>
+      <div ref={sceneWrapperRef} className={styles.sceneContainer}>
         <div ref={threeDomCbRef}></div>
       </div>
     </>

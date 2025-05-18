@@ -239,6 +239,14 @@ textarea.error {
   position: relative;
   height: 100%;
   background: #222;
+  /**
+   * This is required to make the scene canvas component full height of its
+    * container. This apparently forces the vertical grid of the scene controls
+    * and the scene to not overflow the grid - apparently by default grids
+    * cells are never smaller than their contents, even with overflow:hidden
+    * set.
+    */
+  overflow: hidden;
 }
 
 .playPause {

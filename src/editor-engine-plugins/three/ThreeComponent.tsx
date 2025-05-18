@@ -345,6 +345,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   takeScreenshotRef,
   setLoadingMsg,
 }) => {
+  console.log({ sRGBEncoding });
   const sceneBg = sceneConfig.bg as BackgroundKey;
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
   const shadersUpdated = useRef<boolean>(false);

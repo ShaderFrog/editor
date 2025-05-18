@@ -36,7 +36,7 @@ import {
   SphereGeometry,
   SpotLight,
   SpotLightHelper,
-  sRGBEncoding,
+  // sRGBEncoding,
   Texture,
   TextureLoader,
   TorusKnotGeometry,
@@ -284,10 +284,10 @@ const repeat = (t: Texture, x: number, y: number) => {
   return t;
 };
 
-const srgb = (t: Texture) => {
-  t.encoding = sRGBEncoding;
-  return t;
-};
+// const srgb = (t: Texture) => {
+//   t.encoding = sRGBEncoding;
+//   return t;
+// };
 
 const unflipY = (t: Texture) => {
   t.flipY = false;
@@ -373,7 +373,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       if (shadersUpdated.current) {
         const gl = renderer.getContext();
 
-        const { programs } = renderer.properties.get(mesh.material);
+        const { programs } = renderer.properties.get(mesh.material) as any;
 
         // These can be null if the scene isn't rendering
         if (programs) {
@@ -576,17 +576,17 @@ const ThreeComponent: React.FC<SceneProps> = ({
         texture.repeat.set(1, 1);
       }
 
-      if (properties.encoding === THREE_IMAGE_ENCODINGS.SRGB) {
-        texture.encoding = sRGBEncoding;
-      } else {
-        const { assetId } = value;
-        if (assetId !== undefined && assetId in assets) {
-          const { subtype } = assets[assetId];
-          if (subtype === 'Diffuse') {
-            texture.encoding = sRGBEncoding;
-          }
-        }
-      }
+      // if (properties.encoding === THREE_IMAGE_ENCODINGS.SRGB) {
+      //   texture.encoding = sRGBEncoding;
+      // } else {
+      //   const { assetId } = value;
+      //   if (assetId !== undefined && assetId in assets) {
+      //     const { subtype } = assets[assetId];
+      //     if (subtype === 'Diffuse') {
+      //       texture.encoding = sRGBEncoding;
+      //     }
+      //   }
+      // }
       texture.anisotropy = properties.anisotropy || 16;
 
       (texture as any).__properties = properties;

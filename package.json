@@ -23,7 +23,7 @@
     "@shaderfrog/glsl-parser": "^6.0.0-beta.9",
     "@svgr/webpack": "^8.1.0",
     "@types/lodash.groupby": "^4.6.7",
-    "@types/three": "^0.169.0",
+    "@types/three": "^0.177.0",
     "@xyflow/react": "^12.3.2",
     "babylonjs": "^6.22.0",
     "classnames": ">=2.3.1",
@@ -36,7 +36,7 @@
     "react-arborist": "^3.4.0",
     "react-hotkeys-hook": "^4.4.4",
     "swr": "^2.2.5",
-    "three": "^0.169.0"
+    "three": "^0.177.0"
   },
   "devDependencies": {
     "@babel/core": "^7.15.5",

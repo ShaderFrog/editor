@@ -10,7 +10,6 @@ import {
   WebGLRenderer,
   PerspectiveCamera,
   LinearMipmapLinearFilter,
-  sRGBEncoding,
   LinearToneMapping,
 } from 'three';
 
@@ -54,7 +53,6 @@ export const useThree = (callback: Callback, isPaused = false) => {
 
       // https://www.donmccurdy.com/2020/06/17/color-management-in-threejs/
       const renderer = new WebGLRenderer({ antialias: true });
-      renderer.outputEncoding = sRGBEncoding;
       renderer.toneMapping = LinearToneMapping;
 
       return {
@@ -116,7 +114,10 @@ export const useThree = (callback: Callback, isPaused = false) => {
 
   useEffect(() => {
     if (!controlsRef.current) {
-      const controls = new OrbitControls(camera, renderer.domElement);
+      const controls = new OrbitControls(
+        camera,
+        renderer.domElement as unknown as HTMLElement
+      );
       controls.update();
       controlsRef.current = controls;
     }

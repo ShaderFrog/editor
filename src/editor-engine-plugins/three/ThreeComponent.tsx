@@ -35,7 +35,6 @@ import {
   SphereGeometry,
   SpotLight,
   SpotLightHelper,
-  sRGBEncoding,
   Texture,
   TextureLoader,
   TorusKnotGeometry,
@@ -93,10 +92,6 @@ import {
   DropdownHeader,
 } from '@editor-components//Dropdown';
 import { useTexture } from './useTexture';
-
-export const THREE_IMAGE_ENCODINGS = {
-  SRGB: 'srgb',
-} as const;
 
 const cx = classnames.bind(styles);
 
@@ -283,11 +278,6 @@ const repeat = (t: Texture, x: number, y: number) => {
   return t;
 };
 
-const srgb = (t: Texture) => {
-  t.encoding = sRGBEncoding;
-  return t;
-};
-
 const unflipY = (t: Texture) => {
   t.flipY = false;
   return t;
@@ -345,7 +335,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
   takeScreenshotRef,
   setLoadingMsg,
 }) => {
-  console.log({ sRGBEncoding });
   const sceneBg = sceneConfig.bg as BackgroundKey;
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
   const shadersUpdated = useRef<boolean>(false);
@@ -368,7 +357,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       if (shadersUpdated.current) {
         const gl = renderer.getContext();
 
-        const { programs } = renderer.properties.get(mesh.material);
+        const { programs } = renderer.properties.get(mesh.material) as any;
 
         // These can be null if the scene isn't rendering
         if (programs) {
@@ -571,17 +560,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
         texture.repeat.set(1, 1);
       }
 
-      if (properties.encoding === THREE_IMAGE_ENCODINGS.SRGB) {
-        texture.encoding = sRGBEncoding;
-      } else {
-        const { assetId } = value;
-        if (assetId !== undefined && assetId in assets) {
-          const { subtype } = assets[assetId];
-          if (subtype === 'Diffuse') {
-            texture.encoding = sRGBEncoding;
-          }
-        }
-      }
       texture.anisotropy = properties.anisotropy || 16;
 
       (texture as any).__properties = properties;
@@ -589,7 +567,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
       return texture;
     },
-    [loadTexture, assets]
+    [loadTexture]
   );
 
   const previousSceneConfig = usePrevious(sceneConfig);

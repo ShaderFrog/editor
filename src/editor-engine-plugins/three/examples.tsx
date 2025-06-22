@@ -699,6 +699,7 @@ export const makeExampleGraph = (example: string): [Graph, AnySceneConfig] => {
     previewObject,
     doubleSide: false,
     transparent: true,
+    toneMapping: 'ACESFilmicToneMapping',
   };
   return [newGraph, defaultSceneConfig];
 };

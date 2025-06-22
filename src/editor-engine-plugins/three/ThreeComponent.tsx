@@ -154,6 +154,7 @@ export type SceneConfig = {
   cylinderResolution: [number, number];
   lightIntensity: number;
   backgroundBlur: number;
+  toneMapping?: string | null;
 };
 
 const maxResolution = 10000;
@@ -724,7 +725,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   ]);
 
   useEffect(() => {
-    const toneMapping = sceneConfig.toneMapping;
+    const toneMapping = sceneConfig.toneMapping || 'ACESFilmicToneMapping';
     if (toneMapping === 'NoToneMapping') {
       renderer.toneMapping = NoToneMapping;
     } else if (toneMapping === 'LinearToneMapping') {

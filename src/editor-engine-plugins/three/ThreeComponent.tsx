@@ -1142,6 +1142,25 @@ const ThreeComponent: React.FC<SceneProps> = ({
     }
   }, [sceneWrapperSize, ctx.runtime]);
 
+  useEffect(() => {
+    if (
+      ctx.runtime?.camera &&
+      sceneConfig.screenshot?.angle &&
+      sceneConfig.screenshot?.distance !== undefined
+    ) {
+      const { camera } = ctx.runtime;
+      const viewAngle = sceneConfig.screenshot.angle;
+      const dist = sceneConfig.screenshot.distance;
+      if (SceneAngleVectors[viewAngle]) {
+        const pos = SceneAngleVectors[viewAngle](dist);
+        camera.position.copy(pos);
+        camera.lookAt(new Vector3(0, 0, 0));
+      }
+    }
+    // We only want to run this when the context (runtime) is first initialized
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx.runtime]);
+
   const [editorTabIndex, setEditorTabIndex] = useState(0);
 
   const resolutionConfig = resolutionConfigMapping[sceneConfig.previewObject];

@@ -8,6 +8,9 @@ import { computeGrindex, SourceNode } from '@core';
 import { FlowNodeSourceData } from './flow/flow-types';
 import { useEditorStore } from './flow/editor-store';
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCamera } from '@fortawesome/free-solid-svg-icons';
+
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
 
@@ -17,12 +20,14 @@ const MetadataEditor = ({
   onDeleteShader,
   takeScreenshot,
   screenshotData,
+  onClose,
 }: {
   isOwnShader?: boolean;
   onDeleteShader?: (shaderId: string) => Promise<void>;
   isDeleting?: boolean;
   takeScreenshot: () => void;
   screenshotData?: string;
+  onClose?: () => void;
 }) => {
   const { shader, graph, setGraph, flowNodes, setShader } = useEditorStore();
   const { getNode } = useReactFlow();
@@ -104,20 +109,25 @@ const MetadataEditor = ({
     <div className="grid col2 gap50">
       <div>
         <h2 className={cx(styles.uiHeader)}>Screenshot</h2>
-        <div className={styles.fullScreenshot}>
+        <div
+          className={cx(styles.fullScreenshot, styles.screenshotContainer)}
+          style={{ position: 'relative', cursor: 'pointer' }}
+          onClick={(e) => {
+            e.preventDefault();
+            (takeScreenshot as any).triggerScreenshotMode();
+            if (onClose) {
+              onClose();
+            }
+          }}
+        >
           {screenshotData && (
             <img src={screenshotData} alt={`${shader.name} screenshot`} />
           )}
+          <div className={styles.screenshotOverlay}>
+            <FontAwesomeIcon icon={faCamera} size="3x" />
+            <div className="m-top-10">Modify Screenshot</div>
+          </div>
         </div>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            takeScreenshot();
-          }}
-          className="buttonauto formbutton size2 m-top-15 centered center"
-        >
-          Update Screenshot
-        </button>
       </div>
       <div>
         <h2 className={styles.uiHeader}>Shader Name</h2>

@@ -799,7 +799,7 @@ const SourceNodeComponent = memo(
           }),
         offset,
       ];
-    }, [data.inputs, data.display]);
+    }, [data.inputs, data.display, data.engine]);
 
     return (
       <FlowWrap

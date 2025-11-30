@@ -141,6 +141,10 @@ interface EditorState {
   setShader: (shader: Shader) => void;
   sceneConfig: AnySceneConfig;
   setSceneConfig: (sceneConfig: AnySceneConfig) => void;
+  screenshotAngle?: string;
+  setScreenshotAngle: (angle: string) => void;
+  screenshotTime?: number;
+  setScreenshotTime: (time: number) => void;
   graph: Graph;
   setGraph: (graphOrUpdater: Graph | ((prevGraph: Graph) => Graph)) => void;
   updateGraphNode: (nodeId: string, data: Partial<GraphNode>) => void;
@@ -282,6 +286,10 @@ const createEditorStore = (
     // Shader and core editor
     setShader: (shader) => set(() => ({ shader })),
     setSceneConfig: (sceneConfig) => set(() => ({ sceneConfig })),
+    screenshotAngle: undefined,
+    setScreenshotAngle: (screenshotAngle) => set(() => ({ screenshotAngle })),
+    screenshotTime: undefined,
+    setScreenshotTime: (screenshotTime) => set(() => ({ screenshotTime })),
     setGraph: (graphOrUpdater) =>
       set((state) => {
         if (typeof graphOrUpdater === 'function') {

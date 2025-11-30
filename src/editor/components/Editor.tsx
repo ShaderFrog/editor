@@ -245,6 +245,11 @@ const Editor = ({
     const data = await takeScreenshotRef.current();
     setScreenshotData(data);
   }, []);
+  (takeScreenshot as any).triggerScreenshotMode = () => {
+    if (takeScreenshotRef.current) {
+      (takeScreenshotRef.current as any).triggerScreenshotMode();
+    }
+  };
 
   const updateNodeInternals = useUpdateNodeInternals();
 
@@ -1950,6 +1955,7 @@ const Editor = ({
           height={sceneConfig.height}
           assetPrefix={assetPrefix}
           takeScreenshotRef={takeScreenshotRef}
+          onScreenshotCaptured={setScreenshotData}
         />
       </div>
     </div>
@@ -2028,6 +2034,7 @@ const Editor = ({
               onDeleteShader={onDeleteShader}
               takeScreenshot={takeScreenshot}
               screenshotData={screenshotData}
+              onClose={() => setMetadataOpen(false)}
             />
           </Modal>
         ) : null}

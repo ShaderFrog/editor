@@ -70,10 +70,12 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCamera,
+  faCheck,
   faCube,
   faInfoCircle,
   faPause,
   faPlay,
+  faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 
 import { useThree } from './useThree';
@@ -155,6 +157,11 @@ export type SceneConfig = {
   lightIntensity: number;
   backgroundBlur: number;
   toneMapping?: string | null;
+  screenshot?: {
+    time?: number;
+    angle?: string;
+    distance?: number;
+  };
 };
 
 const maxResolution = 10000;
@@ -273,6 +280,18 @@ export const CameraDistances: Record<string, number> = {
   cone: 0.35,
 };
 
+const ScreenshotGrid = [
+  { label: '↘', value: SceneAngles.TOP_LEFT },
+  { label: '↓', value: SceneAngles.TOP_MIDDLE },
+  { label: '↙', value: SceneAngles.TOP_RIGHT },
+  { label: '→', value: SceneAngles.MIDDLE_LEFT },
+  { label: '•', value: SceneAngles.MIDDLE_MIDDLE },
+  { label: '←', value: SceneAngles.MIDDLE_RIGHT },
+  { label: '↗', value: SceneAngles.BOTTOM_LEFT },
+  { label: '↑', value: SceneAngles.BOTTOM_MIDDLE },
+  { label: '↖', value: SceneAngles.BOTTOM_RIGHT },
+];
+
 const repeat = (t: Texture, x: number, y: number) => {
   t.repeat = new Vector2(x, y);
   t.wrapS = t.wrapT = RepeatWrapping;
@@ -335,6 +354,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   assetPrefix,
   takeScreenshotRef,
   setLoadingMsg,
+  onScreenshotCaptured,
 }) => {
   const sceneBg = sceneConfig.bg as BackgroundKey;
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
@@ -342,6 +362,23 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const sceneWrapper = useRef<HTMLDivElement>(null);
   const sceneWrapperSize = useSize(sceneWrapper);
   const [isPaused, setIsPaused] = useState(false);
+  const [screenshotMode, setScreenshotMode] = useState(false);
+  const [screenshotTime, setScreenshotTime] = useState(
+    sceneConfig.screenshot?.time || 0
+  );
+  const [screenshotAngle, setScreenshotAngle] = useState(
+    sceneConfig.screenshot?.angle || SceneAngles.MIDDLE_MIDDLE
+  );
+  const [screenshotDistance, setScreenshotDistance] = useState(
+    sceneConfig.screenshot?.distance ||
+      5 * CameraDistances[sceneConfig.previewObject]
+  );
+
+  const latestCameraState = useRef<{
+    position: Vector3;
+    target: Vector3;
+  } | null>(null);
+  const restoreCameraRequest = useRef(false);
 
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
 
@@ -352,8 +389,37 @@ const ThreeComponent: React.FC<SceneProps> = ({
         return;
       }
 
-      controls.autoRotate = sceneConfig.autoRotate || false;
-      controls.autoRotateSpeed = sceneConfig.autoRotateSpeed || 0.5;
+      if (restoreCameraRequest.current && latestCameraState.current) {
+        camera.position.copy(latestCameraState.current.position);
+        controls.target.copy(latestCameraState.current.target);
+        controls.update();
+        restoreCameraRequest.current = false;
+      } else if (!screenshotMode) {
+        if (!latestCameraState.current) {
+          latestCameraState.current = {
+            position: new Vector3(),
+            target: new Vector3(),
+          };
+        }
+        latestCameraState.current.position.copy(camera.position);
+        latestCameraState.current.target.copy(controls.target);
+      }
+
+      const effectiveTime = screenshotMode ? screenshotTime : time;
+
+      if (screenshotMode) {
+        const viewAngle = screenshotAngle;
+        const dist = screenshotDistance;
+        const pos = SceneAngleVectors[viewAngle](dist);
+        camera.position.copy(pos);
+        camera.lookAt(new Vector3(0, 0, 0));
+        controls.enabled = false;
+        controls.update();
+      } else {
+        controls.enabled = true;
+        controls.autoRotate = sceneConfig.autoRotate || false;
+        controls.autoRotateSpeed = sceneConfig.autoRotateSpeed || 0.5;
+      }
 
       if (shadersUpdated.current) {
         const gl = renderer.getContext();
@@ -405,20 +471,20 @@ const ThreeComponent: React.FC<SceneProps> = ({
           sceneData.lights.length >= 1
         ) {
           const light = sceneData.lights[0];
-          light.position.x = 1.2 * Math.sin(time * 0.001);
-          light.position.y = 1.2 * Math.cos(time * 0.001);
+          light.position.x = 1.2 * Math.sin(effectiveTime * 0.001);
+          light.position.y = 1.2 * Math.cos(effectiveTime * 0.001);
         } else if (
           sceneConfig.lights === LIGHT_SETTINGS.SPOT &&
           sceneData.lights.length >= 2
         ) {
           const light1 = sceneData.lights[0];
-          light1.position.x = 1.2 * Math.sin(time * 0.001);
-          light1.position.y = 1.2 * Math.cos(time * 0.001);
+          light1.position.x = 1.2 * Math.sin(effectiveTime * 0.001);
+          light1.position.y = 1.2 * Math.cos(effectiveTime * 0.001);
           light1.lookAt(new Vector3(0, 0, 0));
 
           const light2 = sceneData.lights[1];
-          light2.position.x = 1.3 * Math.cos(time * 0.0015);
-          light2.position.y = 1.3 * Math.sin(time * 0.0015);
+          light2.position.x = 1.3 * Math.cos(effectiveTime * 0.0015);
+          light2.position.y = 1.3 * Math.sin(effectiveTime * 0.0015);
           light2.lookAt(new Vector3(0, 0, 0));
 
           if (sceneConfig.showHelpers && sceneData.lights.length >= 2) {
@@ -427,9 +493,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
           }
         } else if (sceneConfig.lights === LIGHT_SETTINGS.THREE_POINT) {
           const group = sceneData.lights[0];
-          group.rotation.x = 1.2 * Math.sin(time * 0.0002);
-          group.rotation.y = 1.2 * Math.cos(time * 0.0002);
-          group.rotation.z = 1.2 * Math.sin((time + Math.PI) * 0.0002);
+          group.rotation.x = 1.2 * Math.sin(effectiveTime * 0.0002);
+          group.rotation.y = 1.2 * Math.cos(effectiveTime * 0.0002);
+          group.rotation.z = 1.2 * Math.sin((effectiveTime + Math.PI) * 0.0002);
         }
       }
 
@@ -469,7 +535,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       // @ts-ignore
       if (mesh.material?.uniforms?.time && !Array.isArray(mesh.material)) {
         // @ts-ignore
-        mesh.material.uniforms.time.value = time * 0.001;
+        mesh.material.uniforms.time.value = effectiveTime * 0.001;
       }
       if (
         // @ts-ignore
@@ -492,7 +558,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
         mesh.material.uniforms.cameraPosition.value = camera.position;
       }
     },
-    isPaused
+    isPaused && !screenshotMode
   );
 
   const setLoading = useCallback(() => {
@@ -782,7 +848,15 @@ const ThreeComponent: React.FC<SceneProps> = ({
   }, [ctx, setCtx, sceneBg, textures]);
 
   takeScreenshotRef.current = useCallback(async () => {
-    const viewAngle = SceneDefaultAngles[sceneConfig.previewObject];
+    const viewAngle = screenshotMode
+      ? screenshotAngle
+      : sceneConfig.screenshot?.angle ||
+        SceneDefaultAngles[sceneConfig.previewObject];
+
+    const dist = screenshotMode
+      ? screenshotDistance
+      : sceneConfig.screenshot?.distance ||
+        5 * CameraDistances[sceneConfig.previewObject];
 
     const screenshotCanvas = document.createElement('canvas');
     const context2d = screenshotCanvas.getContext('2d');
@@ -802,11 +876,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       1000
     );
     scene.add(camera);
-    camera.position.copy(
-      SceneAngleVectors[viewAngle](
-        5 * CameraDistances[sceneConfig.previewObject]
-      )
-    );
+    camera.position.copy(SceneAngleVectors[viewAngle](dist));
     camera.lookAt(new Vector3(0, 0, 0));
 
     // Set the camera position on the running shader
@@ -824,14 +894,46 @@ const ThreeComponent: React.FC<SceneProps> = ({
     const originalSize = new Vector2();
     renderer.getSize(originalSize);
     renderer.setSize(screenshotWidth, screenshotHeight);
+
+    // Set the time if a custom time is set and we're not in screenshot mode
+    // (if we ARE in screenshot mode, the loop is already handling the time)
+    const savedTime = (mesh?.material as any)?.uniforms?.time?.value;
+    if (
+      !screenshotMode &&
+      sceneConfig.screenshot?.time !== undefined &&
+      (mesh?.material as any)?.uniforms?.time
+    ) {
+      (mesh!.material as any).uniforms.time.value =
+        sceneConfig.screenshot.time * 0.001;
+    }
+
     renderer.render(scene, camera);
     const data = renderer.domElement.toDataURL('image/jpeg', 0.9);
+
+    if (savedTime !== undefined && (mesh?.material as any)?.uniforms?.time) {
+      (mesh!.material as any).uniforms.time.value = savedTime;
+    }
+
     // Reset
     renderer.setSize(originalSize.x, originalSize.y);
     scene.remove(camera);
 
     return data;
-  }, [sceneData, sceneConfig.previewObject, renderer, scene]);
+  }, [
+    sceneData,
+    sceneConfig,
+    renderer,
+    scene,
+    screenshotMode,
+    screenshotAngle,
+    screenshotDistance,
+  ]);
+
+  if (takeScreenshotRef.current) {
+    (takeScreenshotRef.current as any).triggerScreenshotMode = () => {
+      setScreenshotMode(true);
+    };
+  }
 
   // The below effect relies on graph, however when the graph changes, it can be
   // from moving nodes or sliding uniform sliders, which should not cause a
@@ -1055,6 +1157,16 @@ const ThreeComponent: React.FC<SceneProps> = ({
             <FontAwesomeIcon icon={faCamera} color="#fff" /> Scene
           </Tab>
           <div className={styles.sceneTabControls}>
+            <button
+              className={styles.playPause}
+              onClick={(e) => {
+                e.preventDefault();
+                setScreenshotMode((p) => !p);
+              }}
+              title="Screenshot Mode"
+            >
+              <FontAwesomeIcon icon={faCamera} />
+            </button>
             <button
               className={styles.playPause}
               onClick={(e) => {
@@ -1601,8 +1713,211 @@ const ThreeComponent: React.FC<SceneProps> = ({
           </TabPanel>
         </TabPanels>
       </Tabs>
-      <div ref={sceneWrapper} className={styles.sceneContainer}>
+      <div
+        ref={sceneWrapper}
+        className={styles.sceneContainer}
+        style={{ position: 'relative' }}
+      >
         <div ref={threeDomCbRef}></div>
+        {screenshotMode && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              zIndex: 10,
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 10,
+                left: 10,
+                right: 10,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                pointerEvents: 'auto',
+              }}
+            >
+              <h3
+                style={{
+                  color: 'white',
+                  margin: 0,
+                  textShadow: '0 1px 2px black',
+                }}
+              >
+                Modify Screenshot
+              </h3>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  className="formbutton"
+                  onClick={async () => {
+                    if (takeScreenshotRef.current) {
+                      setSceneConfig({
+                        ...sceneConfig,
+                        screenshot: {
+                          time: screenshotTime,
+                          angle: screenshotAngle,
+                          distance: screenshotDistance,
+                        },
+                      });
+                      const data = await takeScreenshotRef.current();
+                      if (onScreenshotCaptured) {
+                        onScreenshotCaptured(data);
+                      }
+                      setScreenshotMode(false);
+                    }
+                  }}
+                >
+                  <FontAwesomeIcon icon={faCheck} /> Save
+                </button>
+                <button
+                  className="formbutton secondary"
+                  onClick={() => {
+                    restoreCameraRequest.current = true;
+                    setScreenshotMode(false);
+                    setScreenshotTime(sceneConfig.screenshot?.time || 0);
+                    setScreenshotAngle(
+                      sceneConfig.screenshot?.angle || SceneAngles.MIDDLE_MIDDLE
+                    );
+                    setScreenshotDistance(
+                      sceneConfig.screenshot?.distance ||
+                        5 * CameraDistances[sceneConfig.previewObject]
+                    );
+                  }}
+                >
+                  <FontAwesomeIcon icon={faTrash} /> Cancel
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                width: '100%',
+                background: 'rgba(0, 0, 0, 0.8)',
+                padding: '10px',
+                pointerEvents: 'auto',
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div
+                style={{
+                  flex: 1,
+                  marginRight: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                <div>
+                  <label
+                    style={{
+                      color: 'white',
+                      display: 'block',
+                      marginBottom: 5,
+                    }}
+                  >
+                    Screenshot time
+                  </label>
+                  <input
+                    type="range"
+                    className="range"
+                    min="0"
+                    max="10000"
+                    value={screenshotTime}
+                    onChange={(e) => setScreenshotTime(Number(e.target.value))}
+                    style={{ width: '100%' }}
+                  />
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      color: '#888',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <span>0</span>
+                    <span>500</span>
+                    <span>1000</span>
+                  </div>
+                </div>
+                <div>
+                  <label
+                    style={{
+                      color: 'white',
+                      display: 'block',
+                      marginBottom: 5,
+                    }}
+                  >
+                    Camera Distance
+                  </label>
+                  <input
+                    type="range"
+                    className="range"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={screenshotDistance}
+                    onChange={(e) =>
+                      setScreenshotDistance(Number(e.target.value))
+                    }
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div
+                  style={{
+                    color: 'white',
+                    marginBottom: '5px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  <FontAwesomeIcon icon={faCamera} /> Angle
+                </div>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 30px)',
+                    gap: '0',
+                  }}
+                >
+                  {ScreenshotGrid.map((item) => (
+                    <button
+                      key={item.value}
+                      onClick={() => setScreenshotAngle(item.value)}
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        background:
+                          screenshotAngle === item.value
+                            ? '#f0ad4e'
+                            : '#d8d8d8',
+                        border: '1px solid #999',
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                        padding: 0,
+                        color: 'black',
+                      }}
+                      title={item.value}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

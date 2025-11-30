@@ -41,6 +41,7 @@ export type SceneProps = {
   height: number;
   assetPrefix: string;
   takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
+  onScreenshotCaptured?: (data: string) => void;
 };
 
 /**

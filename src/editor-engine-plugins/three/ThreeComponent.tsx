@@ -1380,7 +1380,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   placeholder="None"
                 >
                   <DropdownHeader>Neutral</DropdownHeader>
-                  <DropdownOption value="none">None</DropdownOption>
+                  <DropdownOption
+                    value="none"
+                    thumbnail="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=="
+                  >
+                    None
+                  </DropdownOption>
                   <DropdownOption
                     value="modelviewer"
                     thumbnail={path('/envmaps/thumbnails/modelviewer.jpg')}

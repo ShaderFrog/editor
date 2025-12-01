@@ -166,6 +166,7 @@ const Editor = ({
   addEngineNode,
   currentUser,
   SocialComponent,
+  initialIsLiked,
 }: EditorProps & EngineProps) => {
   /**
    * React-Flow to Graph data flow
@@ -1959,6 +1960,9 @@ const Editor = ({
           onScreenshotCaptured={setScreenshotData}
           SocialComponent={SocialComponent}
           shader={shader}
+          currentUser={currentUser}
+          isOwnShader={isOwnShader}
+          initialIsLiked={initialIsLiked}
         />
       </div>
     </div>

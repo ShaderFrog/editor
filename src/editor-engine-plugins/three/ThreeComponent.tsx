@@ -358,6 +358,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
   onScreenshotCaptured,
   SocialComponent,
   shader,
+  currentUser,
+  isOwnShader,
+  initialIsLiked,
 }) => {
   const sceneBg = sceneConfig.bg as BackgroundKey;
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
@@ -1740,7 +1743,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
           </TabPanel>
           {SocialComponent && shader && (
             <TabPanel className={cx(styles.sceneControls, 'condensed')}>
-              <SocialComponent shader={shader} />
+              <SocialComponent
+                shader={shader}
+                currentUser={currentUser}
+                isOwnShader={isOwnShader}
+                initialIsLiked={initialIsLiked}
+              />
             </TabPanel>
           )}
         </TabPanels>

@@ -42,8 +42,16 @@ export type SceneProps = {
   assetPrefix: string;
   takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
   onScreenshotCaptured?: (data: string) => void;
-  SocialComponent?: FunctionComponent<{ shader: Shader }>;
+  SocialComponent?: FunctionComponent<{
+    shader: Shader;
+    currentUser?: CurrentUser | null;
+    isOwnShader?: boolean;
+    initialIsLiked?: boolean;
+  }>;
   shader?: Shader;
+  currentUser?: CurrentUser | null;
+  isOwnShader?: boolean;
+  initialIsLiked?: boolean;
 };
 
 /**
@@ -62,7 +70,13 @@ export type EditorProps = {
   onCreateShader?: (shader: ShaderCreateInput) => Promise<void>;
   onUpdateShader?: (shader: ShaderUpdateInput) => Promise<void>;
   currentUser?: CurrentUser | null;
-  SocialComponent?: FunctionComponent<{ shader: Shader }>;
+  initialIsLiked?: boolean;
+  SocialComponent?: FunctionComponent<{
+    shader: Shader;
+    currentUser?: CurrentUser | null;
+    isOwnShader?: boolean;
+    initialIsLiked?: boolean;
+  }>;
 };
 
 /**

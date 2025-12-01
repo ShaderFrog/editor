@@ -165,6 +165,7 @@ const Editor = ({
   sceneComponent: SceneComponent,
   addEngineNode,
   currentUser,
+  SocialComponent,
 }: EditorProps & EngineProps) => {
   /**
    * React-Flow to Graph data flow
@@ -1956,6 +1957,8 @@ const Editor = ({
           assetPrefix={assetPrefix}
           takeScreenshotRef={takeScreenshotRef}
           onScreenshotCaptured={setScreenshotData}
+          SocialComponent={SocialComponent}
+          shader={shader}
         />
       </div>
     </div>

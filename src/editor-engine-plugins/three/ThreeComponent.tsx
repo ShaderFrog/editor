@@ -76,6 +76,7 @@ import {
   faPause,
   faPlay,
   faTrash,
+  faComments,
 } from '@fortawesome/free-solid-svg-icons';
 
 import { useThree } from './useThree';
@@ -355,6 +356,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
   takeScreenshotRef,
   setLoadingMsg,
   onScreenshotCaptured,
+  SocialComponent,
+  shader,
 }) => {
   const sceneBg = sceneConfig.bg as BackgroundKey;
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
@@ -1175,6 +1178,11 @@ const ThreeComponent: React.FC<SceneProps> = ({
           <Tab>
             <FontAwesomeIcon icon={faCamera} color="#fff" /> Scene
           </Tab>
+          {SocialComponent && (
+            <Tab>
+              <FontAwesomeIcon icon={faComments} color="#fff" /> Social
+            </Tab>
+          )}
           <div className={styles.sceneTabControls}>
             <button
               className={styles.playPause}
@@ -1730,6 +1738,11 @@ const ThreeComponent: React.FC<SceneProps> = ({
               </div>
             </div>
           </TabPanel>
+          {SocialComponent && shader && (
+            <TabPanel className={cx(styles.sceneControls, 'condensed')}>
+              <SocialComponent shader={shader} />
+            </TabPanel>
+          )}
         </TabPanels>
       </Tabs>
       <div

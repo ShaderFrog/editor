@@ -58,6 +58,7 @@ import {
   addEdgeAndPruneRestrictions,
   GraphDataType,
   canMapType,
+  filterGraphFromNode,
 } from '@core/graph';
 
 import FlowEditor, { NodeContextActions } from './flow/FlowEditor';
@@ -195,6 +196,7 @@ const Editor = ({
     primarySelectedNodeId,
     setPrimarySelectedNodeId,
     addEditorTab,
+    addButDontSelectEditorTab,
     removeEditorTabByNodeIds,
     setSceneDimensions,
     compileInfo,
@@ -272,6 +274,62 @@ const Editor = ({
   const [guiError, setGuiError] = useState<string>('');
 
   const [replacingNode, setReplacingNode] = useState<FlowNode | null>(null);
+  const hasInitialized = useRef(false);
+
+  /**
+   * Initialize editor: Open GLSL tab and first non-engine source node
+   */
+  useEffect(() => {
+    // Only run once on mount
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    // Set editor to GLSL tab (index 1)
+    setEditorTabIndex(1);
+
+    // Find the output node
+    const outputNode = graph.nodes.find(
+      (node) => node.type === 'output' && node.stage === 'fragment'
+    ) as SourceNode;
+
+    if (outputNode) {
+      // Find the first non-engine source node connected to the output
+      let foundFragment: GraphNode | null = null;
+      let foundVertex: GraphNode | null = null;
+
+      filterGraphFromNode(graph, outputNode, {
+        node: (node) => {
+          if (foundFragment && foundVertex) return false;
+
+          // Check if this is a source node (not data node) and not an engine node
+          const isSource = node.type === 'source';
+          const isEngine = 'engine' in node && node.engine;
+
+          if (isSource && !isEngine) {
+            if (node.stage === 'fragment') {
+              foundFragment = node;
+            } else if (node.stage === 'vertex') {
+              foundVertex = node;
+            }
+          }
+
+          return false;
+        },
+      });
+
+      if (foundFragment) {
+        addEditorTab((foundFragment as SourceNode).id, 'code');
+      }
+      if (foundVertex) {
+        if (foundFragment) {
+          addButDontSelectEditorTab((foundVertex as SourceNode).id, 'code');
+        } else {
+          addEditorTab((foundVertex as SourceNode).id, 'code');
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * Auto-screenshot logic
@@ -719,7 +777,7 @@ const Editor = ({
   const openNodeEditor = useCallback(
     (nodeId: string) => {
       const active = graph.nodes.find((n) => n.id === nodeId) as SourceNode;
-      addEditorTab(active.id, 'code');
+      addButDontSelectEditorTab(active.id, 'code');
       addSelectedNodes([active.id]);
 
       setEditorTabIndex(1);

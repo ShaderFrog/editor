@@ -184,6 +184,7 @@ interface EditorState {
 
   glslEditorTabs: (PaneState | SplitPaneState)[];
   addEditorTab: (nodeId: string, type: PaneType) => void;
+  addButDontSelectEditorTab: (nodeId: string, type: PaneType) => void;
   removeEditorTabByNodeIds: (nodeIds: Set<string>) => void;
   removeEditorTabPaneId: (paneId: string) => void;
 
@@ -363,6 +364,17 @@ const createEditorStore = (
             glslEditorActivePaneId: id,
           };
         }
+      }),
+    addButDontSelectEditorTab: (nodeId, type) =>
+      set(({ glslEditorTabs }) => {
+        const id = makeId();
+        return {
+          glslEditorTabs: glslEditorTabs.concat({
+            type: 'pane',
+            id,
+            contents: { type, nodeId },
+          }),
+        };
       }),
     removeEditorTabByNodeIds: (nodeIds) =>
       set(({ glslEditorTabs, glslEditorActivePaneId }) => {

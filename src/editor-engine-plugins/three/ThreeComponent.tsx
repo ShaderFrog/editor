@@ -1167,7 +1167,20 @@ const ThreeComponent: React.FC<SceneProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx.runtime]);
 
-  const [editorTabIndex, setEditorTabIndex] = useState(0);
+  // Check URL parameter for initial tab selection
+  const getInitialTabIndex = () => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const sceneTab = params.get('scenetab');
+
+      if (sceneTab === 'social' && SocialComponent && shader) {
+        return 2;
+      }
+    }
+    return 0;
+  };
+
+  const [editorTabIndex, setEditorTabIndex] = useState(getInitialTabIndex);
 
   const resolutionConfig = resolutionConfigMapping[sceneConfig.previewObject];
 

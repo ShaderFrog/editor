@@ -271,8 +271,14 @@ const GlslEditor = ({
   return (
     <SplitPane split="vertical" defaultSizes={[0.2]} minSize={200}>
       <div className={styles.treePanel}>
-        <FileTree data={treeNodes} selection={selectedTreeId} />
-        <FileTree data={finalOutput} selection={selectedTreeId} />
+        <div className={styles.labeledSection}>
+          <h3>Module Browser</h3>
+          <FileTree data={treeNodes} selection={selectedTreeId} />
+        </div>
+        <div className={styles.labeledSection}>
+          <h3>Compiled GLSL</h3>
+          <FileTree data={finalOutput} selection={selectedTreeId} />
+        </div>
       </div>
       <div className="wFull relative">
         {/* Monaco split */}

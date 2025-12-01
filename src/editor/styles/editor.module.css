@@ -295,6 +295,20 @@ textarea.error {
   overflow: scroll;
 }
 
+.labeledSection {
+  background: #2a2a2a;
+  padding: 6px 10px;
+  border-radius: 6px;
+  position: relative;
+  margin: 10px 0 0;
+}
+.labeledSection h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #999;
+  font-weight: bold;
+}
+
 .colcolauto {
   display: grid;
   grid-template-columns: repeat(2, minmax(auto, 200px)) 1fr;
@@ -826,6 +840,9 @@ textarea.error {
   color: #fff;
 }
 
+.treePanel div[role='treeitem'] {
+  padding: 2px 0px;
+}
 [role='treeitem']:has(> .treeErrored) {
   color: rgb(255, 194, 194) !important;
   background: rgba(255, 0, 0, 0.2) !important;

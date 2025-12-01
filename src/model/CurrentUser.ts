@@ -10,4 +10,5 @@ export type CurrentUser = {
   roles: string[];
   createdAt: Date;
   updatedAt: Date;
+  allowMarketingEmails?: boolean;
 };

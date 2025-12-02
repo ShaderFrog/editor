@@ -59,6 +59,7 @@ import {
   GraphDataType,
   canMapType,
   filterGraphFromNode,
+  findLinkedNode,
 } from '@core/graph';
 
 import FlowEditor, { NodeContextActions } from './flow/FlowEditor';
@@ -295,11 +296,10 @@ const Editor = ({
     if (outputNode) {
       // Find the first non-engine source node connected to the output
       let foundFragment: GraphNode | null = null;
-      let foundVertex: GraphNode | null = null;
 
       filterGraphFromNode(graph, outputNode, {
         node: (node) => {
-          if (foundFragment && foundVertex) return false;
+          if (foundFragment) return false;
 
           // Check if this is a source node (not data node) and not an engine node
           const isSource = node.type === 'source';
@@ -308,8 +308,6 @@ const Editor = ({
           if (isSource && !isEngine) {
             if (node.stage === 'fragment') {
               foundFragment = node;
-            } else if (node.stage === 'vertex') {
-              foundVertex = node;
             }
           }
 
@@ -319,12 +317,13 @@ const Editor = ({
 
       if (foundFragment) {
         addEditorTab((foundFragment as SourceNode).id, 'code');
-      }
-      if (foundVertex) {
-        if (foundFragment) {
+
+        const foundVertex = findLinkedNode(
+          graph,
+          (foundFragment as SourceNode).id
+        );
+        if (foundVertex) {
           addButDontSelectEditorTab((foundVertex as SourceNode).id, 'code');
-        } else {
-          addEditorTab((foundVertex as SourceNode).id, 'code');
         }
       }
     }

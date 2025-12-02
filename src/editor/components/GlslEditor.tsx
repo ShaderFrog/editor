@@ -386,7 +386,11 @@ const GlslEditor = ({
                     />
                   </div>
                 );
-              } else if (pane.contents?.type === 'code' && primaryNode) {
+              } else if (
+                pane.contents?.type === 'code' &&
+                primaryNode &&
+                engineContext?.nodes
+              ) {
                 const readOnly = isReadOnly(primaryNode);
                 tabContents = (
                   <CodeEditor

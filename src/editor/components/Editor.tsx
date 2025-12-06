@@ -781,7 +781,7 @@ const Editor = ({
 
       setEditorTabIndex(1);
     },
-    [addSelectedNodes, graph, addEditorTab]
+    [addSelectedNodes, graph, addButDontSelectEditorTab]
   );
 
   const onNodeDoubleClick = useCallback(

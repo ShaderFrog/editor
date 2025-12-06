@@ -69,5 +69,11 @@ export type ShaderUpdateInput = Omit<
 
 export type ShaderCreateInput = Omit<
   Shader,
-  'id' | 'createdAt' | 'updatedAt' | 'user' | 'tags' | 'likeCount' | 'commentCount'
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'user'
+  | 'tags'
+  | 'likeCount'
+  | 'commentCount'
 > & { tags: string[]; imageData: string };

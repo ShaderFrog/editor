@@ -42,6 +42,7 @@ export type Shader = {
   };
   visibility: number;
   likeCount?: number;
+  commentCount?: number;
 };
 
 export type UserShader = {
@@ -63,10 +64,10 @@ export type UserShader = {
 
 export type ShaderUpdateInput = Omit<
   Shader,
-  'createdAt' | 'updatedAt' | 'user' | 'tags' | 'likeCount'
+  'createdAt' | 'updatedAt' | 'user' | 'tags' | 'likeCount' | 'commentCount'
 > & { tags: string[]; imageData?: string; id: string };
 
 export type ShaderCreateInput = Omit<
   Shader,
-  'id' | 'createdAt' | 'updatedAt' | 'user' | 'tags' | 'likeCount'
+  'id' | 'createdAt' | 'updatedAt' | 'user' | 'tags' | 'likeCount' | 'commentCount'
 > & { tags: string[]; imageData: string };

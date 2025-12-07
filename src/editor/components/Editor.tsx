@@ -122,7 +122,7 @@ import {
 import EffectSearch from './EffectSearch';
 import ShaderPreview from './ShaderPreview';
 import TextureBrowser from './TextureBrowser';
-import { Shader } from '@editor/model/Shader';
+import { Shader, SHADER_VISIBILITY } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
 import {
   EDITOR_BOTTOM_PANEL,
@@ -206,6 +206,7 @@ const Editor = ({
     setSceneConfig,
     // Shader
     shader,
+    setShader,
     // Graph
     graph,
     setGraph,
@@ -1757,7 +1758,7 @@ const Editor = ({
         name: shader.name,
         tags: [],
         description: shader.description,
-        visibility: shader.visibility || 1,
+        visibility: shader.visibility ?? SHADER_VISIBILITY.PUBLIC,
         imageData: screenshotData,
         config: {
           graph: updateGraphFromFlowGraph(graph, {
@@ -2037,6 +2038,34 @@ const Editor = ({
         >
           Import&hellip;
         </button>
+      ) : null}
+      {isAuthenticated ? (
+        <select
+          className="buttonauto formbutton size2 secondary m-right-5"
+          value={shader.visibility ?? SHADER_VISIBILITY.PUBLIC}
+          onChange={(e) => {
+            const newVisibility = parseInt(e.target.value, 10);
+            setShader({
+              ...shader,
+              visibility: newVisibility,
+            });
+          }}
+          style={{
+            appearance: 'auto',
+            padding: '6px 12px',
+            fontSize: '14px',
+            lineHeight: '1.5',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '4px',
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            color: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          <option value={SHADER_VISIBILITY.PUBLIC}>Public</option>
+          <option value={SHADER_VISIBILITY.UNLISTED}>Unlisted</option>
+          <option value={SHADER_VISIBILITY.PRIVTE}>Private</option>
+        </select>
       ) : null}
       {!shader.id || !isOwnShader ? null : (
         <button

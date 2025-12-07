@@ -1,5 +1,5 @@
 import randomShaderName from '@editor/util/randomShaderName';
-import { CurrentUser, Shader } from '../model';
+import { CurrentUser, Shader, SHADER_VISIBILITY } from '../model';
 import { ClientApi } from './ClientApi';
 import { API } from './api';
 import { outputNode } from '@core/graph';
@@ -43,7 +43,7 @@ export const stubDefaultShader = (engine: Shader['engine']): Shader => ({
   updatedAt: new Date(),
   engine,
   name: randomShaderName(),
-  visibility: 0,
+  visibility: SHADER_VISIBILITY.PUBLIC,
   tags: [],
   config: {
     graph: {

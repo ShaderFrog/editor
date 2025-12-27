@@ -94,7 +94,12 @@ import {
   DropdownOption,
   DropdownHeader,
 } from '@editor-components//Dropdown';
-import { useTexture } from './useTexture';
+import {
+  // loadCubeMap,
+  useTextures,
+  applyNodeProperties,
+  textureCacheKey,
+} from './useTextures';
 
 const cx = classnames.bind(styles);
 
@@ -514,11 +519,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
           grindex,
           compileResult.dataInputs,
           (node) => {
-            if (node.type === 'texture') {
-              return getAndUpdateTexture(node as TextureNode);
-            } else {
-              return textures[(node as SamplerCubeNode).value];
-            }
+            // if (node.type === 'texture') {
+            return getOrLoadAsset(assets, {
+              assetId: (node as TextureNode).value?.assetId as number,
+              versionId: (node as TextureNode).value?.versionId as number,
+            });
+            // } else {
+            //   return textures[(node as SamplerCubeNode).value];
+            // }
           }
         );
 
@@ -573,75 +581,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const setLoaded = useCallback(() => {
     setLoadingMsg('');
   }, [setLoadingMsg]);
-  const [textures] = useTexture(renderer, sceneBg, path, setLoading, setLoaded);
-
   const { assets } = useAssetsAndGroups();
-  const textureCacheKey = (value: TextureNodeValueData) =>
-    `${value.assetId}-${value.versionId}`;
-  const textureCache = useRef<Record<string, Texture>>({});
-  const loadTexture = useCallback(
-    (value: TextureNodeValueData) => {
-      if (!textureCache.current) {
-        return;
-      }
-      if (typeof value !== 'object') {
-        return;
-      }
-      const key = textureCacheKey(value);
-      if (textureCache.current[key]) {
-        return textureCache.current[key];
-      }
-      const { assetId, versionId } = value;
-      if (assetId !== undefined && assetId in assets) {
-        const { versions } = assets[assetId];
-        const { url } = versions.find((v) => v.id === versionId) || {};
-        if (!url) {
-          return;
-        }
-        const tl = new TextureLoader();
-        const texture = tl.load(url);
-        textureCache.current[key] = texture;
-        return texture;
-      }
-    },
-    [assets, textureCache]
-  );
-
-  const getAndUpdateTexture = useCallback(
-    (node: TextureNode) => {
-      const value = node.value as TextureNodeValueData;
-      if (!value || !value.assetId || !value.versionId) {
-        return;
-      }
-      const properties = value.properties;
-      const texture = loadTexture(value as TextureNodeValueData);
-      if (!texture) {
-        return;
-      }
-      if (!properties || (texture as any).__properties === properties) {
-        return texture;
-      }
-
-      if (properties?.repeatTexure || !properties) {
-        texture.wrapS = texture.wrapT = RepeatWrapping;
-        texture.repeat.set(
-          properties.repeat?.x || 1,
-          properties.repeat?.y || 1
-        );
-      } else {
-        texture.wrapS = texture.wrapT = ClampToEdgeWrapping;
-        texture.repeat.set(1, 1);
-      }
-
-      texture.anisotropy = properties.anisotropy || 16;
-
-      (texture as any).__properties = properties;
-      texture.needsUpdate = true;
-
-      return texture;
-    },
-    [loadTexture]
-  );
+  const [textures, getOrLoadAsset] = useTextures(renderer);
 
   const previousSceneConfig = usePrevious(sceneConfig);
   useEffect(() => {
@@ -757,6 +698,18 @@ const ThreeComponent: React.FC<SceneProps> = ({
     scene,
   ]);
 
+  /**
+   * Background image:
+   * - On initial load, we need to delay setCtx() until the background is loaded
+   * - On background change, we need to load the new background and update the
+   *   scene when complete
+   * - On initial load we need to load any envmaps in the scene, and once
+   *   loaded, pass them in as uniforms at runtime
+   *
+   * - Load background (asset + some config)
+   * - Load asset (asset + some config)
+   */
+
   const previousBg = usePrevious(sceneConfig.bg);
   const previousTextures = usePrevious(textures);
   useEffect(() => {
@@ -772,9 +725,25 @@ const ThreeComponent: React.FC<SceneProps> = ({
           0.04
         ).texture;
         scene.environment = scene.background;
+      } else if (sceneConfig.bgAsset) {
+        // Handle asset-based backgrounds
+        const assetId = parseInt(sceneConfig.bg.replace('asset_', ''));
+        if (!isNaN(assetId) && assetId in assets) {
+          const asset = assets[assetId];
+          const version = asset.versions[0];
+          const texture = getOrLoadAsset(assets, {
+            assetId,
+            versionId: version.id,
+          });
+          if (texture) {
+            scene.background = texture;
+            scene.environment = texture;
+          }
+        }
       } else {
-        scene.background = textures[sceneConfig.bg];
-        scene.environment = textures[sceneConfig.bg];
+        console.warn('Unsupported legacy background key', sceneConfig.bg);
+        // scene.background = textures[sceneConfig.bg];
+        // scene.environment = textures[sceneConfig.bg];
       }
 
       (scene as any).backgroundBlurriness = defaultBackgroundBlur(
@@ -787,9 +756,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
   }, [
     sceneConfig,
     textures,
+    assets,
+    // textureCache,
+    renderer,
+    getOrLoadAsset,
     previousTextures,
     previousBg,
-    renderer,
     previousSceneConfig,
     sceneData,
     sceneConfig.previewObject,
@@ -845,7 +817,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       // load, the shader compiles before the envmap is loaded, and then the
       // envmap loads, but the cached shader in threngine doesn't support an
       // envMap, so it's locked out.
-      (!backgroundKeys.has(sceneBg) || textures[sceneBg])
+      (!backgroundKeys.has(sceneBg as any) || textures[sceneBg])
     ) {
       ctx.runtime.loaded = true;
       // Inform parent our context is created
@@ -974,11 +946,17 @@ const ThreeComponent: React.FC<SceneProps> = ({
       grindex,
       compileResult.dataInputs,
       (node) => {
-        if (node.type === 'texture') {
-          return getAndUpdateTexture(node as TextureNode);
-        } else {
-          return textures[(node as SamplerCubeNode).value];
-        }
+        // if (node.type === 'texture') {
+        console.log('texture', node);
+        return getOrLoadAsset(assets, {
+          assetId: (node as TextureNode).value?.assetId as number,
+          versionId: (node as TextureNode).value?.versionId as number,
+        });
+        // } else {
+        //   const val = textures[(node as SamplerCubeNode).value];
+        //   console.log('samplerCube', val, node);
+        //   return textures[(node as SamplerCubeNode).value];
+        // }
       }
     );
 
@@ -1022,12 +1000,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
     mesh.material = material;
     shadersUpdated.current = true;
   }, [
-    loadTexture,
+    getOrLoadAsset,
     sceneConfig,
     compileResult,
     ctx,
     textures,
-    getAndUpdateTexture,
+    assets,
     scene.environment,
   ]);
 
@@ -1625,6 +1603,29 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   >
                     Partly Cloudy
                   </DropdownOption>
+
+                  {(() => {
+                    const cubeMapAssets = Object.values(assets || {}).filter(
+                      (asset) =>
+                        asset &&
+                        (asset.type === 'CubeMap' || asset.type === 'Envmap')
+                    );
+                    if (cubeMapAssets.length === 0) return null;
+                    return (
+                      <>
+                        <DropdownHeader>Assets</DropdownHeader>
+                        {cubeMapAssets.map((asset) => (
+                          <DropdownOption
+                            key={asset.id}
+                            value={`asset_${asset.id}`}
+                            thumbnail={asset.versions[0]?.thumbnail}
+                          >
+                            {asset.name}
+                          </DropdownOption>
+                        ))}
+                      </>
+                    );
+                  })()}
                 </Dropdown>
               </div>
             </div>

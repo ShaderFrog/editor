@@ -1,6 +1,6 @@
 import { ValueOf } from '@editor/util/types';
 
-export const ASSET_TYPES = ['Image'] as const;
+export const ASSET_TYPES = ['Image', 'CubeMap', 'Envmap'] as const;
 export type AssetType = (typeof ASSET_TYPES)[number];
 
 export const ASSET_VISIBILITIES = {

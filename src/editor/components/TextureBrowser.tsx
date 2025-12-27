@@ -33,7 +33,13 @@ const TextureBrowser = ({
 }: {
   onSelect: (a: TextureNodeValueData) => void;
 }) => {
-  const { assets, groups } = useAssetsAndGroups();
+  const assetsAndGroupsData = useAssetsAndGroups();
+  const groups = assetsAndGroupsData?.groups || {};
+  // Filter to only show Image type assets, excluding CubeMap and Envmap
+  const assets = useMemo(() => {
+    const allAssets = assetsAndGroupsData?.assets || {};
+    return Object.values(allAssets).filter((a) => a && a.type === 'Image');
+  }, [assetsAndGroupsData]);
   const assetsByGroupId = useMemo(() => groupBy(assets, 'groupId'), [assets]);
 
   const [showGroups, setShowGroups] = useState(true);

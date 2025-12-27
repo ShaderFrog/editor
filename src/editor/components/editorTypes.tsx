@@ -16,6 +16,7 @@ export type PreviewLight = 'point' | '3point' | 'spot';
 
 export type BaseSceneConfig = {
   bg: string | null;
+  bgAsset: { assetId: number; versionId: number } | null;
   lights: string;
   previewObject: string;
 };

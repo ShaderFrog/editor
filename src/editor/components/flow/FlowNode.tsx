@@ -26,6 +26,7 @@ import { replaceAt } from '@editor/util/replaceAt';
 import { useFlowEditorContext } from '@editor/editor/flowEditorContext';
 import { useFlowGraphContext } from '@editor/editor/flowGraphContext';
 import { useAssetsAndGroups } from '@editor/api';
+import { Dropdown, DropdownOption } from '@editor-components/Dropdown';
 
 import { TextureNodeValueData } from '@core/graph';
 import { randomBetween } from '@core/util/math';
@@ -485,12 +486,6 @@ const NumberEditor = ({
   </>
 );
 
-const samplerCubes: [string, string][] = [
-  ['warehouseEnvTexture', 'Warehouse Env Map'],
-  ['pondCubeMap', 'Pond Cube Map'],
-  ['cubeCamera', 'Cube Camera'],
-];
-
 const TextureEditor = ({
   id,
   data,
@@ -621,32 +616,53 @@ const TextureEditor = ({
   );
 };
 
-const SamplerEditor = ({
+const SamplerCubeEditor = ({
   id,
   data,
-  tex,
   onChange,
 }: {
   id: string;
-  tex: typeof samplerCubes;
   data: FlowNodeDataData;
   onChange: ChangeHandler;
-}) => (
-  <>
-    <select
-      className="nodrag select"
-      style={{ width: 'auto' }}
-      onChange={(e) => onChange(id, e.currentTarget.value)}
-      value={data.value}
-    >
-      {tex.map((t) => (
-        <option key={t[0]} value={t[0]}>
-          {t[1]}
-        </option>
-      ))}
-    </select>
-  </>
-);
+}) => {
+  const { assets } = useAssetsAndGroups() || { assets: {} };
+
+  // Filter assets to only show CubeMap and Envmap types
+  const cubeMapAssets = useMemo(
+    () =>
+      Object.values(assets).filter(
+        (asset) =>
+          asset && (asset.type === 'CubeMap' || asset.type === 'Envmap')
+      ),
+    [assets]
+  );
+
+  return (
+    <>
+      <Dropdown
+        value={data.value || ''}
+        onChange={(assetId) =>
+          onChange(id, {
+            assetId: parseInt(assetId),
+            versionId: assets[assetId].versions[0]?.id,
+          })
+        }
+        placeholder="Select cubemap/envmap"
+        className="nodrag"
+      >
+        {cubeMapAssets.map((asset) => (
+          <DropdownOption
+            key={asset.id}
+            value={String(asset.id)}
+            thumbnail={asset.versions[0]?.thumbnail}
+          >
+            {asset.name}
+          </DropdownOption>
+        ))}
+      </Dropdown>
+    </>
+  );
+};
 
 const DataNodeComponent = memo(
   ({
@@ -708,12 +724,7 @@ const DataNodeComponent = memo(
             ) : data.dataType === 'texture' ? (
               <TextureEditor id={id} data={data} onChange={onChange} />
             ) : data.dataType === 'samplerCube' ? (
-              <SamplerEditor
-                id={id}
-                data={data}
-                onChange={onChange}
-                tex={samplerCubes}
-              />
+              <SamplerCubeEditor id={id} data={data} onChange={onChange} />
             ) : (
               <div>NOOOOOO FlowNode for {data.dataType}</div>
             )}

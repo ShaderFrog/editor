@@ -14,6 +14,20 @@ export type ShaderUser = {
   isPro: boolean;
 };
 
+export type ShaderConfig = {
+  graph: {
+    nodes: GraphNode[];
+    edges: Edge[];
+  };
+  // Base config
+  scene: {
+    bg: { assetId: number; versionId: number } | string | null;
+    lights: string;
+    previewObject: string;
+    // Support custom engine scene configs
+  } & Record<string, any>;
+};
+
 export type Shader = {
   // Not persisted
   id?: string;
@@ -27,19 +41,7 @@ export type Shader = {
   // Description is not an optional key, but there's a bug in Zod, see note in
   // src/pages/api/shader/index.ts
   description?: string | null;
-  config: {
-    graph: {
-      nodes: GraphNode[];
-      edges: Edge[];
-    };
-    // Base config
-    scene: {
-      bg: string | null;
-      lights: string;
-      previewObject: string;
-      // Support custom engine scene configs
-    } & Record<string, any>;
-  };
+  config: ShaderConfig;
   visibility: number;
   likeCount?: number;
   commentCount?: number;

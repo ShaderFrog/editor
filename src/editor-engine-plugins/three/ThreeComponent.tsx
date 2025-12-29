@@ -15,8 +15,6 @@ import {
   Color,
   ConeGeometry,
   CylinderGeometry,
-  CubeTexture,
-  CubeTextureLoader,
   DoubleSide,
   FrontSide,
   Group,
@@ -36,26 +34,17 @@ import {
   SpotLight,
   SpotLightHelper,
   Texture,
-  TextureLoader,
   TorusKnotGeometry,
   TorusGeometry,
   Vector2,
   Vector3,
-  WebGLRenderer,
-  ClampToEdgeWrapping,
+  ShaderMaterial,
 } from 'three';
 // @ts-ignore
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
 // @ts-ignore
 import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
-import {
-  SamplerCubeNode,
-  TextureNode,
-  TextureNodeValueData,
-  computeGrindex,
-} from '@core/graph';
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
-import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader';
+import { SourceNode, computeGrindex } from '@core/graph';
 import { EngineContext } from '@core/engine';
 import { ThreeRuntime, createMaterial } from '@core/plugins/three/threngine';
 
@@ -94,14 +83,19 @@ import {
   DropdownOption,
   DropdownHeader,
 } from '@editor-components//Dropdown';
-import { useTexture } from './useTexture';
+import {
+  useTextures,
+  applyNodeProperties,
+  textureCacheKey,
+  AssetAndVersion,
+} from './useTextures';
+import { logger } from '@editor/util/log';
 
 const cx = classnames.bind(styles);
 
 export const AUTO_ROTATE_LIMIT = 10;
 
-const log = (...args: any[]) =>
-  console.log.call(console, '\x1b[36m(component)\x1b[0m', ...args);
+const { log, logOnce } = logger('component');
 
 const loadingMaterial = new MeshBasicMaterial({ color: 'pink' });
 
@@ -109,35 +103,6 @@ const defaultLightIntensity = (intensity: number | undefined) =>
   intensity === undefined ? 1.0 : intensity;
 const defaultBackgroundBlur = (blur: number | undefined) =>
   blur === undefined ? 0.0 : blur;
-
-type BackgroundKey =
-  | 'warehouseImage'
-  | 'metroImage'
-  | 'warmRestaurantImage'
-  | 'roglandImage'
-  | 'drachenfelsImage'
-  | 'pondCubeMap'
-  | 'nightSky007Image'
-  | 'nightSky008Image'
-  | 'nightSky014Image'
-  | 'skyImage'
-  | 'rustigImage'
-  | 'kloofendalImage';
-
-const backgroundKeys = new Set<BackgroundKey>([
-  'warehouseImage',
-  'metroImage',
-  'warmRestaurantImage',
-  'roglandImage',
-  'drachenfelsImage',
-  'pondCubeMap',
-  'nightSky007Image',
-  'nightSky008Image',
-  'nightSky014Image',
-  'skyImage',
-  'rustigImage',
-  'kloofendalImage',
-]);
 
 export type SceneConfig = {
   showTangents: boolean;
@@ -293,17 +258,6 @@ const ScreenshotGrid = [
   { label: '↖', value: SceneAngles.BOTTOM_RIGHT },
 ];
 
-const repeat = (t: Texture, x: number, y: number) => {
-  t.repeat = new Vector2(x, y);
-  t.wrapS = t.wrapT = RepeatWrapping;
-  return t;
-};
-
-const unflipY = (t: Texture) => {
-  t.flipY = false;
-  return t;
-};
-
 const VectorEditor = ({
   value,
   labels,
@@ -362,7 +316,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   isOwnShader,
   initialIsLiked,
 }) => {
-  const sceneBg = sceneConfig.bg as BackgroundKey;
+  const sceneBg = sceneConfig.bg;
   const path = useCallback((src: string) => assetPrefix + src, [assetPrefix]);
   const shadersUpdated = useRef<boolean>(false);
   const sceneWrapper = useRef<HTMLDivElement>(null);
@@ -505,6 +459,10 @@ const ThreeComponent: React.FC<SceneProps> = ({
         }
       }
 
+      const material = (
+        Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+      ) as ShaderMaterial;
+
       // Note the uniforms are updated here every frame, but also instantiated
       // in this component at RawShaderMaterial creation time. There might be
       // some logic duplication to worry about.
@@ -514,19 +472,24 @@ const ThreeComponent: React.FC<SceneProps> = ({
           grindex,
           compileResult.dataInputs,
           (node) => {
-            if (node.type === 'texture') {
-              return getAndUpdateTexture(node as TextureNode);
-            } else {
-              return textures[(node as SamplerCubeNode).value];
+            const value = node.value;
+            if (!value?.assetId || !value?.versionId) {
+              return;
             }
+            const texture = getOrLoadAsset(assets, {
+              assetId: value.assetId,
+              versionId: value.versionId,
+            });
+            if (texture && node.type === 'texture') {
+              applyNodeProperties(texture, node);
+            }
+            return texture;
           }
         );
 
         Object.entries(uniforms).forEach(([name, { value }]) => {
-          // @ts-ignore
-          if (name in (mesh.material.uniforms || {})) {
-            // @ts-ignore
-            mesh.material.uniforms[name].value = value;
+          if (name in material.uniforms) {
+            material.uniforms[name].value = value;
           } else {
             console.warn('Unknown uniform', name);
           }
@@ -534,131 +497,85 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
         Object.entries(properties).forEach(([name, value]) => {
           // @ts-ignore
-          mesh.material[name] = value;
+          material[name] = value;
         });
       }
 
-      // @ts-ignore
-      if (mesh.material?.uniforms?.time && !Array.isArray(mesh.material)) {
-        // @ts-ignore
-        mesh.material.uniforms.time.value = effectiveTime * 0.001;
+      if (material.uniforms?.time) {
+        material.uniforms.time.value = effectiveTime * 0.001;
       }
-      if (
-        // @ts-ignore
-        mesh.material?.uniforms?.renderResolution &&
-        !Array.isArray(mesh.material) &&
-        ctx.runtime
-      ) {
-        // @ts-ignore
-        mesh.material.uniforms.renderResolution.value = new Vector2(
+      if (material?.uniforms?.renderResolution && ctx.runtime) {
+        material.uniforms.renderResolution.value = new Vector2(
           ctx.runtime.renderer.domElement.width,
           ctx.runtime.renderer.domElement.height
         );
       }
-      if (
-        // @ts-ignore
-        mesh.material?.uniforms?.cameraPosition &&
-        !Array.isArray(mesh.material)
-      ) {
-        // @ts-ignore
-        mesh.material.uniforms.cameraPosition.value = camera.position;
+      if (material?.uniforms?.cameraPosition) {
+        material.uniforms.cameraPosition.value = camera.position;
       }
     },
     isPaused && !screenshotMode
   );
 
-  const setLoading = useCallback(() => {
-    setLoadingMsg('Loading textures…');
-  }, [setLoadingMsg]);
-  const setLoaded = useCallback(() => {
-    setLoadingMsg('');
-  }, [setLoadingMsg]);
-  const [textures] = useTexture(renderer, sceneBg, path, setLoading, setLoaded);
+  const { assets, groups } = useAssetsAndGroups() || { assets: {}, groups: {} };
+  const [textures, getOrLoadAsset] = useTextures(renderer);
 
-  const { assets } = useAssetsAndGroups();
-  const textureCacheKey = (value: TextureNodeValueData) =>
-    `${value.assetId}-${value.versionId}`;
-  const textureCache = useRef<Record<string, Texture>>({});
-  const loadTexture = useCallback(
-    (value: TextureNodeValueData) => {
-      if (!textureCache.current) {
-        return;
-      }
-      if (typeof value !== 'object') {
-        return;
-      }
-      const key = textureCacheKey(value);
-      if (textureCache.current[key]) {
-        return textureCache.current[key];
-      }
-      const { assetId, versionId } = value;
-      if (assetId !== undefined && assetId in assets) {
-        const { versions } = assets[assetId];
-        const { url } = versions.find((v) => v.id === versionId) || {};
-        if (!url) {
-          return;
+  const cubeMapAssets = useMemo(
+    () =>
+      Object.values(assets).filter(
+        (asset) =>
+          asset && (asset.type === 'CubeMap' || asset.type === 'Envmap')
+      ),
+    [assets]
+  );
+
+  // Group assets by their AssetGroup (only groups with type === 'Environment')
+  const cubeMapAssetsByGroup = useMemo(() => {
+    const backgroundGroups = Object.values(groups).filter(
+      (group) => group.type === 'Environment'
+    );
+
+    const grouped = new Map<number, typeof cubeMapAssets>();
+    const ungrouped: typeof cubeMapAssets = [];
+
+    cubeMapAssets.forEach((asset) => {
+      if (
+        asset.groupId &&
+        backgroundGroups.find((g) => g.id === asset.groupId)
+      ) {
+        if (!grouped.has(asset.groupId)) {
+          grouped.set(asset.groupId, []);
         }
-        const tl = new TextureLoader();
-        const texture = tl.load(url);
-        textureCache.current[key] = texture;
-        return texture;
-      }
-    },
-    [assets, textureCache]
-  );
-
-  const getAndUpdateTexture = useCallback(
-    (node: TextureNode) => {
-      const value = node.value as TextureNodeValueData;
-      if (!value || !value.assetId || !value.versionId) {
-        return;
-      }
-      const properties = value.properties;
-      const texture = loadTexture(value as TextureNodeValueData);
-      if (!texture) {
-        return;
-      }
-      if (!properties || (texture as any).__properties === properties) {
-        return texture;
-      }
-
-      if (properties?.repeatTexure || !properties) {
-        texture.wrapS = texture.wrapT = RepeatWrapping;
-        texture.repeat.set(
-          properties.repeat?.x || 1,
-          properties.repeat?.y || 1
-        );
+        grouped.get(asset.groupId)!.push(asset);
       } else {
-        texture.wrapS = texture.wrapT = ClampToEdgeWrapping;
-        texture.repeat.set(1, 1);
+        ungrouped.push(asset);
       }
+    });
 
-      texture.anisotropy = properties.anisotropy || 16;
+    // Sort groups by name
+    const sortedGroups = backgroundGroups
+      .filter((g) => grouped.has(g.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-      (texture as any).__properties = properties;
-      texture.needsUpdate = true;
-
-      return texture;
-    },
-    [loadTexture]
-  );
+    return { grouped, sortedGroups, ungrouped };
+  }, [cubeMapAssets, groups]);
 
   const previousSceneConfig = usePrevious(sceneConfig);
   useEffect(() => {
     if (
-      previousSceneConfig?.previewObject === sceneConfig.previewObject &&
-      previousSceneConfig?.showNormals === sceneConfig.showNormals &&
-      previousSceneConfig?.showTangents === sceneConfig.showTangents &&
-      previousSceneConfig?.torusResolution === sceneConfig.torusResolution &&
-      previousSceneConfig?.torusKnotResolution ===
-        sceneConfig.torusKnotResolution &&
-      previousSceneConfig?.boxResolution === sceneConfig.boxResolution &&
-      previousSceneConfig?.planeResolution === sceneConfig.planeResolution &&
-      previousSceneConfig?.sphereResolution === sceneConfig.sphereResolution &&
-      previousSceneConfig?.icosahedronResolution ===
-        sceneConfig.icosahedronResolution &&
-      previousSceneConfig?.coneResolution === sceneConfig.coneResolution &&
-      previousSceneConfig?.cylinderResolution === sceneConfig.cylinderResolution
+      [
+        'previewObject',
+        'showNormals',
+        'showTangents',
+        'torusResolution',
+        'torusKnotResolution',
+        'boxResolution',
+        'planeResolution',
+        'sphereResolution',
+        'icosahedronResolution',
+        'coneResolution',
+        'cylinderResolution',
+      ].every((key) => previousSceneConfig?.[key] === sceneConfig[key])
     ) {
       return;
     }
@@ -740,22 +657,15 @@ const ThreeComponent: React.FC<SceneProps> = ({
       const helper = new VertexNormalsHelper(mesh, 0.25, 0x00ffff);
       mesh.add(helper);
     }
-  }, [
-    previousSceneConfig,
-    sceneData,
-    sceneConfig.showTangents,
-    sceneConfig.showNormals,
-    sceneConfig.previewObject,
-    sceneConfig.torusResolution,
-    sceneConfig.torusKnotResolution,
-    sceneConfig.boxResolution,
-    sceneConfig.planeResolution,
-    sceneConfig.sphereResolution,
-    sceneConfig.icosahedronResolution,
-    sceneConfig.coneResolution,
-    sceneConfig.cylinderResolution,
-    scene,
-  ]);
+  }, [previousSceneConfig, sceneData, sceneConfig, scene]);
+
+  const setLoading = useCallback(() => {
+    setLoadingMsg('Loading environment…');
+  }, [setLoadingMsg]);
+
+  const setLoaded = useCallback(() => {
+    setLoadingMsg('');
+  }, [setLoadingMsg]);
 
   const previousBg = usePrevious(sceneConfig.bg);
   const previousTextures = usePrevious(textures);
@@ -772,12 +682,25 @@ const ThreeComponent: React.FC<SceneProps> = ({
           0.04
         ).texture;
         scene.environment = scene.background;
+      } else if (typeof sceneConfig.bg === 'object') {
+        // Handle asset-based backgrounds
+        const { assetId, versionId } = sceneConfig.bg;
+        const texture = getOrLoadAsset(assets, {
+          assetId,
+          versionId,
+        });
+        if (texture) {
+          scene.background = texture;
+          scene.environment = texture;
+          setLoaded();
+        } else {
+          setLoading();
+        }
       } else {
-        scene.background = textures[sceneConfig.bg];
-        scene.environment = textures[sceneConfig.bg];
+        console.warn('Unsupported legacy background key', sceneConfig.bg);
       }
 
-      (scene as any).backgroundBlurriness = defaultBackgroundBlur(
+      scene.backgroundBlurriness = defaultBackgroundBlur(
         sceneConfig.backgroundBlur
       );
     } else {
@@ -787,9 +710,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
   }, [
     sceneConfig,
     textures,
+    assets,
+    setLoading,
+    setLoaded,
+    renderer,
+    getOrLoadAsset,
     previousTextures,
     previousBg,
-    renderer,
     previousSceneConfig,
     sceneData,
     sceneConfig.previewObject,
@@ -845,7 +772,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
       // load, the shader compiles before the envmap is loaded, and then the
       // envmap loads, but the cached shader in threngine doesn't support an
       // envMap, so it's locked out.
-      (!backgroundKeys.has(sceneBg) || textures[sceneBg])
+      ((typeof sceneBg === 'object' &&
+        textures[textureCacheKey(sceneBg as AssetAndVersion)]) ||
+        typeof sceneBg === 'string')
     ) {
       ctx.runtime.loaded = true;
       // Inform parent our context is created
@@ -887,37 +816,37 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     // Set the camera position on the running shader
     const { mesh } = sceneData;
-    if (
-      // @ts-ignore
-      mesh?.material?.uniforms?.cameraPosition &&
-      !Array.isArray(mesh?.material)
-    ) {
-      // @ts-ignore
-      mesh.material.uniforms.cameraPosition.value = camera.position;
+    if (!mesh) {
+      return '';
+    }
+    const material = (
+      Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+    ) as ShaderMaterial;
+
+    if (material.uniforms?.cameraPosition) {
+      material.uniforms.cameraPosition.value = camera.position;
     }
 
-    // Render to specific size
     const originalSize = new Vector2();
     renderer.getSize(originalSize);
     renderer.setSize(screenshotWidth, screenshotHeight);
 
     // Set the time if a custom time is set and we're not in screenshot mode
     // (if we ARE in screenshot mode, the loop is already handling the time)
-    const savedTime = (mesh?.material as any)?.uniforms?.time?.value;
+    const savedTime = material.uniforms?.time?.value;
     if (
       !screenshotMode &&
       sceneConfig.screenshot?.time !== undefined &&
-      (mesh?.material as any)?.uniforms?.time
+      material.uniforms?.time
     ) {
-      (mesh!.material as any).uniforms.time.value =
-        sceneConfig.screenshot.time * 0.001;
+      material.uniforms.time.value = sceneConfig.screenshot.time * 0.001;
     }
 
     renderer.render(scene, camera);
     const data = renderer.domElement.toDataURL('image/jpeg', 0.9);
 
-    if (savedTime !== undefined && (mesh?.material as any)?.uniforms?.time) {
-      (mesh!.material as any).uniforms.time.value = savedTime;
+    if (savedTime !== undefined && material.uniforms?.time) {
+      material.uniforms.time.value = savedTime;
     }
 
     // Reset
@@ -959,10 +888,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
     const graph = graphRef.current;
     const grindex = grindexRef.current;
 
-    // const { graph } = compileResult;
     const {
       sceneData: { mesh },
-      // engineMaterial,
     } = ctx.runtime as ThreeRuntime;
 
     log('oh hai birfday boi boi boiiiii');
@@ -974,11 +901,18 @@ const ThreeComponent: React.FC<SceneProps> = ({
       grindex,
       compileResult.dataInputs,
       (node) => {
-        if (node.type === 'texture') {
-          return getAndUpdateTexture(node as TextureNode);
-        } else {
-          return textures[(node as SamplerCubeNode).value];
+        const value = node.value;
+        if (!value?.assetId || !value?.versionId) {
+          return;
         }
+        const texture = getOrLoadAsset(assets, {
+          assetId: value.assetId,
+          versionId: value.versionId,
+        });
+        if (texture && node.type === 'texture') {
+          applyNodeProperties(texture, node);
+        }
+        return texture;
       }
     );
 
@@ -1000,7 +934,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
     // re-created. I did it here because there's not currently a way to pass the
     // scene config into the core graph for compiling.
     material.wireframe = sceneConfig.wireframe;
-    // @ts-ignore wtf is this "side" type error that's only in public client?
     material.side = sceneConfig.doubleSide ? DoubleSide : FrontSide;
     material.transparent = sceneConfig.transparent;
 
@@ -1022,12 +955,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
     mesh.material = material;
     shadersUpdated.current = true;
   }, [
-    loadTexture,
+    getOrLoadAsset,
     sceneConfig,
     compileResult,
     ctx,
     textures,
-    getAndUpdateTexture,
+    assets,
     scene.environment,
   ]);
 
@@ -1392,7 +1325,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
           <TabPanel className={cx(styles.sceneControls, 'condensed')}>
             {graph.nodes.find(
-              (node) => (node as any).engine === true
+              (node) => (node as SourceNode).engine === true
             ) ? null : (
               <div className="secondary m-top-5 px12">
                 <FontAwesomeIcon icon={faInfoCircle} /> Lights have no effect
@@ -1525,16 +1458,45 @@ const ThreeComponent: React.FC<SceneProps> = ({
               </div>
               <div>
                 <Dropdown
-                  value={sceneConfig.bg || 'none'}
-                  onChange={(value) =>
-                    setSceneConfig({
-                      ...sceneConfig,
-                      bg: value === 'none' ? null : value,
-                    })
-                  }
+                  value={(() => {
+                    const bg = sceneConfig.bg;
+                    if (
+                      typeof bg === 'object' &&
+                      bg !== null &&
+                      'assetId' in bg &&
+                      'versionId' in bg
+                    ) {
+                      return `asset_${bg.assetId}`;
+                    }
+                    return bg || 'none';
+                  })()}
+                  onChange={(value) => {
+                    if (value === 'none') {
+                      setSceneConfig({
+                        ...sceneConfig,
+                        bg: null,
+                      });
+                    } else if (value.startsWith('asset_')) {
+                      const assetId = parseInt(value.replace('asset_', ''));
+                      const asset = assets[assetId];
+                      if (asset && asset.versions[0]) {
+                        setSceneConfig({
+                          ...sceneConfig,
+                          bg: {
+                            assetId,
+                            versionId: asset.versions[0].id,
+                          },
+                        });
+                      }
+                    } else {
+                      setSceneConfig({
+                        ...sceneConfig,
+                        bg: value,
+                      });
+                    }
+                  }}
                   placeholder="None"
                 >
-                  <DropdownHeader>Neutral</DropdownHeader>
                   <DropdownOption
                     value="none"
                     thumbnail="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=="
@@ -1548,83 +1510,41 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     Model Viewer
                   </DropdownOption>
 
-                  <DropdownHeader>Indoor</DropdownHeader>
-                  <DropdownOption
-                    value="warehouseImage"
-                    thumbnail={path('/envmaps/thumbnails/warehouse.jpg')}
-                  >
-                    Warehouse
-                  </DropdownOption>
-                  <DropdownOption
-                    value="metroImage"
-                    thumbnail={path('/envmaps/thumbnails/metro.jpg')}
-                  >
-                    Metro Noord
-                  </DropdownOption>
-                  <DropdownOption
-                    value="warmRestaurantImage"
-                    thumbnail={path('/envmaps/thumbnails/warmrestaraunt.jpg')}
-                  >
-                    Warm Restaurant
-                  </DropdownOption>
-
-                  <DropdownHeader>Outdoor</DropdownHeader>
-                  <DropdownOption
-                    value="roglandImage"
-                    thumbnail={path('/envmaps/thumbnails/roland.jpg')}
-                  >
-                    Rogland Clear Night
-                  </DropdownOption>
-                  <DropdownOption
-                    value="drachenfelsImage"
-                    thumbnail={path('/envmaps/thumbnails/cellar.jpg')}
-                  >
-                    Drachenfels Cellar
-                  </DropdownOption>
-                  <DropdownOption
-                    value="pondCubeMap"
-                    thumbnail={path('/envmaps/thumbnails/pond.jpg')}
-                  >
-                    Pond Cube Map
-                  </DropdownOption>
-
-                  <DropdownHeader>Skies &amp; Space</DropdownHeader>
-                  <DropdownOption
-                    value="nightSky008Image"
-                    thumbnail={path('/envmaps/thumbnails/miklyway.jpg')}
-                  >
-                    Milky Way
-                  </DropdownOption>
-                  <DropdownOption
-                    value="nightSky007Image"
-                    thumbnail={path('/envmaps/thumbnails/aura.jpg')}
-                  >
-                    Aura Space
-                  </DropdownOption>
-                  <DropdownOption
-                    value="nightSky014Image"
-                    thumbnail={path('/envmaps/thumbnails/spacestars.jpg')}
-                  >
-                    Space Stars
-                  </DropdownOption>
-                  <DropdownOption
-                    value="skyImage"
-                    thumbnail={path('/envmaps/thumbnails/sunrise.jpg')}
-                  >
-                    Sunrise
-                  </DropdownOption>
-                  <DropdownOption
-                    value="rustigImage"
-                    thumbnail={path('/envmaps/thumbnails/bluesky.jpg')}
-                  >
-                    Blue Sky
-                  </DropdownOption>
-                  <DropdownOption
-                    value="kloofendalImage"
-                    thumbnail={path('/envmaps/thumbnails/partlycloudy.jpg')}
-                  >
-                    Partly Cloudy
-                  </DropdownOption>
+                  {cubeMapAssetsByGroup.sortedGroups.map((group) => {
+                    const groupAssets = cubeMapAssetsByGroup.grouped.get(
+                      group.id
+                    )!;
+                    return (
+                      <React.Fragment key={group.id}>
+                        <DropdownHeader>{group.name}</DropdownHeader>
+                        {groupAssets.map((asset) => (
+                          <DropdownOption
+                            key={asset.id}
+                            value={`asset_${asset.id}`}
+                            thumbnail={asset.versions[0]?.thumbnail}
+                          >
+                            {asset.name}
+                          </DropdownOption>
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
+                  {cubeMapAssetsByGroup.ungrouped.length > 0 && (
+                    <>
+                      {cubeMapAssetsByGroup.sortedGroups.length > 0 && (
+                        <DropdownHeader>Other</DropdownHeader>
+                      )}
+                      {cubeMapAssetsByGroup.ungrouped.map((asset) => (
+                        <DropdownOption
+                          key={asset.id}
+                          value={`asset_${asset.id}`}
+                          thumbnail={asset.versions[0]?.thumbnail}
+                        >
+                          {asset.name}
+                        </DropdownOption>
+                      ))}
+                    </>
+                  )}
                 </Dropdown>
               </div>
             </div>

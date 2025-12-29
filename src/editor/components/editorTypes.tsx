@@ -15,7 +15,7 @@ import { AddEngineNode } from '../editor-types';
 export type PreviewLight = 'point' | '3point' | 'spot';
 
 export type BaseSceneConfig = {
-  bg: string | null;
+  bg: { assetId: number; versionId: number } | string | null;
   lights: string;
   previewObject: string;
 };

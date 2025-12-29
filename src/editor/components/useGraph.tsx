@@ -19,6 +19,7 @@ import {
   NodeErrors,
   TextureNodeValueData,
   CompileResult,
+  SamplerCubeNodeValueData,
 } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
 
@@ -121,7 +122,7 @@ const expandUniformDataNodes = (graph: Graph): Graph =>
                 makeId(),
                 uniform.name,
                 position,
-                uniform.value as string
+                uniform.value as SamplerCubeNodeValueData
               );
               break;
             }
@@ -299,14 +300,7 @@ gl_Position = vec4(1.0);
       ),
     ];
   } else if (nodeDataType === 'samplerCube') {
-    newGns = [
-      samplerCubeNode(
-        id,
-        makeName('samplerCube'),
-        position,
-        'warehouseEnvTexture'
-      ),
-    ];
+    newGns = [samplerCubeNode(id, makeName('samplerCube'), position)];
   } else {
     throw new Error(
       `Could not create node: Unknown node type "${nodeDataType}'"`

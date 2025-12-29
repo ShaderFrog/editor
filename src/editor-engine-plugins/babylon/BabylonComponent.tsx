@@ -386,9 +386,10 @@ const BabylonComponent: React.FC<SceneProps> = ({
                     );
                     // console.log('setting texture', newValue, 'from', fromNode);
                   }
-                  if (fromNode.type === 'samplerCube') {
-                    newValue = textures[(fromNode as SamplerCubeNode).value];
-                  }
+                  // Broken as of asset migration
+                  // if (fromNode.type === 'samplerCube') {
+                  //   newValue = textures[(fromNode as SamplerCubeNode).value];
+                  // }
 
                   if (input.type === 'property' && input.property) {
                     if (
@@ -469,7 +470,10 @@ const BabylonComponent: React.FC<SceneProps> = ({
     if (sceneConfig.bg === previousBg) {
       return;
     }
-    const newBg = sceneConfig.bg ? textures[sceneConfig.bg] : null;
+    const newBg =
+      sceneConfig.bg && typeof sceneConfig.bg === 'string'
+        ? textures[sceneConfig.bg]
+        : null;
     scene.environmentTexture = newBg;
     if (skybox.current) {
       skybox.current.dispose();
@@ -938,7 +942,11 @@ const BabylonComponent: React.FC<SceneProps> = ({
                   bg: event.target.value === 'none' ? null : event.target.value,
                 });
               }}
-              value={sceneConfig.bg ? sceneConfig.bg : 'none'}
+              value={
+                sceneConfig.bg && typeof sceneConfig.bg === 'string'
+                  ? sceneConfig.bg
+                  : 'none'
+              }
             >
               <option value="none">None</option>
               <option value="warehouseEnvTexture">Warehouse</option>

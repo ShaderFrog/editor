@@ -275,9 +275,10 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
                   newValue = loadTexture(value as TextureNodeValueData);
                 }
               }
-              if (fromNode.type === 'samplerCube') {
-                newValue = textures[(fromNode as SamplerCubeNode).value];
-              }
+              // Broken as of asset migration
+              // if (fromNode.type === 'samplerCube') {
+              //   newValue = textures[(fromNode as SamplerCubeNode).value];
+              // }
 
               if (input.type === 'property' && input.property) {
                 // @ts-ignore
@@ -581,9 +582,10 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
     ) {
       return;
     }
-    const newBg = sceneConfig.bg
-      ? (textures[sceneConfig.bg] as Asset).resources
-      : null;
+    const newBg =
+      sceneConfig.bg && typeof sceneConfig.bg === 'string'
+        ? (textures[sceneConfig.bg] as Asset).resources
+        : null;
     app.scene.setSkybox(newBg as Texture[]);
 
     if (!hasSetctx.current) {
@@ -896,7 +898,11 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
                   bg: event.target.value === 'none' ? null : event.target.value,
                 });
               }}
-              value={sceneConfig.bg ? sceneConfig.bg : 'none'}
+              value={
+                sceneConfig.bg && typeof sceneConfig.bg === 'string'
+                  ? sceneConfig.bg
+                  : 'none'
+              }
             >
               <option value="none">None</option>
               <option value="cityCourtYard">City Court Yard</option>

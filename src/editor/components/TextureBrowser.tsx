@@ -2,7 +2,7 @@ import styles from '../styles/editor.module.css';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import groupBy from 'lodash.groupby';
-import { Asset, AssetSubtype } from '@editor/model/Asset';
+import { Asset, AssetGroup, AssetSubtype } from '@editor/model/Asset';
 import { useAssetsAndGroups } from '@editor/api';
 import { TextureNodeValueData } from '@core/graph';
 import SearchBox from './SearchBox';
@@ -34,7 +34,16 @@ const TextureBrowser = ({
   onSelect: (a: TextureNodeValueData) => void;
 }) => {
   const assetsAndGroupsData = useAssetsAndGroups();
-  const groups = assetsAndGroupsData?.groups || {};
+
+  // Filter out environments from the texture browser
+  const groups = Object.entries(assetsAndGroupsData?.groups || {}).reduce<
+    Record<string, AssetGroup>
+  >(
+    (acc, [id, group]) =>
+      group.type !== 'Environment' ? { ...acc, [id]: group } : acc,
+    {}
+  );
+
   // Filter to only show Image type assets, excluding CubeMap and Envmap
   const assets = useMemo(() => {
     const allAssets = assetsAndGroupsData?.assets || {};

@@ -51,7 +51,7 @@ import {
   SHADERFROG_FLOW_EDGE_TYPE,
   FlowNodeDataData,
 } from './flow-types';
-import { canMapType } from '@/core/graph/data-nodes';
+import { canMapType } from '@core/graph/data-nodes';
 
 // Terrible hack to make the flow graph full height minus the tab height - I
 // need better layoutting of the tabs + graph

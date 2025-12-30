@@ -775,7 +775,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
       ((sceneBg &&
         typeof sceneBg === 'object' &&
         textures[textureCacheKey(sceneBg as AssetAndVersion)]) ||
-        typeof sceneBg === 'string')
+        typeof sceneBg === 'string' ||
+        sceneBg === null)
     ) {
       ctx.runtime.loaded = true;
       // Inform parent our context is created

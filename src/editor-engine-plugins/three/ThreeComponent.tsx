@@ -48,6 +48,9 @@ import { SourceNode, computeGrindex } from '@core/graph';
 import { EngineContext } from '@core/engine';
 import { ThreeRuntime, createMaterial } from '@core/plugins/three/threngine';
 
+// @ts-ignore
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
 import {
   Tabs,
   Tab,
@@ -98,6 +101,19 @@ export const AUTO_ROTATE_LIMIT = 10;
 const { log, logOnce } = logger('component');
 
 const loadingMaterial = new MeshBasicMaterial({ color: 'pink' });
+
+const bunnyModelUrl =
+  'https://d29uqgaj5peif4.cloudfront.net/models/stanford-bunny-uvs.obj';
+
+async function loadModel(): Promise<Object3D | null> {
+  const loader = new OBJLoader();
+  try {
+    return await loader.loadAsync(bunnyModelUrl);
+  } catch (error) {
+    console.error('An error occurred:', error);
+    return null;
+  }
+}
 
 const defaultLightIntensity = (intensity: number | undefined) =>
   intensity === undefined ? 1.0 : intensity;
@@ -334,6 +350,25 @@ const ThreeComponent: React.FC<SceneProps> = ({
       5 * CameraDistances[sceneConfig.previewObject]
   );
 
+  const [bunnyModel, setBunnyModel] = useState<Object3D | null>(null);
+
+  useEffect(() => {
+    if (sceneConfig.previewObject === 'bunny') {
+      setLoadingMsg('Loading model…');
+      loadModel().then((model) => {
+        setLoadingMsg('');
+        if (!model) {
+          return;
+        }
+        const bun = model.children[0];
+        // Approximate centering
+        bun.position.copy(new Vector3(0.3, -0.6, 0.0));
+        bun.scale.copy(new Vector3(1.0, 1.0, 1.0).multiplyScalar(9.0));
+        setBunnyModel(bun);
+      });
+    }
+  }, [sceneConfig.previewObject, setLoadingMsg]);
+
   const latestCameraState = useRef<{
     position: Vector3;
     target: Vector3;
@@ -561,8 +596,10 @@ const ThreeComponent: React.FC<SceneProps> = ({
   }, [cubeMapAssets, groups]);
 
   const previousSceneConfig = usePrevious(sceneConfig);
+  const previousBunnyModel = usePrevious(bunnyModel);
   useEffect(() => {
     if (
+      previousBunnyModel === bunnyModel &&
       [
         'previewObject',
         'showNormals',
@@ -584,65 +621,71 @@ const ThreeComponent: React.FC<SceneProps> = ({
     }
 
     let mesh: Mesh;
-    let geometry: BufferGeometry;
-    if (sceneConfig.previewObject === 'torus') {
-      geometry = new TorusGeometry(
-        0.6,
-        0.25,
-        ...(sceneConfig.torusResolution || defaultResolution.torusResolution)
-      );
-    } else if (sceneConfig.previewObject === 'torusknot') {
-      geometry = new TorusKnotGeometry(
-        0.6,
-        0.25,
-        ...(sceneConfig.torusKnotResolution ||
-          defaultResolution.torusKnotResolution)
-      );
-    } else if (sceneConfig.previewObject === 'cube') {
-      geometry = new BoxGeometry(
-        1,
-        1,
-        1,
-        ...(sceneConfig.boxResolution || defaultResolution.boxResolution)
-      );
-    } else if (sceneConfig.previewObject === 'plane') {
-      geometry = new PlaneGeometry(
-        1,
-        1,
-        ...(sceneConfig.planeResolution || defaultResolution.planeResolution)
-      );
-    } else if (sceneConfig.previewObject === 'sphere') {
-      geometry = new SphereGeometry(
-        1,
-        ...(sceneConfig.sphereResolution || defaultResolution.sphereResolution)
-      );
-    } else if (sceneConfig.previewObject === 'icosahedron') {
-      geometry = new IcosahedronGeometry(
-        1,
-        ...(sceneConfig.icosahedronResolution ||
-          defaultResolution.icosahedronResolution)
-      );
-    } else if (sceneConfig.previewObject === 'cone') {
-      geometry = new ConeGeometry(
-        0.5, // radius
-        1, // height
-        ...(sceneConfig.coneResolution || defaultResolution.coneResolution)
-      );
-    } else if (sceneConfig.previewObject === 'cylinder') {
-      geometry = new CylinderGeometry(
-        0.5, // radiusTop
-        0.5, // radiusBottom
-        1, // height
-        ...(sceneConfig.cylinderResolution ||
-          defaultResolution.cylinderResolution)
-      );
+
+    if (sceneConfig.previewObject === 'bunny') {
+      mesh = (bunnyModel as Mesh) || new Mesh(new SphereGeometry(2, 2, 2));
     } else {
-      throw new Error(
-        `Wtf there is no preview object named ${sceneConfig.previewObject}`
-      );
+      let geometry: BufferGeometry;
+      if (sceneConfig.previewObject === 'torus') {
+        geometry = new TorusGeometry(
+          0.6,
+          0.25,
+          ...(sceneConfig.torusResolution || defaultResolution.torusResolution)
+        );
+      } else if (sceneConfig.previewObject === 'torusknot') {
+        geometry = new TorusKnotGeometry(
+          0.6,
+          0.25,
+          ...(sceneConfig.torusKnotResolution ||
+            defaultResolution.torusKnotResolution)
+        );
+      } else if (sceneConfig.previewObject === 'cube') {
+        geometry = new BoxGeometry(
+          1,
+          1,
+          1,
+          ...(sceneConfig.boxResolution || defaultResolution.boxResolution)
+        );
+      } else if (sceneConfig.previewObject === 'plane') {
+        geometry = new PlaneGeometry(
+          1,
+          1,
+          ...(sceneConfig.planeResolution || defaultResolution.planeResolution)
+        );
+      } else if (sceneConfig.previewObject === 'sphere') {
+        geometry = new SphereGeometry(
+          1,
+          ...(sceneConfig.sphereResolution ||
+            defaultResolution.sphereResolution)
+        );
+      } else if (sceneConfig.previewObject === 'icosahedron') {
+        geometry = new IcosahedronGeometry(
+          1,
+          ...(sceneConfig.icosahedronResolution ||
+            defaultResolution.icosahedronResolution)
+        );
+      } else if (sceneConfig.previewObject === 'cone') {
+        geometry = new ConeGeometry(
+          0.5, // radius
+          1, // height
+          ...(sceneConfig.coneResolution || defaultResolution.coneResolution)
+        );
+      } else if (sceneConfig.previewObject === 'cylinder') {
+        geometry = new CylinderGeometry(
+          0.5, // radiusTop
+          0.5, // radiusBottom
+          1, // height
+          ...(sceneConfig.cylinderResolution ||
+            defaultResolution.cylinderResolution)
+        );
+      } else {
+        throw new Error(
+          `Wtf there is no preview object named ${sceneConfig.previewObject}`
+        );
+      }
+      geometry.computeTangents();
+      mesh = new Mesh(geometry);
     }
-    geometry.computeTangents();
-    mesh = new Mesh(geometry);
     if (sceneData.mesh) {
       mesh.material = sceneData.mesh.material;
     }
@@ -657,15 +700,15 @@ const ThreeComponent: React.FC<SceneProps> = ({
       const helper = new VertexNormalsHelper(mesh, 0.25, 0x00ffff);
       mesh.add(helper);
     }
-  }, [previousSceneConfig, sceneData, sceneConfig, scene]);
-
-  const setLoading = useCallback(() => {
-    setLoadingMsg('Loading environment…');
-  }, [setLoadingMsg]);
-
-  const setLoaded = useCallback(() => {
-    setLoadingMsg('');
-  }, [setLoadingMsg]);
+  }, [
+    previousSceneConfig,
+    sceneData,
+    sceneConfig,
+    scene,
+    bunnyModel,
+    setLoadingMsg,
+    previousBunnyModel,
+  ]);
 
   const previousBg = usePrevious(sceneConfig.bg);
   const previousTextures = usePrevious(textures);
@@ -692,9 +735,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
         if (texture) {
           scene.background = texture;
           scene.environment = texture;
-          setLoaded();
+          setLoadingMsg('');
         } else {
-          setLoading();
+          setLoadingMsg('Loading environment…');
         }
       } else {
         console.warn('Unsupported legacy background key', sceneConfig.bg);
@@ -711,8 +754,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     sceneConfig,
     textures,
     assets,
-    setLoading,
-    setLoaded,
+    setLoadingMsg,
     renderer,
     getOrLoadAsset,
     previousTextures,
@@ -1182,6 +1224,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                   value={sceneConfig.previewObject}
                 >
                   <option value="sphere">Sphere</option>
+                  <option value="bunny">Bunny</option>
                   <option value="cube">Cube</option>
                   <option value="plane">Plane</option>
                   <option value="torus">Torus</option>

@@ -133,7 +133,7 @@ export type SceneConfig = {
   sphereResolution: [number, number];
   icosahedronResolution: [number];
   autoRotate: boolean;
-  autoRotateSpeed: number;
+  autoRotateSpeed: number | null | undefined;
   coneResolution: [number, number];
   cylinderResolution: [number, number];
   lightIntensity: number;

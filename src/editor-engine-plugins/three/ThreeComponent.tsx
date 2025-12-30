@@ -682,7 +682,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
           0.04
         ).texture;
         scene.environment = scene.background;
-      } else if (typeof sceneConfig.bg === 'object') {
+      } else if (sceneConfig.bg && typeof sceneConfig.bg === 'object') {
         // Handle asset-based backgrounds
         const { assetId, versionId } = sceneConfig.bg;
         const texture = getOrLoadAsset(assets, {
@@ -772,7 +772,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
       // load, the shader compiles before the envmap is loaded, and then the
       // envmap loads, but the cached shader in threngine doesn't support an
       // envMap, so it's locked out.
-      ((typeof sceneBg === 'object' &&
+      ((sceneBg &&
+        typeof sceneBg === 'object' &&
         textures[textureCacheKey(sceneBg as AssetAndVersion)]) ||
         typeof sceneBg === 'string')
     ) {

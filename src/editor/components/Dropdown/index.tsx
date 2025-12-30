@@ -47,6 +47,19 @@ export const Dropdown: React.FC<DropdownProps> = ({
         ) {
           content = child.props.children;
         }
+        // If the child is a fragment, search its children the same way
+        if (React.isValidElement(child) && child.type === React.Fragment) {
+          const props = child.props as { children: React.ReactNode };
+          React.Children.forEach(props.children, (child) => {
+            if (
+              React.isValidElement(child) &&
+              'value' in child.props &&
+              child.props.value === value
+            ) {
+              content = child.props.children;
+            }
+          });
+        }
       });
       return content;
     }

@@ -1904,6 +1904,7 @@ const Editor = ({
                 {bottomPanelType === EDITOR_BOTTOM_PANEL.TEXTURE_BROWSER ? (
                   <BottomModal onClose={() => closeEditorBottomPanel()}>
                     <TextureBrowser
+                      currentUser={currentUser ?? null}
                       onSelect={(av) => {
                         if (primarySelectedNode?.type === 'texture') {
                           const sn = primarySelectedNode as TextureNode;

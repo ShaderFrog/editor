@@ -1,11 +1,20 @@
 import styles from '../styles/editor.module.css';
 import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faCloudUpload,
+  faUpRightFromSquare,
+} from '@fortawesome/free-solid-svg-icons';
 
 import groupBy from 'lodash.groupby';
 import { Asset, AssetGroup, AssetSubtype } from '@editor/model/Asset';
 import { useAssetsAndGroups } from '@editor/api';
 import { TextureNodeValueData } from '@core/graph';
 import SearchBox from './SearchBox';
+import ProBadge from './ProBadge/ProBadge';
+import { pathTo } from '@/util/site';
+import { CurrentUser } from '@editor/model/CurrentUser';
 
 export const assetSortOrder: Record<AssetSubtype, number> = {
   Diffuse: 0,
@@ -30,8 +39,10 @@ const hasMultiDiffuse = (assets: Asset[]) =>
 
 const TextureBrowser = ({
   onSelect,
+  currentUser,
 }: {
   onSelect: (a: TextureNodeValueData) => void;
+  currentUser: CurrentUser | null;
 }) => {
   const assetsAndGroupsData = useAssetsAndGroups();
 
@@ -51,7 +62,9 @@ const TextureBrowser = ({
   }, [assetsAndGroupsData]);
   const assetsByGroupId = useMemo(() => groupBy(assets, 'groupId'), [assets]);
 
-  const [showGroups, setShowGroups] = useState(true);
+  const [activeTab, setActiveTab] = useState<'groups' | 'textures' | 'upload'>(
+    'groups'
+  );
   const [search, setSearch] = useState('');
 
   const [filteredGroups, setFilteredGroups] = useState(Object.values(groups));
@@ -72,7 +85,7 @@ const TextureBrowser = ({
     const seach = search.toLowerCase().normalize();
 
     setSearch(rawSearch);
-    if (showGroups) {
+    if (activeTab === 'groups') {
       setFilteredGroups(
         Object.values(groups).filter(
           (g) =>
@@ -83,7 +96,7 @@ const TextureBrowser = ({
             )
         )
       );
-    } else {
+    } else if (activeTab === 'textures') {
       setFilteredAssets(
         Object.values(assets).filter((a) =>
           a.name.toLowerCase().normalize().includes(seach)
@@ -93,24 +106,27 @@ const TextureBrowser = ({
   };
 
   const handleChange = (event: React.FormEvent<HTMLInputElement>) => {
-    setShowGroups(event.currentTarget.value === 'true');
+    const value = event.currentTarget.value;
+    if (value === 'groups' || value === 'textures' || value === 'upload') {
+      setActiveTab(value);
+    }
   };
   useEffect(() => {
     doSearch('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showGroups]);
+  }, [activeTab]);
 
   return (
     <>
       <div className="grid col2 growShrink m-bottom-10">
         <div>
-          <div className="grid col2 shrinkGrow gap25">
+          <div className="grid col4 shrinkShrinkShrinkGrow gap25">
             <label className={styles.radioLabel}>
               <input
                 type="radio"
-                name="showGroups"
-                value="true"
-                checked={showGroups}
+                name="activeTab"
+                value="groups"
+                checked={activeTab === 'groups'}
                 onChange={handleChange}
               />
               Browse Asset Groups
@@ -118,12 +134,26 @@ const TextureBrowser = ({
             <label className={styles.radioLabel}>
               <input
                 type="radio"
-                name="showGroups"
-                value="false"
-                checked={!showGroups}
+                name="activeTab"
+                value="textures"
+                checked={activeTab === 'textures'}
                 onChange={handleChange}
               />
               Browse Textures
+            </label>
+            <label className={styles.radioLabel}>
+              <input
+                type="radio"
+                name="activeTab"
+                value="upload"
+                checked={activeTab === 'upload'}
+                onChange={handleChange}
+              />
+              <FontAwesomeIcon
+                icon={faCloudUpload}
+                style={{ color: '#c5f995' }}
+              />{' '}
+              Upload Textures
             </label>
           </div>
         </div>
@@ -135,7 +165,7 @@ const TextureBrowser = ({
           />
         </div>
       </div>
-      {showGroups ? (
+      {activeTab === 'groups' ? (
         filteredGroups.map((group) => (
           <div key={group.id} className={styles.assetGroup}>
             <div title={group.description} className={styles.groupTitle}>
@@ -179,7 +209,7 @@ const TextureBrowser = ({
             </div>
           </div>
         ))
-      ) : (
+      ) : activeTab === 'textures' ? (
         <div className={styles.assetList}>
           {filteredAssets.map((asset) => (
             <div
@@ -199,7 +229,46 @@ const TextureBrowser = ({
             </div>
           ))}
         </div>
-      )}
+      ) : activeTab === 'upload' ? (
+        <div>
+          {currentUser?.isPro ? (
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+              <h3 style={{ marginBottom: '10px' }}>
+                Asset Manager <ProBadge />
+              </h3>
+              <Link
+                passHref
+                href={pathTo('/members/assets')}
+                className="button"
+                target="_blank"
+              >
+                Open Asset Manager{' '}
+                <FontAwesomeIcon icon={faUpRightFromSquare} />
+              </Link>
+              <p className="secondary">
+                Manage your textures and assets in the asset manager.
+              </p>
+            </div>
+          ) : (
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+              <h3 style={{ marginBottom: '10px' }}>
+                Shaderfrog <ProBadge />
+              </h3>
+              <p style={{ marginBottom: '20px' }}>
+                Upgrade to Pro to manage your assets and upload custom textures.
+              </p>
+              <Link
+                passHref
+                href={pathTo('/products')}
+                className="button"
+                target="_blank"
+              >
+                Upgrade to Pro! <FontAwesomeIcon icon={faUpRightFromSquare} />
+              </Link>
+            </div>
+          )}
+        </div>
+      ) : null}
     </>
   );
 };

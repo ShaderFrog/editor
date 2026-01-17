@@ -1,0 +1,1 @@
+export const pathTo = (path: string) => `/${path}`;

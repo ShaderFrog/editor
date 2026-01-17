@@ -13,7 +13,7 @@ import { useAssetsAndGroups } from '@editor/api';
 import { TextureNodeValueData } from '@core/graph';
 import SearchBox from './SearchBox';
 import ProBadge from './ProBadge/ProBadge';
-import { pathTo } from '@/util/site';
+import { pathTo } from '@editor/util/pathTo';
 import { CurrentUser } from '@editor/model/CurrentUser';
 
 export const assetSortOrder: Record<AssetSubtype, number> = {

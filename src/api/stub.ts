@@ -20,7 +20,10 @@ export const stubApi: ClientApi = {
 
 // Stub data injected at page load time for SWR
 export const stubApiData = {
-  [API.assets]: [],
+  [API.assets]: {
+    assets: {},
+    groups: {},
+  },
 };
 
 export const STUB_USER: CurrentUser = {

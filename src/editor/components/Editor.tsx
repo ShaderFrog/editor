@@ -2085,6 +2085,7 @@ const Editor = ({
         className="buttonauto formbutton size2"
         onClick={(e) => {
           e.preventDefault();
+          onCloseSaveErrors && onCloseSaveErrors();
           saveOrFork();
         }}
         title={`${isMacintosh() ? `⌘-s` : `Ctrl-s`}`}

@@ -143,7 +143,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
           />
         </div>
         {isOpen && (
-          <ul className={cx('selectoptions', styles.optionsList)}>
+          <ul className={cx('selectoptions', styles.optionsList, 'nowheel')}>
             {children}
           </ul>
         )}

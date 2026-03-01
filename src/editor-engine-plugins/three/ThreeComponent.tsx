@@ -285,13 +285,15 @@ const VectorEditor = ({
   labels: string[];
   onChange: (vector: number[]) => void;
 }) => {
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const validateInteger =
     (index: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
       const val = event.target.value.replace(/[^0-9]/g, '');
       if (val) {
         const parsed = Math.max(1, Math.min(maxResolution, parseFloat(val)));
-        const updated = value.map((val, idx) => (idx === index ? parsed : val));
-        onChange(updated);
+        const updated = value.map((v, idx) => (idx === index ? parsed : v));
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => onChange(updated), 500);
       }
     };
   return (

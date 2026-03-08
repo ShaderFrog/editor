@@ -1,6 +1,6 @@
 {
   "name": "@shaderfrog/editor",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "scripts": {
     "dev": "next dev",
     "deploy": "./deploy.sh",

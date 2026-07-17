@@ -5,6 +5,8 @@ import MonacoEditor, {
 } from '@monaco-editor/react';
 // import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { editor } from 'monaco-editor';
+
+const scrollCache = new Map<string, { scrollTop: number; scrollLeft: number }>();
 import { monacoGlsl } from '../monaco-glsl';
 
 import { Engine, NodeErrors } from '@core';
@@ -105,11 +107,26 @@ const CodeEditor = ({
   const lastDecorators = useRef<string[]>([]);
   const editorRef = useRef<editor.IStandaloneCodeEditor>();
   const monacoRef = useRef<Monaco>();
+  const identityRef = useRef(identity);
+  useEffect(() => {
+    identityRef.current = identity;
+  }, [identity]);
 
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
     checkErrors();
+
+    if (identity && scrollCache.has(identity)) {
+      editor.setScrollPosition(scrollCache.get(identity)!);
+    }
+
+    editor.onDidScrollChange((e) => {
+      const id = identityRef.current;
+      if (id) {
+        scrollCache.set(id, { scrollTop: e.scrollTop, scrollLeft: e.scrollLeft });
+      }
+    });
 
     if (onSave) {
       editor.addAction({
@@ -196,6 +213,9 @@ const CodeEditor = ({
     }
     if (identity !== lastIdentity) {
       editorRef.current.setValue(defaultValue || '');
+      if (identity && scrollCache.has(identity)) {
+        editorRef.current.setScrollPosition(scrollCache.get(identity)!);
+      }
     }
     checkErrors();
   }, [identity, lastIdentity, defaultValue, checkErrors]);

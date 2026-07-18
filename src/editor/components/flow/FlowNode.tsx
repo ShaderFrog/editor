@@ -371,6 +371,27 @@ const Vector2Editor = (props: {
   return (
     <>
       <div className={`gridHelper ${NODRAG_CLASS}`}>
+        {data.config.locked ? (
+          <svg
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+            }}
+          >
+            <line
+              x1="0"
+              y1="0"
+              x2={GRID_DIMENSION}
+              y2={GRID_DIMENSION}
+              stroke="#888"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+            />
+          </svg>
+        ) : null}
         <div
           className="dragHandle"
           ref={draggableRef}

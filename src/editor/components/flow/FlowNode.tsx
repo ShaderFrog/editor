@@ -380,31 +380,6 @@ const Vector2Editor = (props: {
         ></div>
       </div>
       <VectorEditor {...props} onChange={lockedOnChange} />
-      {data.config.range
-        ? (['x', 'y'] as const).map((component, index) => (
-            <input
-              key={component}
-              className="nodrag"
-              type="range"
-              min={data.config.locked ? range[0] : range[index * 2]}
-              max={data.config.locked ? range[1] : range[index * 2 + 1]}
-              step={stepper || '0.001'}
-              onChange={(e) =>
-                data.config.locked
-                  ? onChange(id, [e.currentTarget.value, e.currentTarget.value])
-                  : onChange(
-                      id,
-                      replaceAt(
-                        data.value as string[],
-                        index,
-                        e.currentTarget.value
-                      )
-                    )
-              }
-              value={data.config.locked ? data.value[0] : data.value[index]}
-            />
-          ))
-        : null}
     </>
   );
 };

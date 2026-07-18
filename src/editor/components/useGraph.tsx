@@ -86,7 +86,8 @@ const expandUniformDataNodes = (graph: Graph): Graph =>
                 makeId(),
                 uniform.name,
                 position,
-                uniform.value as Vector2
+                uniform.value as Vector2,
+                { stepper: uniform.stepper, locked: uniform.locked }
               );
               break;
             }

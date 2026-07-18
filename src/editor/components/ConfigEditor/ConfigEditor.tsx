@@ -54,6 +54,23 @@ const Vector2ConfigEditor = ({
           </div>
         </div>
       ))}
+      <label className="label">
+        step
+        <ClearableInput
+          placeholder="Slider step increment. Requires range."
+          value={node.stepper as string}
+          onChange={(value) => onChange({ stepper: '' + value })}
+        ></ClearableInput>
+      </label>
+      <label className="label">
+        Lock x &amp; y
+        <input
+          className="checkbox"
+          type="checkbox"
+          checked={!!node.locked}
+          onChange={(e) => onChange({ locked: e.target.checked })}
+        ></input>
+      </label>
     </div>
   );
 };

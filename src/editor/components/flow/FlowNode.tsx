@@ -264,24 +264,55 @@ const Vector2Editor = (props: {
     setInitialCoords(undefined);
   }, []);
 
+  const stepper = data.config.stepper
+    ? parseFloat('' + data.config.stepper)
+    : null;
+  const stepperRef = useRef(stepper);
+  stepperRef.current = stepper;
+
+  const lockedRef = useRef(!!data.config.locked);
+  lockedRef.current = !!data.config.locked;
+
   const onDragMove = useCallback(() => {
     if (transformRef.current && initialCoords) {
-      onChange(id, [
-        '' +
-          percentBetween(
-            range[0],
-            range[1],
-            normalizeToGrid(initialCoords[0] + transformRef.current.x / zoom)
-          ),
-        '' +
-          percentBetween(
-            range[2],
-            range[3],
-            normalizeToGrid(initialCoords[1] + transformRef.current.y / zoom)
-          ),
-      ]);
+      const snap = (v: number) => {
+        const s = stepperRef.current;
+        return s ? Math.round(v / s) * s : v;
+      };
+      const xVal = snap(
+        percentBetween(
+          range[0],
+          range[1],
+          normalizeToGrid(initialCoords[0] + transformRef.current.x / zoom)
+        )
+      );
+      const yVal = lockedRef.current
+        ? xVal
+        : snap(
+            percentBetween(
+              range[2],
+              range[3],
+              normalizeToGrid(initialCoords[1] + transformRef.current.y / zoom)
+            )
+          );
+      onChange(id, ['' + xVal, '' + yVal]);
     }
   }, [id, initialCoords, onChange, zoom, range]);
+
+  const lockedOnChange: ChangeHandler = useCallback(
+    (nodeId, newValue) => {
+      if (lockedRef.current && Array.isArray(newValue)) {
+        const vals = newValue as string[];
+        // Use whichever component changed
+        const v =
+          vals[0] !== (data.value as string[])[0] ? vals[0] : vals[1];
+        onChange(nodeId, [v, v]);
+      } else {
+        onChange(nodeId, newValue);
+      }
+    },
+    [onChange, data.value]
+  );
 
   useDndMonitor({
     onDragEnd,
@@ -289,40 +320,53 @@ const Vector2Editor = (props: {
     onDragMove,
   });
 
+  const snappedLeft = clamp(
+    ((value[0] - range[0]) / rangeScale.x) * maxGridCursor,
+    0,
+    maxGridCursor
+  );
+  // When locked x=y, mirror the handle onto the diagonal using x's pixel position
+  const snappedTop = data.config.locked
+    ? snappedLeft
+    : clamp(
+        ((value[1] - range[2]) / rangeScale.y) * maxGridCursor,
+        0,
+        maxGridCursor
+      );
+
   /**
    * When dragging, dnd-kit produces an offset (the css translate) from the
-   * original drag position (the lefft/top). So when dragging, we need to add
+   * original drag position (the left/top). So when dragging, we need to add
    * the offset to the initial position. On every drag, we update the value with
    * onChange(), but we need to ignore that value for the handle position, until
    * the drag ends. Then we set the handle to the final position without any
    * more css transform.
+   *
+   * When stepper or lock is active, bypass the dnd-kit transform entirely and
+   * position the handle directly from the already-computed value so the handle
+   * visually snaps/constrains rather than tracking the cursor smoothly.
    */
-  const style = {
-    transform: transform
-      ? CSS.Translate.toString({
-          ...transform,
-          x: (transform?.x || 1) / zoom,
-          y: (transform?.y || 1) / zoom,
-        })
-      : undefined,
-    ...(initialCoords
-      ? {
-          left: `${initialCoords[0]}px`,
-          top: `${initialCoords[1]}px`,
-        }
+  const style =
+    (stepper || data.config.locked) && initialCoords
+      ? { left: `${snappedLeft}px`, top: `${snappedTop}px` }
       : {
-          left: `${clamp(
-            ((value[0] - range[0]) / rangeScale.x) * maxGridCursor,
-            0,
-            maxGridCursor
-          )}px`,
-          top: `${clamp(
-            ((value[1] - range[2]) / rangeScale.y) * maxGridCursor,
-            0,
-            maxGridCursor
-          )}px`,
-        }),
-  };
+          transform: transform
+            ? CSS.Translate.toString({
+                ...transform,
+                x: (transform?.x || 1) / zoom,
+                y: (transform?.y || 1) / zoom,
+              })
+            : undefined,
+          ...(initialCoords
+            ? {
+                left: `${initialCoords[0]}px`,
+                top: `${initialCoords[1]}px`,
+              }
+            : {
+                left: `${snappedLeft}px`,
+                top: `${snappedTop}px`,
+              }),
+        };
 
   return (
     <>
@@ -335,7 +379,32 @@ const Vector2Editor = (props: {
           {...attributes}
         ></div>
       </div>
-      <VectorEditor {...props} />
+      <VectorEditor {...props} onChange={lockedOnChange} />
+      {data.config.range
+        ? (['x', 'y'] as const).map((component, index) => (
+            <input
+              key={component}
+              className="nodrag"
+              type="range"
+              min={data.config.locked ? range[0] : range[index * 2]}
+              max={data.config.locked ? range[1] : range[index * 2 + 1]}
+              step={stepper || '0.001'}
+              onChange={(e) =>
+                data.config.locked
+                  ? onChange(id, [e.currentTarget.value, e.currentTarget.value])
+                  : onChange(
+                      id,
+                      replaceAt(
+                        data.value as string[],
+                        index,
+                        e.currentTarget.value
+                      )
+                    )
+              }
+              value={data.config.locked ? data.value[0] : data.value[index]}
+            />
+          ))
+        : null}
     </>
   );
 };

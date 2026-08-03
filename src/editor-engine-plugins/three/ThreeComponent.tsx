@@ -39,6 +39,7 @@ import {
   Vector2,
   Vector3,
   ShaderMaterial,
+  RawShaderMaterial,
 } from 'three';
 // @ts-ignore
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
@@ -46,10 +47,14 @@ import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.
 import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
 import { SourceNode, computeGrindex } from '@core/graph';
 import { EngineContext } from '@core/engine';
-import { ThreeRuntime, createMaterial } from '@core/plugins/three/threngine';
+import {
+  ThreeRuntime,
+  createFrogMaterialResult,
+  createMaterial,
+} from '@core/plugins/three/threngine';
 
 // @ts-ignore
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import {
   Tabs,
@@ -103,10 +108,10 @@ const { log, logOnce } = logger('component');
 const loadingMaterial = new MeshBasicMaterial({ color: 'pink' });
 
 const bunnyModelUrl =
-  'https://d29uqgaj5peif4.cloudfront.net/models/stanford-bunny-uvs.obj';
+  'https://d29uqgaj5peif4.cloudfront.net/models/stanford-bunnyr.gltf';
 
-async function loadModel(): Promise<Object3D | null> {
-  const loader = new OBJLoader();
+async function loadModel(modelUrl: string): Promise<Object3D | null> {
+  const loader = new GLTFLoader();
   try {
     return await loader.loadAsync(bunnyModelUrl);
   } catch (error) {
@@ -324,6 +329,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   setSceneConfig,
   setCtx,
   setGlResult,
+  glResult,
   assetPrefix,
   takeScreenshotRef,
   setLoadingMsg,
@@ -357,15 +363,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
   useEffect(() => {
     if (sceneConfig.previewObject === 'bunny') {
       setLoadingMsg('Loading model…');
-      loadModel().then((model) => {
+      loadModel(bunnyModelUrl).then((model) => {
         setLoadingMsg('');
         if (!model) {
           return;
         }
-        const bun = model.children[0];
-        // Approximate centering
-        bun.position.copy(new Vector3(0.3, -0.6, 0.0));
-        bun.scale.copy(new Vector3(1.0, 1.0, 1.0).multiplyScalar(9.0));
+        // @ts-expect-error scene is not on this type
+        const bun = model.scene.children[0] as Mesh;
         setBunnyModel(bun);
       });
     }
@@ -378,6 +382,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const restoreCameraRequest = useRef(false);
 
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
+
+  // Declared before useThree so the animation loop closure can read it.
+  const inOverrideModeRef = useRef(false);
 
   const { sceneData, scene, camera, threeDomCbRef, renderer } = useThree(
     (time, controls) => {
@@ -429,21 +436,38 @@ const ThreeComponent: React.FC<SceneProps> = ({
             .values()
             .next().value;
 
+          const fragSource = gl.getShaderSource(fragmentShader);
+          const vertSource = gl.getShaderSource(vertexShader);
+
           const compiled = gl.getProgramParameter(program, gl.LINK_STATUS);
           if (!compiled) {
-            const log = gl.getProgramInfoLog(program)?.trim();
+            const log = gl.getProgramInfoLog(program)?.trim() || null;
 
-            setGlResult({
+            const errResult = {
+              fragmentShader: fragSource,
+              vertexShader: vertSource,
               fragError: gl.getShaderInfoLog(fragmentShader)?.trim() || log,
               vertError: gl.getShaderInfoLog(vertexShader)?.trim() || log,
               programError: log,
-            });
-          } else {
+            };
+            setGlResult(errResult);
+          } else if (inOverrideModeRef.current) {
+            // Don't update fragmentShader/vertexShader — that would overwrite
+            // the user's live edits in the GLSL editor.
             setGlResult({
               fragError: null,
               vertError: null,
               programError: null,
             });
+          } else {
+            const okResult = {
+              fragmentShader: fragSource,
+              vertexShader: vertSource,
+              fragError: null,
+              vertError: null,
+              programError: null,
+            };
+            setGlResult(okResult);
           }
         }
 
@@ -524,9 +548,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
           }
         );
 
+        const activeUniforms =
+          (material.userData?.shader?.uniforms as typeof material.uniforms) ??
+          material.uniforms;
         Object.entries(uniforms).forEach(([name, { value }]) => {
-          if (name in material.uniforms) {
-            material.uniforms[name].value = value;
+          if (name in activeUniforms) {
+            activeUniforms[name].value = value;
           } else {
             console.warn('Unknown uniform', name);
           }
@@ -535,20 +562,33 @@ const ThreeComponent: React.FC<SceneProps> = ({
         Object.entries(properties).forEach(([name, value]) => {
           // @ts-ignore
           material[name] = value;
+          // RawShaderMaterial (override mode) doesn't auto-sync material
+          // properties to uniforms the way Three's managed materials do
+          if (
+            !material.userData?.shader &&
+            (value as any)?.isTexture &&
+            name in material.uniforms
+          ) {
+            material.uniforms[name].value = value;
+          }
         });
       }
 
-      if (material.uniforms?.time) {
-        material.uniforms.time.value = effectiveTime * 0.001;
+      const frameUniforms =
+        (material.userData?.shader?.uniforms as typeof material.uniforms) ??
+        material.uniforms;
+
+      if (frameUniforms?.time) {
+        frameUniforms.time.value = effectiveTime * 0.001;
       }
-      if (material?.uniforms?.renderResolution && ctx.runtime) {
-        material.uniforms.renderResolution.value = new Vector2(
+      if (frameUniforms?.renderResolution && ctx.runtime) {
+        frameUniforms.renderResolution.value = new Vector2(
           ctx.runtime.renderer.domElement.width,
           ctx.runtime.renderer.domElement.height
         );
       }
-      if (material?.uniforms?.cameraPosition) {
-        material.uniforms.cameraPosition.value = camera.position;
+      if (frameUniforms?.cameraPosition) {
+        frameUniforms.cameraPosition.value = camera.position;
       }
     },
     isPaused && !screenshotMode
@@ -556,6 +596,180 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
   const { assets, groups } = useAssetsAndGroups() || { assets: {}, groups: {} };
   const [textures, getOrLoadAsset] = useTextures(renderer);
+
+  const glResultInitialized = useRef(false);
+  const lastFrag = useRef<string | null>(null);
+  const lastVert = useRef<string | null>(null);
+
+  // Override material tracking: when the user edits live GLSL, we swap to a
+  // RawShaderMaterial (via createMaterial) so edits apply directly.
+  const overrideMaterialRef = useRef<RawShaderMaterial | null>(null);
+  // Tracks compileResult.compileResult from the last FrogMaterial creation so
+  // we can detect full recompiles vs. live-editor overrides.
+  const lastFrogSectionsRef = useRef<any>(null);
+  // Signal from compileResult effect → glResultInitialized: next glResult is a
+  // fresh baseline (came from a full recompile FrogMaterial), not an override.
+  const pendingBaselineRef = useRef(false);
+  // Last source strings given to the override RawShaderMaterial, to avoid
+  // redundant needsUpdate = true when nothing changed.
+  const lastOverrideFragRef = useRef<string | null>(null);
+  const lastOverrideVertRef = useRef<string | null>(null);
+  // Always-current ref so glResultInitialized can read latest compileResult
+  // without adding it to the effect dep array.
+  const compileResultRef = useRef(compileResult);
+  compileResultRef.current = compileResult;
+
+  useEffect(() => {
+    const frag = glResult?.fragmentShader;
+    const vert = glResult?.vertexShader;
+    if (!frag || !vert) return;
+
+    // First non-null value: initial compilation baseline — store it and skip.
+    if (!glResultInitialized.current) {
+      glResultInitialized.current = true;
+      lastFrag.current = frag;
+      lastVert.current = vert;
+      pendingBaselineRef.current = false;
+      return;
+    }
+
+    // After a full recompile the compileResult effect signals us to treat the
+    // next glResult as a new baseline (FrogMaterial handles that case).
+    if (pendingBaselineRef.current) {
+      pendingBaselineRef.current = false;
+      lastFrag.current = frag;
+      lastVert.current = vert;
+      return;
+    }
+
+    // No change — skip.
+    if (frag === lastFrag.current && vert === lastVert.current) return;
+
+    lastFrag.current = frag;
+    lastVert.current = vert;
+
+    const mesh = sceneData.mesh;
+    if (!mesh) return;
+
+    // Use the actual compiled GPU source (frag/vert from glResult) rather than
+    // compileResult.fragmentResult — the latter is Shaderfrog GLSL that lacks
+    // Three's material functions (main_MeshPhysicalMaterial etc.).
+    const stripThreePrefix = (src: string) =>
+      src
+        .replace('#version 300 es\n', '')
+        .replace('#version 300 es', '')
+        .replace(/^#define SHADER_TYPE [^\n]*\n/m, '')
+        .replace(/^#define SHADER_NAME [^\n]*\n/m, '');
+    const rawFrag = stripThreePrefix(frag);
+    const rawVert = stripThreePrefix(vert);
+
+    if (overrideMaterialRef.current) {
+      // Override already exists: update its source in-place.
+      if (
+        rawFrag !== lastOverrideFragRef.current ||
+        rawVert !== lastOverrideVertRef.current
+      ) {
+        overrideMaterialRef.current.fragmentShader = rawFrag;
+        overrideMaterialRef.current.vertexShader = rawVert;
+        overrideMaterialRef.current.needsUpdate = true;
+        lastOverrideFragRef.current = rawFrag;
+        lastOverrideVertRef.current = rawVert;
+      }
+      mesh.material = overrideMaterialRef.current;
+      shadersUpdated.current = true;
+      return;
+    }
+
+    // First override: build a RawShaderMaterial from the full compiled GPU
+    // source so Three's material code is already embedded in the shader.
+    const currentCompileResult = compileResultRef.current;
+    if (!currentCompileResult) return;
+
+    const material = createMaterial(currentCompileResult, {
+      ...ctx,
+      runtime: {
+        ...ctx.runtime,
+        engineMaterial: mesh.material,
+      },
+    }) as RawShaderMaterial;
+    // Override the shader source with the complete compiled GPU output.
+    material.fragmentShader = rawFrag;
+    material.vertexShader = rawVert;
+    material.uniforms.time = { value: 0 };
+
+    // Mirror the sceneConfig properties that the compileResult effect applies.
+    // @ts-ignore
+    material.wireframe = sceneConfig.wireframe;
+    material.side = sceneConfig.doubleSide ? DoubleSide : FrontSide;
+    material.transparent = sceneConfig.transparent;
+    if (scene.environment) {
+      // @ts-ignore
+      material.envMap = scene.environment;
+      // RawShaderMaterial doesn't auto-sync material properties to uniforms.
+      // Replace the object (not mutate) to avoid contaminating the shared
+      // ShaderLib uniform reference.
+      if ('envMap' in material.uniforms) {
+        material.uniforms.envMap = { value: scene.environment };
+      }
+    }
+
+    // Merge in graph uniforms so the animation loop can update them each frame.
+    const { uniforms, properties } = extractProperties(
+      graphRef.current,
+      grindexRef.current,
+      currentCompileResult.dataInputs,
+      (node) => {
+        const value = node.value;
+        if (!value?.assetId || !value?.versionId) return;
+        const texture = getOrLoadAsset(assets, {
+          assetId: value.assetId,
+          versionId: value.versionId,
+        });
+        if (texture && node.type === 'texture') {
+          applyNodeProperties(texture, node);
+        }
+        return texture;
+      }
+    );
+    Object.entries(properties).forEach(([key, value]) => {
+      // @ts-ignore
+      material[key] = value;
+      // RawShaderMaterial doesn't auto-sync material properties to uniforms.
+      // Replace the object (not mutate) to avoid contaminating the shared
+      // ShaderLib uniform reference.
+      if ((value as any)?.isTexture && key in material.uniforms) {
+        material.uniforms[key] = { value };
+      }
+    });
+    material.uniforms = { ...material.uniforms, ...uniforms };
+
+    lastOverrideFragRef.current = rawFrag;
+    lastOverrideVertRef.current = rawVert;
+    overrideMaterialRef.current = material;
+    inOverrideModeRef.current = true;
+
+    // DEBUG: log uniforms and geometry attributes for the override RawShaderMaterial
+    material.onBeforeRender = (_renderer, _scene, _camera, geometry) => {
+      console.group('[RawShaderMaterial debug]');
+      console.log('Geometry attributes:', Object.keys(geometry.attributes));
+      console.log('Has tangent:', 'tangent' in geometry.attributes);
+      console.log('Uniforms declared:', Object.keys(material.uniforms));
+      // Log which uniforms are actually non-null/non-zero
+      Object.entries(material.uniforms).forEach(([k, u]) => {
+        if (u.value !== null && u.value !== 0) {
+          console.log(`  uniform ${k}:`, u.value);
+        } else {
+          console.warn(`  uniform ${k}: ZERO/NULL`);
+        }
+      });
+      // only log once
+      material.onBeforeRender = () => {};
+      console.groupEnd();
+    };
+
+    mesh.material = material;
+    shadersUpdated.current = true;
+  }, [glResult, renderer, sceneData]);
 
   const cubeMapAssets = useMemo(
     () =>
@@ -625,7 +839,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     let mesh: Mesh;
 
     if (sceneConfig.previewObject === 'bunny') {
-      mesh = (bunnyModel as Mesh) || new Mesh(new SphereGeometry(2, 2, 2));
+      mesh = (bunnyModel as Mesh) || new Mesh(new SphereGeometry(1, 32, 32));
     } else {
       let geometry: BufferGeometry;
       if (sceneConfig.previewObject === 'torus') {
@@ -685,7 +899,16 @@ const ThreeComponent: React.FC<SceneProps> = ({
           `Wtf there is no preview object named ${sceneConfig.previewObject}`
         );
       }
-      geometry.computeTangents();
+
+      // Required attributes to compute tangents. Not on icosahedron!
+      if (
+        geometry.index &&
+        geometry.attributes.position &&
+        geometry.attributes.normal &&
+        geometry.attributes.uv
+      ) {
+        geometry.computeTangents();
+      }
       mesh = new Mesh(geometry);
     }
     if (sceneData.mesh) {
@@ -694,7 +917,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     sceneData.mesh = mesh;
     scene.add(mesh);
 
-    if (sceneConfig.showTangents) {
+    if (sceneConfig.showTangents && mesh.geometry.attributes.tangent) {
       const helper = new VertexTangentsHelper(mesh, 0.3, 0xff0000);
       mesh.add(helper);
     }
@@ -800,7 +1023,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
         cache: { data: {}, nodes: {} },
       },
       nodes: {},
-      debuggingNonsense: {},
     }
   );
 
@@ -823,7 +1045,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
         sceneBg === null)
     ) {
       ctx.runtime.loaded = true;
-      // Inform parent our context is created
       setCtx(ctx);
     }
   }, [ctx, setCtx, sceneBg, textures]);
@@ -869,8 +1090,11 @@ const ThreeComponent: React.FC<SceneProps> = ({
       Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
     ) as ShaderMaterial;
 
-    if (material.uniforms?.cameraPosition) {
-      material.uniforms.cameraPosition.value = camera.position;
+    const screenshotUniforms =
+      (material.userData?.shader?.uniforms as typeof material.uniforms) ??
+      material.uniforms;
+    if (screenshotUniforms?.cameraPosition) {
+      screenshotUniforms.cameraPosition.value = camera.position;
     }
 
     const originalSize = new Vector2();
@@ -925,12 +1149,16 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const grindexRef = useRef(grindex);
   grindexRef.current = grindex;
 
+  // Track the last ShaderSections to detect user overrides. When only
+  // fragmentResult/vertexResult change (override), compileResult.compileResult
+  // keeps the same reference. When a full recompile happens it's a new object.
+  // const lastGraphResultRef = useRef<typeof compileResult | null>(null);
+
   useEffect(() => {
     if (!compileResult?.fragmentResult) {
       return;
     }
 
-    const material = createMaterial(compileResult, ctx);
     const graph = graphRef.current;
     const grindex = grindexRef.current;
 
@@ -938,7 +1166,33 @@ const ThreeComponent: React.FC<SceneProps> = ({
       sceneData: { mesh },
     } = ctx.runtime as ThreeRuntime;
 
+    // Detect whether this is a full graph recompile (new ShaderSections object)
+    // or a live-editor override (same ShaderSections, changed fragmentResult/vertexResult).
+    const isFullRecompile =
+      lastFrogSectionsRef.current !== compileResult.compileResult;
+
+    if (isFullRecompile) {
+      lastFrogSectionsRef.current = compileResult.compileResult;
+      // Dispose the override RawShaderMaterial and reset override tracking so
+      // the next glResult from the fresh FrogMaterial becomes the new baseline.
+      if (overrideMaterialRef.current) {
+        overrideMaterialRef.current.dispose();
+        overrideMaterialRef.current = null;
+        inOverrideModeRef.current = false;
+        lastOverrideFragRef.current = null;
+        lastOverrideVertRef.current = null;
+      }
+      pendingBaselineRef.current = true;
+    } else if (overrideMaterialRef.current) {
+      // Raw GLSL edits are live in the override material. Creating a FrogMaterial
+      // here would compile the graph's original source, scrape it back via
+      // shadersUpdated, and overwrite the user's edits in the GLSL editor.
+      return;
+    }
+
     log('oh hai birfday boi boi boiiiii');
+
+    const material = createFrogMaterialResult(compileResult, ctx, graph);
 
     // Note this is setting the uniforms of the shader at creation time. The
     // uniforms are also updated every frame in the useThree() loop.
@@ -969,9 +1223,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
       material[key] = value;
     });
 
-    material.uniforms = {
-      ...material.uniforms,
-      ...uniforms,
+    // FrogMaterial (MeshPhysical/Phong/Toon + onBeforeCompile): user uniforms
+    // must be merged into shader.uniforms inside onBeforeCompile so Three's
+    // WebGL program knows about them. Chain after FrogMaterial's own OBC.
+    const existingOBC = material.onBeforeCompile;
+    material.onBeforeCompile = (shader, renderer) => {
+      existingOBC(shader, renderer);
+      Object.assign(shader.uniforms, uniforms);
+      material.userData.shader = shader;
     };
 
     // Copy the sceneConfig properties onto the material. For now this means
@@ -979,6 +1238,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     // these properties require the core material in threngine to get
     // re-created. I did it here because there's not currently a way to pass the
     // scene config into the core graph for compiling.
+    // @ts-expect-error no wireframe
     material.wireframe = sceneConfig.wireframe;
     material.side = sceneConfig.doubleSide ? DoubleSide : FrontSide;
     material.transparent = sceneConfig.transparent;
@@ -987,15 +1247,16 @@ const ThreeComponent: React.FC<SceneProps> = ({
     // applies to all materials that don't override it. Setting on the
     // material is required to work for the envMapIntensity property to work.
     if (scene.environment) {
-      // @ts-ignore
+      // @ts-expect-error no envmap
       material.envMap = scene.environment;
     }
 
     log('🏞 Re-creating Three.js material!', {
       material,
       properties,
-      uniforms: material.uniforms,
-      engineMaterial: ctx.runtime.engineMaterial,
+      uniformsmat: (material as any).uniforms,
+      uniforms,
+      engineMaterial: (ctx.runtime as any).engineMaterial,
     });
 
     mesh.material = material;
@@ -1265,7 +1526,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="dbs"
                     type="checkbox"
-                    checked={sceneConfig.doubleSide}
+                    checked={!!sceneConfig.doubleSide}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1287,7 +1548,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="trnsp"
                     type="checkbox"
-                    checked={sceneConfig.transparent}
+                    checked={!!sceneConfig.transparent}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1308,7 +1569,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="Wireframesfs"
                     type="checkbox"
-                    checked={sceneConfig.wireframe}
+                    checked={!!sceneConfig.wireframe}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1330,7 +1591,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="nrm"
                     type="checkbox"
-                    checked={sceneConfig.showNormals}
+                    checked={!!sceneConfig.showNormals}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1352,7 +1613,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="tng"
                     type="checkbox"
-                    checked={sceneConfig.showTangents}
+                    checked={!!sceneConfig.showTangents}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1457,7 +1718,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                       className="checkbox"
                       id="sha"
                       type="checkbox"
-                      checked={sceneConfig.animatedLights}
+                      checked={!!sceneConfig.animatedLights}
                       onChange={(event) =>
                         setSceneConfig({
                           ...sceneConfig,
@@ -1479,7 +1740,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                       className="checkbox"
                       id="shp"
                       type="checkbox"
-                      checked={sceneConfig.showHelpers}
+                      checked={!!sceneConfig.showHelpers}
                       onChange={(event) =>
                         setSceneConfig({
                           ...sceneConfig,
@@ -1638,7 +1899,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="arc"
                     type="checkbox"
-                    checked={sceneConfig.autoRotate}
+                    checked={!!sceneConfig.autoRotate}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1664,7 +1925,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="textinput"
                     id="ars"
                     type="text"
-                    checked={sceneConfig.autoRotateSpeed}
+                    checked={!!sceneConfig.autoRotateSpeed}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,

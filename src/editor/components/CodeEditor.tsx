@@ -6,7 +6,10 @@ import MonacoEditor, {
 // import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { editor } from 'monaco-editor';
 
-const scrollCache = new Map<string, { scrollTop: number; scrollLeft: number }>();
+const scrollCache = new Map<
+  string,
+  { scrollTop: number; scrollLeft: number }
+>();
 import { monacoGlsl } from '../monaco-glsl';
 
 import { Engine, NodeErrors } from '@core';
@@ -124,7 +127,10 @@ const CodeEditor = ({
     editor.onDidScrollChange((e) => {
       const id = identityRef.current;
       if (id) {
-        scrollCache.set(id, { scrollTop: e.scrollTop, scrollLeft: e.scrollLeft });
+        scrollCache.set(id, {
+          scrollTop: e.scrollTop,
+          scrollLeft: e.scrollLeft,
+        });
       }
     });
 

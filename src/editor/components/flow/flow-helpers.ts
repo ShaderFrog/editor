@@ -326,6 +326,25 @@ export const updateFlowNodeInput = <T extends FlowNode>(
   },
 });
 
+export const updateFlowNodeOutput = <T extends FlowNode>(
+  node: T,
+  outputId: string,
+  data: Partial<OutputNodeHandle>
+): T => ({
+  ...node,
+  data: {
+    ...node.data,
+    outputs: node.data.outputs.map((output) =>
+      output.id === outputId
+        ? {
+            ...output,
+            ...data,
+          }
+        : output
+    ),
+  },
+});
+
 /**
  * Adds an edge to the graph and enforces graph edge business logic rules:
  * - Makes sure "binary" (add/multiply) nodes edges are collapsed

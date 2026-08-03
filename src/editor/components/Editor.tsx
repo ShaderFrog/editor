@@ -60,6 +60,8 @@ import {
   canMapType,
   filterGraphFromNode,
   findLinkedNode,
+  CodeNode,
+  SourceType,
 } from '@core/graph';
 
 import FlowEditor, { NodeContextActions } from './flow/FlowEditor';
@@ -125,6 +127,7 @@ import TextureBrowser from './TextureBrowser';
 import { Shader, SHADER_VISIBILITY } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
 import {
+  CompileInfo,
   EDITOR_BOTTOM_PANEL,
   EditorProvider,
   MouseData,
@@ -229,6 +232,7 @@ const Editor = ({
     onEdgesChange,
     compileResult,
     setCompileResult,
+    getGraphNode,
   } = useEditorStore();
   const rawStore = useEditorRawStore();
 
@@ -388,13 +392,18 @@ const Editor = ({
         clearNodeErrors();
         setGuiError('');
 
-        setEngineContext({
+        // TODO: This does NOT update the context in ThreeComponent state,
+        // which doesn't currently matter, in that the ThreeComponent doesn't
+        // read this data, I don't think
+        const updatedEngineContext = {
           ...engineContext!,
           nodes: {
             ...engineContext!.nodes,
             ...result.updatedNodeContext,
           },
-        });
+        };
+        console.log('Editor', { updatedEngineContext });
+        setEngineContext(updatedEngineContext);
         setCompileResult(result);
 
         const byId = indexById(graph.nodes);
@@ -462,13 +471,7 @@ const Editor = ({
   }, [compiling, needsCompile, compile]);
 
   const setGlResult = useCallback(
-    (result: {
-      fragError: string;
-      vertError: string;
-      programError: string;
-    }) => {
-      setCompileInfo(result);
-    },
+    (result: Partial<CompileInfo>) => setCompileInfo(result),
     [setCompileInfo]
   );
 
@@ -828,9 +831,7 @@ const Editor = ({
       draggingDataType: GraphDataType | undefined
     ) => {
       setFlowNodes((nodes) => {
-        const source = graph.nodes.find(
-          ({ id }) => id === draggingFromNodeId
-        ) as GraphNode;
+        const source = getGraphNode(draggingFromNodeId) as GraphNode;
         return nodes.map((n) => {
           const node = n as FlowNode;
           if (
@@ -861,7 +862,7 @@ const Editor = ({
         });
       });
     },
-    [setFlowNodes, graph]
+    [setFlowNodes, getGraphNode]
   );
 
   const resetTargets = useCallback(() => {
@@ -911,7 +912,7 @@ const Editor = ({
       if (!nodeId || !handleType) {
         return;
       }
-      const node = ensure(graph.nodes.find((n) => n.id === nodeId));
+      const node = getGraphNode(nodeId);
       let draggingDataType = node.outputs[0]?.dataType;
 
       if (handleType !== 'source') {
@@ -922,9 +923,10 @@ const Editor = ({
           input,
         };
       }
+
       setValidHandleTargets(nodeId, handleType, draggingDataType);
     },
-    [graph, setValidHandleTargets]
+    [setValidHandleTargets, getGraphNode]
   );
 
   /**
@@ -1386,9 +1388,7 @@ const Editor = ({
 
   const onNodeContextSelect = useCallback(
     (nodeId: string, type: string) => {
-      const currentNode = graph.nodes.find(
-        (n) => n.id === nodeId
-      ) as SourceNode;
+      const currentNode = getGraphNode(nodeId) as SourceNode;
       if (type === NodeContextActions.EDIT_SOURCE) {
         addSelectedNodes([currentNode.id]);
         setPrimarySelectedNodeId(currentNode.id);
@@ -1454,6 +1454,7 @@ const Editor = ({
       debouncedSetNeedsCompile,
       openEditorBottomPanel,
       setPrimarySelectedNodeId,
+      getGraphNode,
       addEditorTab,
     ]
   );
@@ -1463,9 +1464,7 @@ const Editor = ({
       if (compiling) {
         return;
       }
-      const currentNode = graph.nodes.find(
-        (n) => n.id === nodeId
-      ) as SourceNode;
+      const currentNode = getGraphNode(nodeId) as SourceNode;
       if (type === NodeContextActions.DELETE_NODE_ONLY) {
         updateAllFlowNodes((node) =>
           updateFlowNodeDataInternal(node, { ghost: node.id === nodeId })
@@ -1512,7 +1511,14 @@ const Editor = ({
         );
       }
     },
-    [compiling, graph, setFlowNodes, setFlowEdges, updateAllFlowNodes]
+    [
+      compiling,
+      getGraphNode,
+      graph,
+      setFlowNodes,
+      setFlowEdges,
+      updateAllFlowNodes,
+    ]
   );
 
   const onContainerClick = useCallback(
@@ -2012,6 +2018,7 @@ const Editor = ({
           compile={compile}
           compileResult={compileResult}
           setGlResult={setGlResult}
+          glResult={compileInfo}
           width={sceneConfig.width}
           height={sceneConfig.height}
           assetPrefix={assetPrefix}

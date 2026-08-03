@@ -46,7 +46,10 @@ import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.
 import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
 import { SourceNode, computeGrindex } from '@core/graph';
 import { EngineContext } from '@core/engine';
-import { ThreeRuntime, createMaterial } from '@core/plugins/three/threngine';
+import {
+  ThreeRuntime,
+  createFrogMaterialResult,
+} from '@core/plugins/three/threngine';
 
 // @ts-ignore
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
@@ -524,9 +527,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
           }
         );
 
+        const activeUniforms =
+          (material.userData?.shader?.uniforms as typeof material.uniforms) ??
+          material.uniforms;
         Object.entries(uniforms).forEach(([name, { value }]) => {
-          if (name in material.uniforms) {
-            material.uniforms[name].value = value;
+          if (name in activeUniforms) {
+            activeUniforms[name].value = value;
           } else {
             console.warn('Unknown uniform', name);
           }
@@ -538,17 +544,20 @@ const ThreeComponent: React.FC<SceneProps> = ({
         });
       }
 
-      if (material.uniforms?.time) {
-        material.uniforms.time.value = effectiveTime * 0.001;
+      const frameUniforms =
+        (material.userData?.shader?.uniforms as typeof material.uniforms) ??
+        material.uniforms;
+      if (frameUniforms?.time) {
+        frameUniforms.time.value = effectiveTime * 0.001;
       }
-      if (material?.uniforms?.renderResolution && ctx.runtime) {
-        material.uniforms.renderResolution.value = new Vector2(
+      if (frameUniforms?.renderResolution && ctx.runtime) {
+        frameUniforms.renderResolution.value = new Vector2(
           ctx.runtime.renderer.domElement.width,
           ctx.runtime.renderer.domElement.height
         );
       }
-      if (material?.uniforms?.cameraPosition) {
-        material.uniforms.cameraPosition.value = camera.position;
+      if (frameUniforms?.cameraPosition) {
+        frameUniforms.cameraPosition.value = camera.position;
       }
     },
     isPaused && !screenshotMode
@@ -869,8 +878,11 @@ const ThreeComponent: React.FC<SceneProps> = ({
       Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
     ) as ShaderMaterial;
 
-    if (material.uniforms?.cameraPosition) {
-      material.uniforms.cameraPosition.value = camera.position;
+    const screenshotUniforms =
+      (material.userData?.shader?.uniforms as typeof material.uniforms) ??
+      material.uniforms;
+    if (screenshotUniforms?.cameraPosition) {
+      screenshotUniforms.cameraPosition.value = camera.position;
     }
 
     const originalSize = new Vector2();
@@ -930,8 +942,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
       return;
     }
 
-    const material = createMaterial(compileResult, ctx);
     const graph = graphRef.current;
+    const material = createFrogMaterialResult(compileResult, ctx, graph);
     const grindex = grindexRef.current;
 
     const {
@@ -969,16 +981,28 @@ const ThreeComponent: React.FC<SceneProps> = ({
       material[key] = value;
     });
 
-    material.uniforms = {
-      ...material.uniforms,
-      ...uniforms,
-    };
+    if ('uniforms' in material) {
+      (material as ShaderMaterial).uniforms = {
+        ...(material as ShaderMaterial).uniforms,
+        ...uniforms,
+      };
+    } else {
+      // FrogMaterial (MeshPhysical/Phong/Toon + onBeforeCompile): user uniforms
+      // must be merged into shader.uniforms inside onBeforeCompile so Three's
+      // WebGL program knows about them. Chain after FrogMaterial's own OBC.
+      const existingOBC = material.onBeforeCompile;
+      material.onBeforeCompile = (shader, renderer) => {
+        existingOBC(shader, renderer);
+        Object.assign(shader.uniforms, uniforms);
+      };
+    }
 
     // Copy the sceneConfig properties onto the material. For now this means
     // that toggling doubleSide etc creates a new material. Also I don't know if
     // these properties require the core material in threngine to get
     // re-created. I did it here because there's not currently a way to pass the
     // scene config into the core graph for compiling.
+    // @ts-ignore
     material.wireframe = sceneConfig.wireframe;
     material.side = sceneConfig.doubleSide ? DoubleSide : FrontSide;
     material.transparent = sceneConfig.transparent;
@@ -994,8 +1018,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
     log('🏞 Re-creating Three.js material!', {
       material,
       properties,
-      uniforms: material.uniforms,
-      engineMaterial: ctx.runtime.engineMaterial,
+      uniforms: (material as any).uniforms,
+      engineMaterial: (ctx.runtime as any).engineMaterial,
     });
 
     mesh.material = material;

@@ -49,6 +49,7 @@ import { EngineContext } from '@core/engine';
 import {
   ThreeRuntime,
   createFrogMaterialResult,
+  createMaterial,
 } from '@core/plugins/three/threngine';
 
 // @ts-ignore
@@ -808,6 +809,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
         loaded: false,
         cache: { data: {}, nodes: {} },
       },
+      engineNodeProperties: {},
       nodes: {},
       debuggingNonsense: {},
     }
@@ -937,14 +939,54 @@ const ThreeComponent: React.FC<SceneProps> = ({
   const grindexRef = useRef(grindex);
   grindexRef.current = grindex;
 
+  // Track the last ShaderSections to detect user overrides. When only
+  // fragmentResult/vertexResult change (override), compileResult.compileResult
+  // keeps the same reference. When a full recompile happens it's a new object.
+  // const lastGraphResultRef = useRef<typeof compileResult | null>(null);
+
   useEffect(() => {
     if (!compileResult?.fragmentResult) {
       return;
     }
 
     const graph = graphRef.current;
-    const material = createFrogMaterialResult(compileResult, ctx, graph);
     const grindex = grindexRef.current;
+
+    // If ShaderSections reference is unchanged, the user overrode fragmentResult
+    // in the live GLSL editor. Fall back to RawShaderMaterial so the edit takes
+    // effect directly. Otherwise use FrogMaterial (full recompile path).
+    // const isOverride =
+    //   lastGraphResultRef.current === compileResult.compileResult;
+    // lastGraphResultRef.current = compileResult.compileResult;
+
+    // This was the orignal code claude wrote - which branches between
+    // rawshadermatieral and the frog material, so editing the live code
+    // branched how the shader was created, which has diverged too much
+
+    // const material = isOverride
+    //   ? createMaterial(compileResult, ctx)
+    //   : createFrogMaterialResult(compileResult, ctx, graph);
+
+    const material = createFrogMaterialResult(compileResult, ctx, graph);
+
+    // This does not work because it takes the full shader three.js built, and
+    // puts it back into onbeforecompile, and three re-adds the preamble after
+    // that, causing duplicate variable definitions
+    // if (isOverride) {
+    //   console.log('override 1');
+    //   material.customProgramCacheKey = () => Math.random() + '';
+    //   material.onBeforeCompile = (shader) => {
+    //     console.log('override 2');
+    //     shader.fragmentShader = compileResult.fragmentResult.replace(
+    //       '#version 300 es',
+    //       ''
+    //     );
+    //     shader.vertexShader = compileResult.vertexResult.replace(
+    //       '#version 300 es',
+    //       ''
+    //     );
+    //   };
+    // }
 
     const {
       sceneData: { mesh },
@@ -981,21 +1023,22 @@ const ThreeComponent: React.FC<SceneProps> = ({
       material[key] = value;
     });
 
-    if ('uniforms' in material) {
-      (material as ShaderMaterial).uniforms = {
-        ...(material as ShaderMaterial).uniforms,
-        ...uniforms,
-      };
-    } else {
-      // FrogMaterial (MeshPhysical/Phong/Toon + onBeforeCompile): user uniforms
-      // must be merged into shader.uniforms inside onBeforeCompile so Three's
-      // WebGL program knows about them. Chain after FrogMaterial's own OBC.
-      const existingOBC = material.onBeforeCompile;
-      material.onBeforeCompile = (shader, renderer) => {
-        existingOBC(shader, renderer);
-        Object.assign(shader.uniforms, uniforms);
-      };
-    }
+    // if ('uniforms' in material) {
+    //   (material as ShaderMaterial).uniforms = {
+    //     ...(material as ShaderMaterial).uniforms,
+    //     ...uniforms,
+    //   };
+    // } else {
+    // FrogMaterial (MeshPhysical/Phong/Toon + onBeforeCompile): user uniforms
+    // must be merged into shader.uniforms inside onBeforeCompile so Three's
+    // WebGL program knows about them. Chain after FrogMaterial's own OBC.
+    const existingOBC = material.onBeforeCompile;
+    material.onBeforeCompile = (shader, renderer) => {
+      existingOBC(shader, renderer);
+      Object.assign(shader.uniforms, uniforms);
+      material.userData.shader = shader;
+    };
+    // }
 
     // Copy the sceneConfig properties onto the material. For now this means
     // that toggling doubleSide etc creates a new material. Also I don't know if
@@ -1018,7 +1061,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
     log('🏞 Re-creating Three.js material!', {
       material,
       properties,
-      uniforms: (material as any).uniforms,
+      uniformsmat: (material as any).uniforms,
+      uniforms,
       engineMaterial: (ctx.runtime as any).engineMaterial,
     });
 

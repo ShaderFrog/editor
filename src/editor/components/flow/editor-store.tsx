@@ -88,6 +88,8 @@ export type SceneDimensions = {
 };
 
 export type CompileInfo = {
+  fragmentShader: string | null;
+  vertexShader: string | null;
   fragError: string | null;
   vertError: string | null;
   programError: string | null;
@@ -418,6 +420,8 @@ const createEditorStore = (
 
     // Compiler results
     compileInfo: {
+      fragmentShader: null,
+      vertexShader: null,
       fragError: null,
       vertError: null,
       programError: null,

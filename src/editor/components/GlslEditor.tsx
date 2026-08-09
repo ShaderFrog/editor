@@ -108,9 +108,9 @@ const GlslEditor = ({
     nodeErrors,
     removeEditorTabPaneId,
     compileInfo,
+    setCompileInfo,
     updateGraphNode,
     compileResult,
-    setCompileResult,
     graph,
     engineContext,
   } = useEditorStore();
@@ -119,30 +119,20 @@ const GlslEditor = ({
   const codeEditorTabIndex = useGlslEditorTabIndex();
 
   const setVertexOverride = useCallback(
-    (vertexResult: string) => {
-      if (compileResult) {
-        setCompileResult({
-          ...compileResult,
-          vertexResult,
-        });
-      }
+    (vertexShader: string) => {
+      setCompileInfo({ vertexShader });
     },
-    [compileResult, setCompileResult]
+    [setCompileInfo]
   );
   const debouncedSetVertexOverride = useMemo(
     () => debounce(setVertexOverride, 1000),
     [setVertexOverride]
   );
   const setFragmentOverride = useCallback(
-    (fragmentResult: string) => {
-      if (compileResult) {
-        setCompileResult({
-          ...compileResult,
-          fragmentResult,
-        });
-      }
+    (fragmentShader: string) => {
+      setCompileInfo({ fragmentShader });
     },
-    [compileResult, setCompileResult]
+    [setCompileInfo]
   );
   const debouncedSetFragmentOverride = useMemo(
     () => debounce(setFragmentOverride, 1000),
@@ -356,8 +346,8 @@ const GlslEditor = ({
                     : compileInfo.fragError;
                 const result =
                   pane.contents.nodeId === FINAL_VERTEX
-                    ? compileResult?.vertexResult
-                    : compileResult?.fragmentResult;
+                    ? compileInfo.vertexShader
+                    : compileInfo.fragmentShader;
                 const override =
                   pane.contents.nodeId === FINAL_VERTEX
                     ? debouncedSetVertexOverride
@@ -381,7 +371,7 @@ const GlslEditor = ({
                     </div>
                     <CodeEditor
                       engine={engine}
-                      value={result}
+                      value={result || ''}
                       onChange={(value) => override(value)}
                     />
                   </div>

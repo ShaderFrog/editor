@@ -125,6 +125,7 @@ import TextureBrowser from './TextureBrowser';
 import { Shader, SHADER_VISIBILITY } from '@editor/model/Shader';
 import BottomModal from './BottomModal';
 import {
+  CompileInfo,
   EDITOR_BOTTOM_PANEL,
   EditorProvider,
   MouseData,
@@ -462,13 +463,7 @@ const Editor = ({
   }, [compiling, needsCompile, compile]);
 
   const setGlResult = useCallback(
-    (result: {
-      fragError: string;
-      vertError: string;
-      programError: string;
-    }) => {
-      setCompileInfo(result);
-    },
+    (result: Partial<CompileInfo>) => setCompileInfo(result),
     [setCompileInfo]
   );
 
@@ -2012,6 +2007,7 @@ const Editor = ({
           compile={compile}
           compileResult={compileResult}
           setGlResult={setGlResult}
+          glResult={compileInfo}
           width={sceneConfig.width}
           height={sceneConfig.height}
           assetPrefix={assetPrefix}

@@ -39,6 +39,7 @@ import {
   Vector2,
   Vector3,
   ShaderMaterial,
+  RawShaderMaterial,
 } from 'three';
 // @ts-ignore
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
@@ -80,6 +81,7 @@ import { usePrevious } from '../../editor/hooks/usePrevious';
 import { useSize } from '../../editor/hooks/useSize';
 import { RoomEnvironment } from './RoomEnvironment';
 import { SceneProps } from '@editor-components/editorTypes';
+import { CompileInfo } from '@editor-components/flow/editor-store';
 import { useAssetsAndGroups } from '@editor/api';
 
 import styles from '../../editor/styles/editor.module.css';
@@ -328,6 +330,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   setSceneConfig,
   setCtx,
   setGlResult,
+  glResult,
   assetPrefix,
   takeScreenshotRef,
   setLoadingMsg,
@@ -383,6 +386,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
 
+  // Declared before useThree so the animation loop closure can read it.
+  const inOverrideModeRef = useRef(false);
+
   const { sceneData, scene, camera, threeDomCbRef, renderer } = useThree(
     (time, controls) => {
       const { mesh } = sceneData;
@@ -433,21 +439,38 @@ const ThreeComponent: React.FC<SceneProps> = ({
             .values()
             .next().value;
 
+          const fragSource = gl.getShaderSource(fragmentShader);
+          const vertSource = gl.getShaderSource(vertexShader);
+
           const compiled = gl.getProgramParameter(program, gl.LINK_STATUS);
           if (!compiled) {
-            const log = gl.getProgramInfoLog(program)?.trim();
+            const log = gl.getProgramInfoLog(program)?.trim() || null;
 
-            setGlResult({
+            const errResult = {
+              fragmentShader: fragSource,
+              vertexShader: vertSource,
               fragError: gl.getShaderInfoLog(fragmentShader)?.trim() || log,
               vertError: gl.getShaderInfoLog(vertexShader)?.trim() || log,
               programError: log,
-            });
-          } else {
+            };
+            setGlResult(errResult);
+          } else if (inOverrideModeRef.current) {
+            // Don't update fragmentShader/vertexShader — that would overwrite
+            // the user's live edits in the GLSL editor.
             setGlResult({
               fragError: null,
               vertError: null,
               programError: null,
             });
+          } else {
+            const okResult = {
+              fragmentShader: fragSource,
+              vertexShader: vertSource,
+              fragError: null,
+              vertError: null,
+              programError: null,
+            };
+            setGlResult(okResult);
           }
         }
 
@@ -566,6 +589,149 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
   const { assets, groups } = useAssetsAndGroups() || { assets: {}, groups: {} };
   const [textures, getOrLoadAsset] = useTextures(renderer);
+
+  const glResultInitialized = useRef(false);
+  const lastFrag = useRef<string | null>(null);
+  const lastVert = useRef<string | null>(null);
+
+  // Override material tracking: when the user edits live GLSL, we swap to a
+  // RawShaderMaterial (via createMaterial) so edits apply directly.
+  const overrideMaterialRef = useRef<RawShaderMaterial | null>(null);
+  // Tracks compileResult.compileResult from the last FrogMaterial creation so
+  // we can detect full recompiles vs. live-editor overrides.
+  const lastFrogSectionsRef = useRef<any>(null);
+  // Signal from compileResult effect → glResultInitialized: next glResult is a
+  // fresh baseline (came from a full recompile FrogMaterial), not an override.
+  const pendingBaselineRef = useRef(false);
+  // Last source strings given to the override RawShaderMaterial, to avoid
+  // redundant needsUpdate = true when nothing changed.
+  const lastOverrideFragRef = useRef<string | null>(null);
+  const lastOverrideVertRef = useRef<string | null>(null);
+  // Always-current ref so glResultInitialized can read latest compileResult
+  // without adding it to the effect dep array.
+  const compileResultRef = useRef(compileResult);
+  compileResultRef.current = compileResult;
+
+  useEffect(() => {
+    const frag = glResult?.fragmentShader;
+    const vert = glResult?.vertexShader;
+    if (!frag || !vert) return;
+
+    // First non-null value: initial compilation baseline — store it and skip.
+    if (!glResultInitialized.current) {
+      glResultInitialized.current = true;
+      lastFrag.current = frag;
+      lastVert.current = vert;
+      pendingBaselineRef.current = false;
+      return;
+    }
+
+    // After a full recompile the compileResult effect signals us to treat the
+    // next glResult as a new baseline (FrogMaterial handles that case).
+    if (pendingBaselineRef.current) {
+      pendingBaselineRef.current = false;
+      lastFrag.current = frag;
+      lastVert.current = vert;
+      return;
+    }
+
+    // No change — skip.
+    if (frag === lastFrag.current && vert === lastVert.current) return;
+
+    lastFrag.current = frag;
+    lastVert.current = vert;
+
+    const mesh = sceneData.mesh;
+    if (!mesh) return;
+
+    // Use the actual compiled GPU source (frag/vert from glResult) rather than
+    // compileResult.fragmentResult — the latter is Shaderfrog GLSL that lacks
+    // Three's material functions (main_MeshPhysicalMaterial etc.).
+    const stripThreePrefix = (src: string) =>
+      src
+        .replace('#version 300 es\n', '')
+        .replace('#version 300 es', '')
+        .replace(/^#define SHADER_TYPE [^\n]*\n/m, '')
+        .replace(/^#define SHADER_NAME [^\n]*\n/m, '');
+    const rawFrag = stripThreePrefix(frag);
+    const rawVert = stripThreePrefix(vert);
+
+    if (overrideMaterialRef.current) {
+      // Override already exists: update its source in-place.
+      if (
+        rawFrag !== lastOverrideFragRef.current ||
+        rawVert !== lastOverrideVertRef.current
+      ) {
+        overrideMaterialRef.current.fragmentShader = rawFrag;
+        overrideMaterialRef.current.vertexShader = rawVert;
+        overrideMaterialRef.current.needsUpdate = true;
+        lastOverrideFragRef.current = rawFrag;
+        lastOverrideVertRef.current = rawVert;
+      }
+      mesh.material = overrideMaterialRef.current;
+      shadersUpdated.current = true;
+      return;
+    }
+
+    // First override: build a RawShaderMaterial from the full compiled GPU
+    // source so Three's material code is already embedded in the shader.
+    const currentCompileResult = compileResultRef.current;
+    if (!currentCompileResult) return;
+
+    // ctx.runtime.engineMaterial = mesh.material;
+
+    const material = createMaterial(currentCompileResult, {
+      ...ctx,
+      runtime: {
+        ...ctx.runtime,
+        engineMaterial: mesh.material,
+      },
+    }) as RawShaderMaterial;
+    // Override the shader source with the complete compiled GPU output.
+    material.fragmentShader = rawFrag;
+    material.vertexShader = rawVert;
+
+    // Mirror the sceneConfig properties that the compileResult effect applies.
+    // @ts-ignore
+    material.wireframe = sceneConfig.wireframe;
+    material.side = sceneConfig.doubleSide ? DoubleSide : FrontSide;
+    material.transparent = sceneConfig.transparent;
+    if (scene.environment) {
+      // @ts-ignore
+      material.envMap = scene.environment;
+    }
+
+    // Merge in graph uniforms so the animation loop can update them each frame.
+    const { uniforms, properties } = extractProperties(
+      graphRef.current,
+      grindexRef.current,
+      currentCompileResult.dataInputs,
+      (node) => {
+        const value = node.value;
+        if (!value?.assetId || !value?.versionId) return;
+        const texture = getOrLoadAsset(assets, {
+          assetId: value.assetId,
+          versionId: value.versionId,
+        });
+        if (texture && node.type === 'texture') {
+          applyNodeProperties(texture, node);
+        }
+        return texture;
+      }
+    );
+    Object.entries(properties).forEach(([key, value]) => {
+      // @ts-ignore
+      material[key] = value;
+    });
+    material.uniforms = { ...material.uniforms, ...uniforms };
+
+    lastOverrideFragRef.current = rawFrag;
+    lastOverrideVertRef.current = rawVert;
+    overrideMaterialRef.current = material;
+    inOverrideModeRef.current = true;
+    mesh.material = material;
+    shadersUpdated.current = true;
+  }, [glResult, renderer, sceneData]);
 
   const cubeMapAssets = useMemo(
     () =>
@@ -952,47 +1118,42 @@ const ThreeComponent: React.FC<SceneProps> = ({
     const graph = graphRef.current;
     const grindex = grindexRef.current;
 
-    // If ShaderSections reference is unchanged, the user overrode fragmentResult
-    // in the live GLSL editor. Fall back to RawShaderMaterial so the edit takes
-    // effect directly. Otherwise use FrogMaterial (full recompile path).
-    // const isOverride =
-    //   lastGraphResultRef.current === compileResult.compileResult;
-    // lastGraphResultRef.current = compileResult.compileResult;
-
-    // This was the orignal code claude wrote - which branches between
-    // rawshadermatieral and the frog material, so editing the live code
-    // branched how the shader was created, which has diverged too much
-
-    // const material = isOverride
-    //   ? createMaterial(compileResult, ctx)
-    //   : createFrogMaterialResult(compileResult, ctx, graph);
-
-    const material = createFrogMaterialResult(compileResult, ctx, graph);
-
-    // This does not work because it takes the full shader three.js built, and
-    // puts it back into onbeforecompile, and three re-adds the preamble after
-    // that, causing duplicate variable definitions
-    // if (isOverride) {
-    //   console.log('override 1');
-    //   material.customProgramCacheKey = () => Math.random() + '';
-    //   material.onBeforeCompile = (shader) => {
-    //     console.log('override 2');
-    //     shader.fragmentShader = compileResult.fragmentResult.replace(
-    //       '#version 300 es',
-    //       ''
-    //     );
-    //     shader.vertexShader = compileResult.vertexResult.replace(
-    //       '#version 300 es',
-    //       ''
-    //     );
-    //   };
-    // }
-
     const {
       sceneData: { mesh },
     } = ctx.runtime as ThreeRuntime;
 
+    // Detect whether this is a full graph recompile (new ShaderSections object)
+    // or a live-editor override (same ShaderSections, changed fragmentResult/vertexResult).
+    const isFullRecompile =
+      lastFrogSectionsRef.current !== compileResult.compileResult;
+
+    if (isFullRecompile) {
+      lastFrogSectionsRef.current = compileResult.compileResult;
+      // Dispose the override RawShaderMaterial and reset override tracking so
+      // the next glResult from the fresh FrogMaterial becomes the new baseline.
+      if (overrideMaterialRef.current) {
+        overrideMaterialRef.current.dispose();
+        overrideMaterialRef.current = null;
+        inOverrideModeRef.current = false;
+        lastOverrideFragRef.current = null;
+        lastOverrideVertRef.current = null;
+      }
+      pendingBaselineRef.current = true;
+    } else {
+      // Override: same ShaderSections reference.
+      if (overrideMaterialRef.current) {
+        // Raw GLSL edits are live in the override material. Creating a FrogMaterial
+        // here would compile the graph's original source, scrape it back via
+        // shadersUpdated, and overwrite the user's edits in the GLSL editor.
+        return;
+      }
+      // No override material yet — fall through to create a FrogMaterial.
+      // glResultInitialized will see the glResult change and create the RawShaderMaterial.
+    }
+
     log('oh hai birfday boi boi boiiiii');
+
+    const material = createFrogMaterialResult(compileResult, ctx, graph);
 
     // Note this is setting the uniforms of the shader at creation time. The
     // uniforms are also updated every frame in the useThree() loop.
@@ -1023,12 +1184,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
       material[key] = value;
     });
 
-    // if ('uniforms' in material) {
-    //   (material as ShaderMaterial).uniforms = {
-    //     ...(material as ShaderMaterial).uniforms,
-    //     ...uniforms,
-    //   };
-    // } else {
     // FrogMaterial (MeshPhysical/Phong/Toon + onBeforeCompile): user uniforms
     // must be merged into shader.uniforms inside onBeforeCompile so Three's
     // WebGL program knows about them. Chain after FrogMaterial's own OBC.
@@ -1038,7 +1193,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
       Object.assign(shader.uniforms, uniforms);
       material.userData.shader = shader;
     };
-    // }
 
     // Copy the sceneConfig properties onto the material. For now this means
     // that toggling doubleSide etc creates a new material. Also I don't know if

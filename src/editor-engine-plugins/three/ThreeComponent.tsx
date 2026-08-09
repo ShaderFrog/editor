@@ -565,12 +565,22 @@ const ThreeComponent: React.FC<SceneProps> = ({
         Object.entries(properties).forEach(([name, value]) => {
           // @ts-ignore
           material[name] = value;
+          // RawShaderMaterial (override mode) doesn't auto-sync material
+          // properties to uniforms the way Three's managed materials do
+          if (
+            !material.userData?.shader &&
+            (value as any)?.isTexture &&
+            name in material.uniforms
+          ) {
+            material.uniforms[name].value = value;
+          }
         });
       }
 
       const frameUniforms =
         (material.userData?.shader?.uniforms as typeof material.uniforms) ??
         material.uniforms;
+
       if (frameUniforms?.time) {
         frameUniforms.time.value = effectiveTime * 0.001;
       }
@@ -690,6 +700,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     // Override the shader source with the complete compiled GPU output.
     material.fragmentShader = rawFrag;
     material.vertexShader = rawVert;
+    material.uniforms.time = { value: 0 };
 
     // Mirror the sceneConfig properties that the compileResult effect applies.
     // @ts-ignore
@@ -699,6 +710,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
     if (scene.environment) {
       // @ts-ignore
       material.envMap = scene.environment;
+      // RawShaderMaterial doesn't auto-sync material properties to uniforms.
+      // Replace the object (not mutate) to avoid contaminating the shared
+      // ShaderLib uniform reference.
+      if ('envMap' in material.uniforms) {
+        material.uniforms.envMap = { value: scene.environment };
+      }
     }
 
     // Merge in graph uniforms so the animation loop can update them each frame.
@@ -722,6 +739,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
     Object.entries(properties).forEach(([key, value]) => {
       // @ts-ignore
       material[key] = value;
+      // RawShaderMaterial doesn't auto-sync material properties to uniforms.
+      // Replace the object (not mutate) to avoid contaminating the shared
+      // ShaderLib uniform reference.
+      if ((value as any)?.isTexture && key in material.uniforms) {
+        material.uniforms[key] = { value };
+      }
     });
     material.uniforms = { ...material.uniforms, ...uniforms };
 
@@ -729,6 +752,26 @@ const ThreeComponent: React.FC<SceneProps> = ({
     lastOverrideVertRef.current = rawVert;
     overrideMaterialRef.current = material;
     inOverrideModeRef.current = true;
+
+    // DEBUG: log uniforms and geometry attributes for the override RawShaderMaterial
+    material.onBeforeRender = (_renderer, _scene, _camera, geometry) => {
+      console.group('[RawShaderMaterial debug]');
+      console.log('Geometry attributes:', Object.keys(geometry.attributes));
+      console.log('Has tangent:', 'tangent' in geometry.attributes);
+      console.log('Uniforms declared:', Object.keys(material.uniforms));
+      // Log which uniforms are actually non-null/non-zero
+      Object.entries(material.uniforms).forEach(([k, u]) => {
+        if (u.value !== null && u.value !== 0) {
+          console.log(`  uniform ${k}:`, u.value);
+        } else {
+          console.warn(`  uniform ${k}: ZERO/NULL`);
+        }
+      });
+      // only log once
+      material.onBeforeRender = () => {};
+      console.groupEnd();
+    };
+
     mesh.material = material;
     shadersUpdated.current = true;
   }, [glResult, renderer, sceneData]);

@@ -904,7 +904,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
           `Wtf there is no preview object named ${sceneConfig.previewObject}`
         );
       }
-      geometry.computeTangents();
+      if (
+        geometry.index &&
+        geometry.attributes.position &&
+        geometry.attributes.normal &&
+        geometry.attributes.uv
+      ) {
+        geometry.computeTangents();
+      }
       mesh = new Mesh(geometry);
     }
     if (sceneData.mesh) {

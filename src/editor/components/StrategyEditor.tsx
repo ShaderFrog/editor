@@ -317,7 +317,7 @@ const StrategyEditor = ({
         <h2 className={cx(styles.uiHeader, 'm-top-15')}>Current Strategies</h2>
         <div className={cx(styles.autocolmax, 'm-top-15')}>
           {node.config.strategies.map((strategy, index) => (
-            <React.Fragment key={strategy.type}>
+            <React.Fragment key={`${strategy.type}_${index}`}>
               <div>{strategy.type}</div>
               <div>
                 <input

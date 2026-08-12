@@ -190,7 +190,7 @@ const TextureBrowser = ({
                   }
                 >
                   <div className={styles.assetThumbnail}>
-                    <img src={asset.versions[0].thumbnail} alt={asset.name} />
+                    <img src={asset.versions[0]?.thumbnail} alt={asset.name} />
                     {asset.versions.length > 1 ? (
                       <div className={styles.hiRes}>High res</div>
                     ) : null}
@@ -223,7 +223,7 @@ const TextureBrowser = ({
               }
             >
               <div className={styles.assetThumbnail}>
-                <img src={asset.versions[0].thumbnail} alt={asset.name} />
+                <img src={asset.versions[0]?.thumbnail} alt={asset.name} />
               </div>
               <div className={styles.assetSubtype}>{asset.name}</div>
             </div>

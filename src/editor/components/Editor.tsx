@@ -60,6 +60,8 @@ import {
   canMapType,
   filterGraphFromNode,
   findLinkedNode,
+  CodeNode,
+  SourceType,
 } from '@core/graph';
 
 import FlowEditor, { NodeContextActions } from './flow/FlowEditor';
@@ -230,6 +232,7 @@ const Editor = ({
     onEdgesChange,
     compileResult,
     setCompileResult,
+    getGraphNode,
   } = useEditorStore();
   const rawStore = useEditorRawStore();
 
@@ -823,9 +826,7 @@ const Editor = ({
       draggingDataType: GraphDataType | undefined
     ) => {
       setFlowNodes((nodes) => {
-        const source = graph.nodes.find(
-          ({ id }) => id === draggingFromNodeId
-        ) as GraphNode;
+        const source = getGraphNode(draggingFromNodeId) as GraphNode;
         return nodes.map((n) => {
           const node = n as FlowNode;
           if (
@@ -906,7 +907,7 @@ const Editor = ({
       if (!nodeId || !handleType) {
         return;
       }
-      const node = ensure(graph.nodes.find((n) => n.id === nodeId));
+      const node = getGraphNode(nodeId);
       let draggingDataType = node.outputs[0]?.dataType;
 
       if (handleType !== 'source') {
@@ -917,9 +918,10 @@ const Editor = ({
           input,
         };
       }
+
       setValidHandleTargets(nodeId, handleType, draggingDataType);
     },
-    [graph, setValidHandleTargets]
+    [setValidHandleTargets, getGraphNode]
   );
 
   /**
@@ -1381,9 +1383,7 @@ const Editor = ({
 
   const onNodeContextSelect = useCallback(
     (nodeId: string, type: string) => {
-      const currentNode = graph.nodes.find(
-        (n) => n.id === nodeId
-      ) as SourceNode;
+      const currentNode = getGraphNode(nodeId) as SourceNode;
       if (type === NodeContextActions.EDIT_SOURCE) {
         addSelectedNodes([currentNode.id]);
         setPrimarySelectedNodeId(currentNode.id);
@@ -1449,6 +1449,7 @@ const Editor = ({
       debouncedSetNeedsCompile,
       openEditorBottomPanel,
       setPrimarySelectedNodeId,
+      getGraphNode,
       addEditorTab,
     ]
   );
@@ -1458,9 +1459,7 @@ const Editor = ({
       if (compiling) {
         return;
       }
-      const currentNode = graph.nodes.find(
-        (n) => n.id === nodeId
-      ) as SourceNode;
+      const currentNode = getGraphNode(nodeId) as SourceNode;
       if (type === NodeContextActions.DELETE_NODE_ONLY) {
         updateAllFlowNodes((node) =>
           updateFlowNodeDataInternal(node, { ghost: node.id === nodeId })

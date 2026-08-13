@@ -23,6 +23,7 @@ import {
 } from '@core';
 import {
   updateFlowNodeInput,
+  updateFlowNodeOutput,
   updateFlowNodeData,
   updateGraphNode,
   updateGraphNodeInput,
@@ -35,9 +36,11 @@ import {
   InputNodeHandle,
   FlowEdgeOrLink,
   FlowNode,
+  OutputNodeHandle,
 } from './flow-types';
 import { Shader } from '@editor/model';
 import { AnySceneConfig } from '../editorTypes';
+import { ensure } from '@/util/ensure';
 
 /*******************************************************************************
  * Types and friends
@@ -137,6 +140,11 @@ interface EditorState {
     inputId: string,
     data: Partial<InputNodeHandle>
   ) => void;
+  updateFlowOutput: (
+    nodeId: string,
+    outputId: string,
+    data: Partial<OutputNodeHandle>
+  ) => void;
 
   // Shader and core editor
   shader: Shader;
@@ -149,6 +157,7 @@ interface EditorState {
   setScreenshotTime: (time: number) => void;
   graph: Graph;
   setGraph: (graphOrUpdater: Graph | ((prevGraph: Graph) => Graph)) => void;
+  getGraphNode: (nodeId: string) => GraphNode;
   updateGraphNode: (nodeId: string, data: Partial<GraphNode>) => void;
   updateGraphNodeInput: (
     nodeId: string,
@@ -285,6 +294,12 @@ const createEditorStore = (
           node.id === nodeId ? updateFlowNodeInput(node, inputId, data) : node
         ),
       })),
+    updateFlowOutput: (nodeId, outputId, data) =>
+      set(({ flowNodes }) => ({
+        flowNodes: flowNodes.map((node) =>
+          node.id === nodeId ? updateFlowNodeOutput(node, outputId, data) : node
+        ),
+      })),
 
     // Shader and core editor
     setShader: (shader) => set(() => ({ shader })),
@@ -327,6 +342,8 @@ const createEditorStore = (
     setCompileResult: (compileResult) => set(() => ({ compileResult })),
     engineContext: undefined,
     setEngineContext: (engineContext) => set(() => ({ engineContext })),
+    getGraphNode: (nodeId: string) =>
+      ensure(get().graph.nodes.find((n) => n.id === nodeId)),
 
     // UI state
     menu: undefined,

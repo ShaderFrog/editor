@@ -229,7 +229,7 @@ const StrategyEditor = ({
   onSave: () => void;
   onGraphChange: () => void;
 }) => {
-  const { graph, engineContext } = useEditorStore();
+  const { graph, engineContext, updateFlowOutput } = useEditorStore();
 
   const [selectedStrategy, setSelectedStrategy] = useState(
     StrategyType.VARIABLE
@@ -248,8 +248,10 @@ const StrategyEditor = ({
     node.sourceType = event.target.value as typeof node.sourceType;
     // With an expression it can be any type - so remove the type, otherwise
     // assume main function with vec4 output
-    node.outputs[0].dataType =
-      node.sourceType === 'Expression' ? undefined : 'vector4';
+    const outputDataType =
+      node.sourceType === SourceType.EXPRESSION ? undefined : 'vector4';
+    updateFlowOutput(node.id, node.outputs[0].id, { dataType: outputDataType });
+    node.outputs[0].dataType = outputDataType;
   };
 
   const sibling = findLinkedNode(graph, node.id);

@@ -392,13 +392,20 @@ const Editor = ({
         clearNodeErrors();
         setGuiError('');
 
-        setEngineContext({
+        // Sooo the editor store has its own context, which is different than
+        // the ThreeComponent context, since that's an object stored in state
+        // that's not overwritten.
+        const updatedEngineContext = {
           ...engineContext!,
           nodes: {
             ...engineContext!.nodes,
             ...result.updatedNodeContext,
           },
-        });
+          // engineNodeProperties:
+          //   result.compileResult.updatedEngineNodeProperties,
+        };
+        console.log('Editor', { updatedEngineContext });
+        setEngineContext(updatedEngineContext);
         setCompileResult(result);
 
         const byId = indexById(graph.nodes);

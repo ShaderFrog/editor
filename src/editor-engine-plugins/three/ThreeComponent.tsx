@@ -1025,9 +1025,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
         loaded: false,
         cache: { data: {}, nodes: {} },
       },
-      engineNodeProperties: {},
       nodes: {},
-      debuggingNonsense: {},
+      engineNodeProperties: {},
     }
   );
 
@@ -1050,7 +1049,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
         sceneBg === null)
     ) {
       ctx.runtime.loaded = true;
-      // Inform parent our context is created
       setCtx(ctx);
     }
   }, [ctx, setCtx, sceneBg, textures]);

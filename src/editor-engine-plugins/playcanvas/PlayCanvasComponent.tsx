@@ -381,7 +381,6 @@ const PlayCanvasComponent: React.FC<SceneProps> = ({
         cache: { nodes: {}, data: {} },
       },
       nodes: {},
-      engineNodeProperties: {},
     };
   });
 

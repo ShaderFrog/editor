@@ -1026,7 +1026,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
         cache: { data: {}, nodes: {} },
       },
       nodes: {},
-      engineNodeProperties: {},
     }
   );
 

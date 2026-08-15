@@ -454,7 +454,6 @@ const BabylonComponent: React.FC<SceneProps> = ({
         cache: { nodes: {}, data: {} },
       },
       nodes: {},
-      engineNodeProperties: {},
     };
   });
 

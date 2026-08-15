@@ -54,7 +54,7 @@ import {
 } from '@core/plugins/three/threngine';
 
 // @ts-ignore
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import {
   Tabs,
@@ -81,7 +81,6 @@ import { usePrevious } from '../../editor/hooks/usePrevious';
 import { useSize } from '../../editor/hooks/useSize';
 import { RoomEnvironment } from './RoomEnvironment';
 import { SceneProps } from '@editor-components/editorTypes';
-import { CompileInfo } from '@editor-components/flow/editor-store';
 import { useAssetsAndGroups } from '@editor/api';
 
 import styles from '../../editor/styles/editor.module.css';
@@ -109,10 +108,10 @@ const { log, logOnce } = logger('component');
 const loadingMaterial = new MeshBasicMaterial({ color: 'pink' });
 
 const bunnyModelUrl =
-  'https://d29uqgaj5peif4.cloudfront.net/models/stanford-bunny-uvs.obj';
+  'https://d29uqgaj5peif4.cloudfront.net/models/stanford-bunnyr.gltf';
 
 async function loadModel(): Promise<Object3D | null> {
-  const loader = new OBJLoader();
+  const loader = new GLTFLoader();
   try {
     return await loader.loadAsync(bunnyModelUrl);
   } catch (error) {
@@ -365,14 +364,19 @@ const ThreeComponent: React.FC<SceneProps> = ({
     if (sceneConfig.previewObject === 'bunny') {
       setLoadingMsg('Loading model…');
       loadModel().then((model) => {
+        console.log({ model });
         setLoadingMsg('');
         if (!model) {
           return;
         }
-        const bun = model.children[0];
+        // @ts-expect-error scene is not on this type
+        const bun = model.scene.children[0] as Mesh;
         // Approximate centering
-        bun.position.copy(new Vector3(0.3, -0.6, 0.0));
-        bun.scale.copy(new Vector3(1.0, 1.0, 1.0).multiplyScalar(9.0));
+        // bun.position.copy(new Vector3(0.3, -0.6, 0.0));
+        // bun.scale.copy(new Vector3(1.0, 1.0, 1.0).multiplyScalar(9.0));
+        // console.log('here we go');
+        bun.geometry.computeTangents();
+        // bun.geometry.computeVertexNormals();
         setBunnyModel(bun);
       });
     }
@@ -844,7 +848,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     let mesh: Mesh;
 
     if (sceneConfig.previewObject === 'bunny') {
-      mesh = (bunnyModel as Mesh) || new Mesh(new SphereGeometry(2, 2, 2));
+      mesh = (bunnyModel as Mesh) || new Mesh(new SphereGeometry(1, 32, 32));
     } else {
       let geometry: BufferGeometry;
       if (sceneConfig.previewObject === 'torus') {
@@ -920,7 +924,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     sceneData.mesh = mesh;
     scene.add(mesh);
 
-    if (sceneConfig.showTangents) {
+    if (sceneConfig.showTangents && mesh.geometry.attributes.tangent) {
       const helper = new VertexTangentsHelper(mesh, 0.3, 0xff0000);
       mesh.add(helper);
     }
@@ -1534,7 +1538,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="dbs"
                     type="checkbox"
-                    checked={sceneConfig.doubleSide}
+                    checked={!!sceneConfig.doubleSide}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1556,7 +1560,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="trnsp"
                     type="checkbox"
-                    checked={sceneConfig.transparent}
+                    checked={!!sceneConfig.transparent}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1577,7 +1581,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="Wireframesfs"
                     type="checkbox"
-                    checked={sceneConfig.wireframe}
+                    checked={!!sceneConfig.wireframe}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1599,7 +1603,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="nrm"
                     type="checkbox"
-                    checked={sceneConfig.showNormals}
+                    checked={!!sceneConfig.showNormals}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1621,7 +1625,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="tng"
                     type="checkbox"
-                    checked={sceneConfig.showTangents}
+                    checked={!!sceneConfig.showTangents}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1726,7 +1730,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                       className="checkbox"
                       id="sha"
                       type="checkbox"
-                      checked={sceneConfig.animatedLights}
+                      checked={!!sceneConfig.animatedLights}
                       onChange={(event) =>
                         setSceneConfig({
                           ...sceneConfig,
@@ -1748,7 +1752,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                       className="checkbox"
                       id="shp"
                       type="checkbox"
-                      checked={sceneConfig.showHelpers}
+                      checked={!!sceneConfig.showHelpers}
                       onChange={(event) =>
                         setSceneConfig({
                           ...sceneConfig,
@@ -1907,7 +1911,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="checkbox"
                     id="arc"
                     type="checkbox"
-                    checked={sceneConfig.autoRotate}
+                    checked={!!sceneConfig.autoRotate}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,
@@ -1933,7 +1937,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
                     className="textinput"
                     id="ars"
                     type="text"
-                    checked={sceneConfig.autoRotateSpeed}
+                    checked={!!sceneConfig.autoRotateSpeed}
                     onChange={(event) =>
                       setSceneConfig({
                         ...sceneConfig,

@@ -124,7 +124,11 @@ import {
 import EffectSearch from './EffectSearch';
 import ShaderPreview from './ShaderPreview';
 import TextureBrowser from './TextureBrowser';
-import { Shader, SHADER_VISIBILITY } from '@editor/model/Shader';
+import {
+  Shader,
+  SHADER_VISIBILITY,
+  ShaderVisibility,
+} from '@editor/model/Shader';
 import BottomModal from './BottomModal';
 import {
   CompileInfo,
@@ -140,7 +144,13 @@ import GlslEditor from './GlslEditor';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCode,
+  faCodeFork,
   faDiagramProject,
+  faEyeSlash,
+  faFileExport,
+  faFileImport,
+  faGlobe,
+  faLock,
   faPencil,
 } from '@fortawesome/free-solid-svg-icons';
 import MetadataEditor from './MetadataEditor';
@@ -148,6 +158,27 @@ import ConvertShadertoy from './ConvertShadertoy';
 import { truncate } from '@editor/util/string';
 import indexById from '@core/util/indexByid';
 import { stubDefaultShader } from '@editor/api';
+import SplitButton, { SplitButtonOption } from './SplitButton';
+const VISIBILITY_OPTIONS: SplitButtonOption<ShaderVisibility>[] = [
+  {
+    value: SHADER_VISIBILITY.PUBLIC,
+    icon: faGlobe,
+    label: 'Public',
+    description: 'Visible to everyone on Shaderfrog',
+  },
+  {
+    value: SHADER_VISIBILITY.UNLISTED,
+    icon: faEyeSlash,
+    label: 'Unlisted',
+    description: "Doesn't appear in search or browse results",
+  },
+  {
+    value: SHADER_VISIBILITY.PRIVTE,
+    icon: faLock,
+    label: 'Private',
+    description: 'Only visible to you',
+  },
+];
 
 const log = (...args: any[]) =>
   console.log.call(console, '\x1b[37m(editor)\x1b[0m', ...args);
@@ -242,6 +273,7 @@ const Editor = ({
   const [draggedShader, setDraggedShader] = useState<Shader | null>(null);
 
   const [isShowingImport, setShowImport] = useState(false);
+  const [isShowingExport, setShowExport] = useState(false);
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
@@ -1867,7 +1899,7 @@ const Editor = ({
         selected={editorTabIndex}
         className={styles.shrinkGrowRows}
       >
-        <TabGroup className={styles.tabBar}>
+        <TabGroup className={cx(styles.tabBar, styles.subHeaderRow)}>
           <Tab>
             <FontAwesomeIcon
               icon={faDiagramProject}
@@ -2044,37 +2076,18 @@ const Editor = ({
             setShowImport(true);
           }}
         >
-          Import&hellip;
+          <FontAwesomeIcon className="secondary" icon={faFileImport} /> Import
         </button>
       ) : null}
-      {isAuthenticated ? (
-        <select
-          className="buttonauto formbutton size2 secondary m-right-5"
-          value={shader.visibility ?? SHADER_VISIBILITY.PUBLIC}
-          onChange={(e) => {
-            const newVisibility = parseInt(e.target.value, 10);
-            setShader({
-              ...shader,
-              visibility: newVisibility,
-            });
-          }}
-          style={{
-            appearance: 'auto',
-            padding: '6px 12px',
-            fontSize: '14px',
-            lineHeight: '1.5',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: '4px',
-            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-            color: '#fff',
-            cursor: 'pointer',
-          }}
-        >
-          <option value={SHADER_VISIBILITY.PUBLIC}>Public</option>
-          <option value={SHADER_VISIBILITY.UNLISTED}>Unlisted</option>
-          <option value={SHADER_VISIBILITY.PRIVTE}>Private</option>
-        </select>
-      ) : null}
+      <button
+        className="buttonauto formbutton size2 secondary m-right-5"
+        onClick={(e) => {
+          e.preventDefault();
+          setShowExport(true);
+        }}
+      >
+        <FontAwesomeIcon className="secondary" icon={faFileExport} /> Export
+      </button>
       {!shader.id || !isOwnShader ? null : (
         <button
           disabled={isSaving || isDeleting}
@@ -2084,21 +2097,57 @@ const Editor = ({
             saveOrFork(true);
           }}
         >
-          Fork
+          <>
+            <FontAwesomeIcon className="secondary" icon={faCodeFork} /> Fork
+          </>
         </button>
       )}
-      <button
-        disabled={isSaving || isDeleting}
-        className="buttonauto formbutton size2"
-        onClick={(e) => {
-          e.preventDefault();
-          onCloseSaveErrors && onCloseSaveErrors();
-          saveOrFork();
-        }}
-        title={`${isMacintosh() ? `⌘-s` : `Ctrl-s`}`}
-      >
-        {shader.id && !isOwnShader ? 'Fork' : 'Save'}
-      </button>
+      {isAuthenticated && isOwnShader ? (
+        <SplitButton
+          label={
+            shader.visibility === SHADER_VISIBILITY.PUBLIC ? (
+              <>
+                <FontAwesomeIcon icon={faGlobe} /> Publish
+              </>
+            ) : shader.visibility === SHADER_VISIBILITY.UNLISTED ? (
+              <>
+                <FontAwesomeIcon icon={faEyeSlash} /> Save Unlisted
+              </>
+            ) : (
+              <>
+                <FontAwesomeIcon icon={faLock} /> Save Private
+              </>
+            )
+          }
+          disabled={isSaving || isDeleting}
+          options={VISIBILITY_OPTIONS}
+          selected={shader.visibility ?? SHADER_VISIBILITY.PUBLIC}
+          onSelect={(v) => setShader({ ...shader, visibility: v })}
+          onClick={() => {
+            onCloseSaveErrors && onCloseSaveErrors();
+            saveOrFork();
+          }}
+        />
+      ) : (
+        <button
+          disabled={isSaving || isDeleting}
+          className="buttonauto formbutton size2"
+          onClick={(e) => {
+            e.preventDefault();
+            onCloseSaveErrors && onCloseSaveErrors();
+            saveOrFork();
+          }}
+          title={`${isMacintosh() ? `⌘-s` : `Ctrl-s`}`}
+        >
+          {shader.id && !isOwnShader ? (
+            <>
+              <FontAwesomeIcon icon={faCodeFork} /> Fork
+            </>
+          ) : (
+            'Save'
+          )}
+        </button>
+      )}
     </div>
   );
 
@@ -2127,6 +2176,10 @@ const Editor = ({
               }}
             />
           </Modal>
+        ) : null}
+
+        {isShowingExport ? (
+          <Modal onClose={() => setShowExport(false)}>hi please help me</Modal>
         ) : null}
         {isMetadataOpen ? (
           <Modal onClose={() => setMetadataOpen(false)}>
@@ -2167,7 +2220,9 @@ const Editor = ({
             {/* 3d display split */}
             <div ref={sceneWrapRef} className={styles.splitInner}>
               <div className={styles.shrinkGrowRows}>
-                <div className={cx(styles.controlBar)}>{toolbarElements}</div>
+                <div className={cx(styles.controlBar, styles.subHeaderRow)}>
+                  {toolbarElements}
+                </div>
                 {sceneElements}
               </div>
             </div>

@@ -640,6 +640,10 @@ textarea.error {
  * Tab annotations
  ******************************************************************************/
 
+.subHeaderRow {
+  background: linear-gradient(180deg, #0d0d0d 0%, #222 30%);
+}
+
 .tabBar {
   min-height: 28px;
   padding: 2px 0 0;

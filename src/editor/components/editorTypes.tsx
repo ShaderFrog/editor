@@ -11,6 +11,7 @@ import {
 import { CurrentUser } from '@editor/model';
 import { AnyFn } from '@editor/util/types';
 import { AddEngineNode } from '../editor-types';
+import { CompileInfo } from './flow/editor-store';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -36,7 +37,8 @@ export type SceneProps = {
   setLoadingMsg: (msg: string) => void;
   sceneConfig: AnySceneConfig;
   setSceneConfig: (config: AnySceneConfig) => void;
-  setGlResult: AnyFn;
+  setGlResult: (result: Partial<CompileInfo>) => void;
+  glResult: Partial<CompileInfo>;
   width: number;
   height: number;
   assetPrefix: string;

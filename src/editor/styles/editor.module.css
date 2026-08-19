@@ -528,6 +528,61 @@ textarea.error {
 }
 
 /*******************************************************************************
+ * Export Modal
+ ******************************************************************************/
+
+.exportModal {
+  width: 80vw;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.exportTitle {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #eee;
+}
+
+.exportControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.exportFormatGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.exportLabel {
+  font-size: 13px;
+  color: #aaa;
+  white-space: nowrap;
+}
+
+.exportFormatButtons {
+  display: flex;
+  gap: 6px;
+}
+
+.exportActions {
+  display: flex;
+  gap: 6px;
+}
+
+.exportEditorWrap {
+  border: 1px solid #333;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/*******************************************************************************
  * Asset Management
  ******************************************************************************/
 

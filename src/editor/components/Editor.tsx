@@ -139,6 +139,7 @@ import {
   useEditorStore,
 } from './flow/editor-store';
 import Modal from './Modal';
+import ExportModal from './ExportModal';
 import { xor } from '@shaderfrog/glsl-parser/parser/utils';
 import GlslEditor from './GlslEditor';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -2178,8 +2179,14 @@ const Editor = ({
           </Modal>
         ) : null}
 
-        {isShowingExport ? (
-          <Modal onClose={() => setShowExport(false)}>hi please help me</Modal>
+        {isShowingExport && compileResult ? (
+          <ExportModal
+            onClose={() => setShowExport(false)}
+            compileResult={compileResult}
+            graph={graph}
+            grindex={grindex}
+            shaderName={shader.name || 'shader'}
+          />
         ) : null}
         {isMetadataOpen ? (
           <Modal onClose={() => setMetadataOpen(false)}>

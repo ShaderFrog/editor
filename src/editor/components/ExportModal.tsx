@@ -3,7 +3,7 @@ import MonacoEditor, { BeforeMount } from '@monaco-editor/react';
 
 import { CompileResult, Graph, Grindex } from '@core/graph';
 import Modal from './Modal/Modal';
-import { generateExport, ExportFormat } from '../export/generateExport';
+import { generateExport } from '../export/generateExport';
 import styles from '../styles/editor.module.css';
 
 interface ExportModalProps {
@@ -33,21 +33,19 @@ const ExportModal = ({
   grindex,
   shaderName,
 }: ExportModalProps) => {
-  const [format, setFormat] = useState<ExportFormat>('es6');
   const [copied, setCopied] = useState(false);
 
-  const exportCode = useMemo(
-    () => generateExport({ compileResult, graph, grindex, shaderName, format }),
-    [compileResult, graph, grindex, shaderName, format],
+  const { code, usage } = useMemo(
+    () => generateExport({ compileResult, graph, grindex, shaderName }),
+    [compileResult, graph, grindex, shaderName],
   );
 
-  const lineCount = exportCode.split('\n').length;
+  const lineCount = code.split('\n').length;
   const editorHeight = Math.min(Math.max(lineCount * 19, 200), 500);
 
   const handleDownload = () => {
-    const ext = format === 'es6' ? 'mjs' : 'js';
-    const filename = `${(shaderName || 'shader').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${ext}`;
-    const blob = new Blob([exportCode], { type: 'text/javascript' });
+    const filename = `${(shaderName || 'shader').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mjs`;
+    const blob = new Blob([code], { type: 'text/javascript' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -57,7 +55,7 @@ const ExportModal = ({
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(exportCode).then(() => {
+    navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -67,24 +65,13 @@ const ExportModal = ({
     <Modal onClose={onClose}>
       <div className={styles.exportModal}>
         <h2 className={styles.exportTitle}>Export Shader</h2>
-        <div className={styles.exportControls}>
-          <div className={styles.exportFormatGroup}>
-            <label className={styles.exportLabel}>Format</label>
-            <div className={styles.exportFormatButtons}>
-              <button
-                className={`buttonauto formbutton size2${format === 'es6' ? ' primary' : ' secondary'}`}
-                onClick={() => setFormat('es6')}
-              >
-                ES6 Modules
-              </button>
-              <button
-                className={`buttonauto formbutton size2${format === 'vanilla' ? ' primary' : ' secondary'}`}
-                onClick={() => setFormat('vanilla')}
-              >
-                Vanilla JS
-              </button>
-            </div>
+        {usage && (
+          <div className={styles.exportUsage}>
+            <div className={styles.exportUsageLabel}>Usage</div>
+            <pre className={styles.exportUsagePre}>{usage}</pre>
           </div>
+        )}
+        <div className={styles.exportControls}>
           <div className={styles.exportActions}>
             <button
               className="buttonauto formbutton size2 secondary"
@@ -105,7 +92,7 @@ const ExportModal = ({
             height={editorHeight}
             language="javascript"
             theme="exportTheme"
-            value={exportCode}
+            value={code}
             beforeMount={beforeMount}
             options={{
               readOnly: true,

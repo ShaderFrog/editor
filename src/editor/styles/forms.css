@@ -89,7 +89,6 @@
   box-shadow: inset 0 1px 0 #ace400;
   background: #88b500;
   text-shadow: 0 0 4px #678900;
-  /* border: 1px solid #6b8f00; */
   /* for links styled as button */
   text-decoration: none;
 }
@@ -97,7 +96,6 @@
   user-select: none;
   color: #999;
   box-shadow: 0 1px 3px #1a1a1a;
-  border: 1px solid #567104;
   background: #567104;
 }
 .formbutton[disabled]:hover {

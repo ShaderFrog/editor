@@ -28,6 +28,11 @@ export type ShaderConfig = {
   } & Record<string, any>;
 };
 
+export type CompiledGlsl = {
+  vertex: string;
+  fragment: string;
+};
+
 export type Shader = {
   // Not persisted
   id?: string;
@@ -45,6 +50,7 @@ export type Shader = {
   visibility: number;
   likeCount?: number;
   commentCount?: number;
+  compiledGlsl?: CompiledGlsl;
 };
 
 export type UserShader = {

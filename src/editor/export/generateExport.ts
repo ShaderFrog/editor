@@ -15,40 +15,42 @@ import {
   prepareFrogMaterialExport,
 } from '@core/plugins/three/threngine';
 
-export type ExportFormat = 'vanilla' | 'es6';
-
 export interface GenerateExportParams {
   compileResult: CompileResult;
   graph: Graph;
   grindex: Grindex;
   shaderName: string;
-  format: ExportFormat;
 }
 
-function dataNodeToValueCode(node: DataNode): string {
+function dataNodeToValueCode(node: DataNode, threeImports: Set<string>): string {
   const v = node.value;
   if (node.type === 'number') {
     return String(parseFloat(v as string));
   }
   if (node.type === 'vector2') {
     const [x, y] = v as string[];
-    return `new THREE.Vector2(${x}, ${y})`;
+    threeImports.add('Vector2');
+    return `new Vector2(${x}, ${y})`;
   }
   if (node.type === 'vector3') {
     const [x, y, z] = v as string[];
-    return `new THREE.Vector3(${x}, ${y}, ${z})`;
+    threeImports.add('Vector3');
+    return `new Vector3(${x}, ${y}, ${z})`;
   }
   if (node.type === 'vector4') {
     const [x, y, z, w] = v as string[];
-    return `new THREE.Vector4(${x}, ${y}, ${z}, ${w})`;
+    threeImports.add('Vector4');
+    return `new Vector4(${x}, ${y}, ${z}, ${w})`;
   }
   if (node.type === 'rgb') {
     const [r, g, b] = v as string[];
-    return `new THREE.Color(${r}, ${g}, ${b})`;
+    threeImports.add('Color');
+    return `new Color(${r}, ${g}, ${b})`;
   }
   if (node.type === 'rgba') {
     const [r, g, b, a] = v as string[];
-    return `new THREE.Vector4(${r}, ${g}, ${b}, ${a})`;
+    threeImports.add('Vector4');
+    return `new Vector4(${r}, ${g}, ${b}, ${a})`;
   }
   if (node.type === 'texture') {
     return 'makePlaceholderTexture()';
@@ -64,13 +66,11 @@ interface CollectedUniform {
   valueCode: string;
 }
 
-// Collect only non-property uniform inputs from data nodes.
-// Engine node property inputs (map, color, etc.) are handled via
-// prepareFrogMaterialExport's injectableProps / fragmentInjections.
 function collectUniforms(
   dataInputs: IndexedDataInputs,
   graph: Graph,
   grindex: Grindex,
+  threeImports: Set<string>,
 ): CollectedUniform[] {
   const uniforms: CollectedUniform[] = [];
   const seen = new Set<string>();
@@ -80,7 +80,7 @@ function collectUniforms(
     if (!node) return;
 
     inputs.forEach((input: NodeInput) => {
-      if (input.property) return; // property inputs handled via engineNodeProperties
+      if (input.property) return;
       const edge = grindex.edgesByNode[nodeId]?.to.edgesByInput?.[input.id];
       if (!edge) return;
       const fromNode = grindex.nodes[edge.from];
@@ -94,7 +94,7 @@ function collectUniforms(
       );
       if (!seen.has(name)) {
         seen.add(name);
-        uniforms.push({ name, valueCode: dataNodeToValueCode(fromNode as DataNode) });
+        uniforms.push({ name, valueCode: dataNodeToValueCode(fromNode as DataNode, threeImports) });
       }
     });
   });
@@ -102,17 +102,16 @@ function collectUniforms(
   return uniforms;
 }
 
-function placeholderTextureFn(isEs6: boolean): string {
-  const d = isEs6 ? 'const' : 'var';
+function placeholderTextureFn(): string {
   return `function makePlaceholderTexture() {
-  ${d} canvas = document.createElement('canvas');
+  const canvas = document.createElement('canvas');
   canvas.width = 1;
   canvas.height = 1;
-  ${d} ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#888888';
   ctx.fillRect(0, 0, 1, 1);
-  ${d} tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  const tex = new CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = RepeatWrapping;
   return tex;
 }`;
 }
@@ -133,31 +132,102 @@ function injectionArrayCode(
   return `[\n${entries.join(',\n')},\n${indent}]`;
 }
 
-export function generateExport(params: GenerateExportParams): string {
-  const { compileResult, graph, grindex, shaderName, format } = params;
-  const isEs6 = format === 'es6';
-  const d = isEs6 ? 'const' : 'var';
+export function generateUsage(
+  shaderName: string,
+  hasTime: boolean,
+  hasRenderResolution: boolean,
+  hasCameraPosition: boolean,
+): string {
+  const filename = `${(shaderName || 'shader').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mjs`;
+  const lines = [
+    `import { uniforms, createMaterial } from './${filename}';`,
+    `const material = createMaterial();`,
+    `mesh.material = material;`,
+  ];
+
+  const loopLines: string[] = [];
+  if (hasTime) {
+    loopLines.push(`  const delta = (now - prevTime) / 1000;`);
+    loopLines.push(`  prevTime = now;`);
+    loopLines.push(`  uniforms.time.value += delta;`);
+  }
+  if (hasRenderResolution) {
+    loopLines.push(`  uniforms.renderResolution.value.set(window.innerWidth, window.innerHeight);`);
+  }
+  if (hasCameraPosition) {
+    loopLines.push(`  uniforms.cameraPosition.value.copy(camera.position);`);
+  }
+
+  if (loopLines.length > 0) {
+    lines.push(``);
+    if (hasTime) lines.push(`let prevTime = 0;`);
+    lines.push(`function animate(now) {`);
+    lines.push(`  requestAnimationFrame(animate);`);
+    lines.push(...loopLines);
+    lines.push(`}`);
+    lines.push(`requestAnimationFrame(animate);`);
+  }
+
+  return lines.join('\n');
+}
+
+export interface GenerateExportResult {
+  code: string;
+  usage: string;
+  hasTime: boolean;
+  hasRenderResolution: boolean;
+  hasCameraPosition: boolean;
+}
+
+export function generateExport(params: GenerateExportParams): GenerateExportResult {
+  const { compileResult, graph, grindex, shaderName } = params;
+
+  const threeImports = new Set<string>();
 
   const hasEngineNode = graph.nodes.some((node) => (node as any).engine);
   const frogData = hasEngineNode
     ? prepareFrogMaterialExport(compileResult, graph)
     : null;
 
-  const uniforms = collectUniforms(compileResult.dataInputs, graph, grindex);
+  const collectedUniforms = collectUniforms(compileResult.dataInputs, graph, grindex, threeImports);
 
-  const hasPlaceholderTexture = uniforms.some(
+  const hasPlaceholderTexture = collectedUniforms.some(
     (u) => u.valueCode === 'makePlaceholderTexture()',
   );
 
+  if (hasPlaceholderTexture) {
+    threeImports.add('CanvasTexture');
+    threeImports.add('RepeatWrapping');
+  }
+
+  // renderResolution is always included
+  threeImports.add('Vector2');
+
+  const uniformNames = new Set([
+    'time',
+    'renderResolution',
+    ...collectedUniforms.map((u) => u.name),
+  ]);
+  const hasTime = uniformNames.has('time');
+  const hasRenderResolution = uniformNames.has('renderResolution');
+  const hasCameraPosition = uniformNames.has('cameraPosition');
+
   const uniformEntries = [
-    `    time: { value: 0 }`,
-    `    renderResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }`,
-    ...uniforms.map((u) => `    ${u.name}: { value: ${u.valueCode} }`),
+    `  time: { value: 0 },`,
+    `  renderResolution: { value: new Vector2(typeof window !== 'undefined' ? window.innerWidth : 1, typeof window !== 'undefined' ? window.innerHeight : 1) },`,
+    ...collectedUniforms.map((u) => `  ${u.name}: { value: ${u.valueCode} },`),
   ];
 
   const safeName = shaderName || 'Shader';
+  const header = `// ${safeName} - ShaderFrog Export`;
+
+  const usage = generateUsage(shaderName, hasTime, hasRenderResolution, hasCameraPosition);
+
+  let code: string;
 
   if (frogData) {
+    threeImports.add(frogData.baseMaterialType);
+
     const { injectableProps, fragmentInjections, vertexInjections } = frogData;
 
     const propEntries = Object.entries(injectableProps).map(
@@ -168,25 +238,35 @@ export function generateExport(params: GenerateExportParams): string {
     const vertInjCode = injectionArrayCode(vertexInjections, '    ');
     const hasInjections = fragmentInjections.length > 0 || vertexInjections.length > 0;
 
-    const frogImport = isEs6
-      ? `import { FrogMaterial } from '@shaderfrog/core/plugins/three';`
-      : `${d} FrogMaterial = require('@shaderfrog/core/plugins/three').FrogMaterial;`;
+    const sortedImports = [...threeImports].sort();
+    const threeImportLine = `import { ${sortedImports.join(', ')} } from 'three';`;
 
-    const threeImport = isEs6
-      ? `import * as THREE from 'three';`
-      : `${d} THREE = require('three');`;
-
-    const materialLines = [
-      `  ${d} uniforms = {`,
-      uniformEntries.join(',\n'),
-      `  };`,
+    code = [
+      header,
       ``,
-      `  ${d} material = new FrogMaterial({`,
-      `    baseMaterial: THREE.${frogData.baseMaterialType},`,
-      `    fragmentShader: ${glslTemplateLiteral(frogData.fragmentShader)},`,
-      `    fragmentOutput: ${JSON.stringify(frogData.fragmentOutput)},`,
-      `    vertexShader: ${glslTemplateLiteral(frogData.vertexShader)},`,
-      `    vertexOutput: ${JSON.stringify(frogData.vertexOutput)},`,
+      threeImportLine,
+      `import { FrogMaterial } from '@shaderfrog/core/plugins/three';`,
+      ...(hasPlaceholderTexture ? [``, placeholderTextureFn(), ``] : [``]),
+      `export const uniforms = {`,
+      uniformEntries.join('\n'),
+      `};`,
+      ``,
+      `const fragmentShader = ${glslTemplateLiteral(frogData.fragmentShader)};`,
+      ``,
+      `const fragmentOutput = ${JSON.stringify(frogData.fragmentOutput)};`,
+      ``,
+      `const vertexShader = ${glslTemplateLiteral(frogData.vertexShader)};`,
+      ``,
+      `const vertexOutput = ${JSON.stringify(frogData.vertexOutput)};`,
+      ``,
+      `export function createMaterial() {`,
+      `  const material = new FrogMaterial({`,
+      `    baseMaterial: ${frogData.baseMaterialType},`,
+      `    materialName: '${frogData.baseMaterialType}',`,
+      `    fragmentShader,`,
+      `    fragmentOutput,`,
+      `    vertexShader,`,
+      `    vertexOutput,`,
       `    uniforms,`,
       ...(propEntries.length ? propEntries : []),
       ...(hasInjections
@@ -201,118 +281,44 @@ export function generateExport(params: GenerateExportParams): string {
       `  material.defines.USE_UV = '';`,
       `  material.defines.USE_UV2 = '';`,
       `  material.defines.USE_TANGENT = '';`,
-    ];
-
-    const materialConstruction = materialLines.join('\n');
-
-    const header = `/**
- * ${safeName} - ShaderFrog Export
- *
- * Requirements:
- *   - Three.js r165+
- *   - @shaderfrog/core (npm install @shaderfrog/core)
- *
- * Usage:
- *   ${isEs6 ? `import { createMaterial } from './shader.mjs';` : `var createMaterial = require('./shader.js').createMaterial;`}
- *   ${isEs6 ? `const` : `var`} material = createMaterial();
- *   mesh.material = material;
- *   // In animation loop:
- *   material.uniforms.time.value = performance.now() / 1000;
- */`;
-
-    if (isEs6) {
-      return [
-        header,
-        ``,
-        threeImport,
-        frogImport,
-        hasPlaceholderTexture ? `\n${placeholderTextureFn(true)}\n` : ``,
-        `export function createMaterial() {`,
-        materialConstruction,
-        ``,
-        `  return material;`,
-        `}`,
-        ``,
-        `export default createMaterial;`,
-      ].join('\n');
-    } else {
-      return [
-        header,
-        ``,
-        hasPlaceholderTexture ? `\n${placeholderTextureFn(false)}\n` : ``,
-        `function createMaterial() {`,
-        `  var THREE = typeof THREE !== 'undefined' ? THREE : require('three');`,
-        `  var FrogMaterial = require('@shaderfrog/core/plugins/three').FrogMaterial;`,
-        materialConstruction,
-        ``,
-        `  return material;`,
-        `}`,
-        ``,
-        `if (typeof module !== 'undefined') {`,
-        `  module.exports = { createMaterial: createMaterial };`,
-        `}`,
-      ].join('\n');
-    }
-  } else {
-    // ShaderMaterial path (no engine node)
-    const threeImport = isEs6 ? `import * as THREE from 'three';` : '';
-
-    const materialConstruction = [
-      `  ${d} uniforms = {`,
-      uniformEntries.join(',\n'),
-      `  };`,
       ``,
-      `  ${d} material = new THREE.RawShaderMaterial({`,
-      `    glslVersion: THREE.GLSL3,`,
-      `    uniforms,`,
-      `    vertexShader: ${glslTemplateLiteral(compileResult.vertexResult)},`,
-      `    fragmentShader: ${glslTemplateLiteral(compileResult.fragmentResult)},`,
-      `  });`,
+      `  return material;`,
+      `}`,
+      ``,
+      `export default createMaterial;`,
     ].join('\n');
+  } else {
+    threeImports.add('RawShaderMaterial');
+    threeImports.add('GLSL3');
 
-    const header = `/**
- * ${safeName} - ShaderFrog Export
- *
- * Requirements:
- *   - Three.js r165+
- *
- * Usage:
- *   ${isEs6 ? `import { createMaterial } from './shader.mjs';` : `var createMaterial = require('./shader.js').createMaterial;`}
- *   ${isEs6 ? `const` : `var`} material = createMaterial();
- *   mesh.material = material;
- *   // In animation loop:
- *   material.uniforms.time.value = performance.now() / 1000;
- */`;
+    const sortedImports = [...threeImports].sort();
+    const threeImportLine = `import { ${sortedImports.join(', ')} } from 'three';`;
 
-    if (isEs6) {
-      return [
-        header,
-        ``,
-        threeImport,
-        hasPlaceholderTexture ? `\n${placeholderTextureFn(true)}\n` : ``,
-        `export function createMaterial() {`,
-        materialConstruction,
-        ``,
-        `  return material;`,
-        `}`,
-        ``,
-        `export default createMaterial;`,
-      ].join('\n');
-    } else {
-      return [
-        header,
-        ``,
-        hasPlaceholderTexture ? `\n${placeholderTextureFn(false)}\n` : ``,
-        `function createMaterial(THREE) {`,
-        materialConstruction,
-        ``,
-        `  return material;`,
-        `}`,
-        ``,
-        `if (typeof module !== 'undefined') {`,
-        `  module.exports = { createMaterial: createMaterial };`,
-        `}`,
-      ].join('\n');
-    }
+    code = [
+      header,
+      ``,
+      threeImportLine,
+      ...(hasPlaceholderTexture ? [``, placeholderTextureFn(), ``] : [``]),
+      `export const uniforms = {`,
+      uniformEntries.join('\n'),
+      `};`,
+      ``,
+      `const vertexShader = ${glslTemplateLiteral(compileResult.vertexResult)};`,
+      ``,
+      `const fragmentShader = ${glslTemplateLiteral(compileResult.fragmentResult)};`,
+      ``,
+      `export function createMaterial() {`,
+      `  return new RawShaderMaterial({`,
+      `    glslVersion: GLSL3,`,
+      `    uniforms,`,
+      `    vertexShader,`,
+      `    fragmentShader,`,
+      `  });`,
+      `}`,
+      ``,
+      `export default createMaterial;`,
+    ].join('\n');
   }
+
+  return { code, usage, hasTime, hasRenderResolution, hasCameraPosition };
 }

@@ -144,15 +144,18 @@ import { xor } from '@shaderfrog/glsl-parser/parser/utils';
 import GlslEditor from './GlslEditor';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  faArrowUpFromBracket,
   faCode,
   faCodeFork,
   faDiagramProject,
+  faDownload,
   faEyeSlash,
   faFileExport,
   faFileImport,
   faGlobe,
   faLock,
   faPencil,
+  faUpload,
 } from '@fortawesome/free-solid-svg-icons';
 import MetadataEditor from './MetadataEditor';
 import ConvertShadertoy from './ConvertShadertoy';
@@ -1806,6 +1809,12 @@ const Editor = ({
           }),
           scene: sceneConfig,
         },
+        compiledGlsl: compileResult
+          ? {
+              vertex: compileResult.vertexResult,
+              fragment: compileResult.fragmentResult,
+            }
+          : undefined,
       };
 
       if (shader.id && onUpdateShader && isOwnShader && !btnFork) {
@@ -1823,7 +1832,7 @@ const Editor = ({
     [
       shader,
       engine,
-
+      compileResult,
       flowEdges,
       flowNodes,
       graph,
@@ -2077,7 +2086,7 @@ const Editor = ({
             setShowImport(true);
           }}
         >
-          <FontAwesomeIcon className="secondary" icon={faFileImport} /> Import
+          <FontAwesomeIcon className="secondary" icon={faDownload} /> Import
         </button>
       ) : null}
       <button
@@ -2087,7 +2096,7 @@ const Editor = ({
           setShowExport(true);
         }}
       >
-        <FontAwesomeIcon className="secondary" icon={faFileExport} /> Export
+        <FontAwesomeIcon className="secondary" icon={faUpload} /> Export
       </button>
       {!shader.id || !isOwnShader ? null : (
         <button

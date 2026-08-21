@@ -65,12 +65,6 @@ const ExportModal = ({
     <Modal onClose={onClose}>
       <div className={styles.exportModal}>
         <h2 className={styles.exportTitle}>Export Shader</h2>
-        {usage && (
-          <div className={styles.exportUsage}>
-            <div className={styles.exportUsageLabel}>Usage</div>
-            <pre className={styles.exportUsagePre}>{usage}</pre>
-          </div>
-        )}
         <div className={styles.exportControls}>
           <div className={styles.exportActions}>
             <button

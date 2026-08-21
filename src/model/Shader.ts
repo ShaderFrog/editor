@@ -31,6 +31,15 @@ export type ShaderConfig = {
 export type CompiledGlsl = {
   vertex: string;
   fragment: string;
+  // Present when the shader has an engine node (FrogMaterial shaders)
+  fragmentOutput?: string;
+  vertexOutput?: string;
+  baseMaterialType?: string;
+  injectableProps?: Record<string, string>;
+  fragmentInjections?: Array<{ search: string; replace: string }>;
+  vertexInjections?: Array<{ search: string; replace: string }>;
+  // Uniform name → serialized TS value expression, for export code generation
+  uniformEntries?: Array<{ name: string; valueCode: string }>;
 };
 
 export type Shader = {

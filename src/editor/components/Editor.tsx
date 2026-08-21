@@ -67,6 +67,8 @@ import {
 import FlowEditor, { NodeContextActions } from './flow/FlowEditor';
 
 import { EngineContext } from '@core/engine';
+import { prepareFrogMaterialExport } from '@core/plugins/three/threngine';
+import { collectUniforms } from '../export/generateExport';
 
 import useThrottle from '../hooks/useThrottle';
 
@@ -1809,12 +1811,30 @@ const Editor = ({
           }),
           scene: sceneConfig,
         },
-        compiledGlsl: compileResult
-          ? {
-              vertex: compileResult.vertexResult,
-              fragment: compileResult.fragmentResult,
-            }
-          : undefined,
+        compiledGlsl: (() => {
+          if (!compileResult) return undefined;
+          const threeImports = new Set<string>();
+          const uniformEntries = collectUniforms(compileResult.dataInputs, graph, grindex, threeImports);
+          const frogData = prepareFrogMaterialExport(compileResult, graph);
+          if (frogData) {
+            return {
+              vertex: frogData.vertexShader,
+              fragment: frogData.fragmentShader,
+              fragmentOutput: frogData.fragmentOutput,
+              vertexOutput: frogData.vertexOutput,
+              baseMaterialType: frogData.baseMaterialType,
+              injectableProps: frogData.injectableProps,
+              fragmentInjections: frogData.fragmentInjections,
+              vertexInjections: frogData.vertexInjections,
+              uniformEntries,
+            };
+          }
+          return {
+            vertex: compileResult.vertexResult,
+            fragment: compileResult.fragmentResult,
+            uniformEntries,
+          };
+        })(),
       };
 
       if (shader.id && onUpdateShader && isOwnShader && !btnFork) {
@@ -2195,6 +2215,7 @@ const Editor = ({
             graph={graph}
             grindex={grindex}
             shaderName={shader.name || 'shader'}
+            shaderId={shader.id}
           />
         ) : null}
         {isMetadataOpen ? (

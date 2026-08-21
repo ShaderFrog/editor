@@ -66,7 +66,7 @@ interface CollectedUniform {
   valueCode: string;
 }
 
-function collectUniforms(
+export function collectUniforms(
   dataInputs: IndexedDataInputs,
   graph: Graph,
   grindex: Grindex,

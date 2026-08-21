@@ -4,7 +4,7 @@ import MonacoEditor, {
   OnMount,
 } from '@monaco-editor/react';
 // import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import { editor } from 'monaco-editor';
+import { languages, editor } from 'monaco-editor';
 
 const scrollCache = new Map<
   string,
@@ -90,18 +90,23 @@ const CodeEditor = ({
 
     monaco.languages.registerCompletionItemProvider('glsl', {
       provideCompletionItems: (model, position) => {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+        const suggestions = [
+          ...engine.preserve.values(),
+        ].map<languages.CompletionItem>((keyword) => ({
+          label: keyword,
+          kind: monaco.languages.CompletionItemKind.Text,
+          insertText: keyword,
+          range,
+        }));
         return {
-          suggestions: [...engine.preserve.values()].map((keyword) => ({
-            label: keyword,
-            kind: monaco.languages.CompletionItemKind.Text,
-            insertText: keyword,
-            range: {
-              startLineNumber: 0,
-              endLineNumber: 0,
-              startColumn: 0,
-              endColumn: 0,
-            },
-          })),
+          suggestions,
         };
       },
     });

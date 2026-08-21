@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import MonacoEditor, { BeforeMount } from '@monaco-editor/react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
 
 import { CompileResult, Graph, Grindex } from '@core/graph';
 import Modal from './Modal/Modal';
@@ -12,6 +14,7 @@ interface ExportModalProps {
   graph: Graph;
   grindex: Grindex;
   shaderName: string;
+  shaderId?: string;
 }
 
 const beforeMount: BeforeMount = (monaco) => {
@@ -32,6 +35,7 @@ const ExportModal = ({
   graph,
   grindex,
   shaderName,
+  shaderId,
 }: ExportModalProps) => {
   const [copied, setCopied] = useState(false);
 
@@ -79,6 +83,16 @@ const ExportModal = ({
             >
               Download
             </button>
+            {shaderId && (
+              <a
+                href={`/editor/${shaderId}/export`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Try it out&nbsp;
+                <FontAwesomeIcon icon={faUpRightFromSquare} />
+              </a>
+            )}
           </div>
         </div>
         <div className={styles.exportEditorWrap}>

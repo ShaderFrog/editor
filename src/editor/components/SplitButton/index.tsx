@@ -21,6 +21,7 @@ type SplitButtonProps<T> = {
   options: SplitButtonOption<T>[];
   selected: T;
   onSelect: (v: T) => void;
+  title?: string;
 };
 
 function SplitButton<T>({
@@ -30,6 +31,7 @@ function SplitButton<T>({
   options,
   selected,
   onSelect,
+  title,
 }: SplitButtonProps<T>) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -63,7 +65,7 @@ function SplitButton<T>({
           e.preventDefault();
           onClick();
         }}
-        title={`${label} (${currentOption.label})`}
+        title={`${label} (${title || currentOption.label})`}
       >
         {label}
       </button>

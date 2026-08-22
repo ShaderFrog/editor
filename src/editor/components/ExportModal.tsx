@@ -1,9 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import MonacoEditor, { BeforeMount } from '@monaco-editor/react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
+import {
+  faClipboard,
+  faFileArrowDown,
+  faUpRightFromSquare,
+} from '@fortawesome/free-solid-svg-icons';
+import cx from 'classnames';
 
 import { CompileResult, Graph, Grindex } from '@core/graph';
+import { AssetsAndGroups } from '@editor/model/Asset';
 import Modal from './Modal/Modal';
 import { generateExport } from '../export/generateExport';
 import styles from '../styles/editor.module.css';
@@ -15,6 +21,8 @@ interface ExportModalProps {
   grindex: Grindex;
   shaderName: string;
   shaderId?: string;
+  hasCompiledGlsl?: boolean;
+  assets?: AssetsAndGroups['assets'];
 }
 
 const beforeMount: BeforeMount = (monaco) => {
@@ -36,19 +44,23 @@ const ExportModal = ({
   grindex,
   shaderName,
   shaderId,
+  hasCompiledGlsl,
+  assets,
 }: ExportModalProps) => {
   const [copied, setCopied] = useState(false);
 
   const { code, usage } = useMemo(
-    () => generateExport({ compileResult, graph, grindex, shaderName }),
-    [compileResult, graph, grindex, shaderName],
+    () => generateExport({ compileResult, graph, grindex, shaderName, assets }),
+    [compileResult, graph, grindex, shaderName, assets]
   );
 
   const lineCount = code.split('\n').length;
   const editorHeight = Math.min(Math.max(lineCount * 19, 200), 500);
 
   const handleDownload = () => {
-    const filename = `${(shaderName || 'shader').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mjs`;
+    const filename = `${(shaderName || 'shader')
+      .replace(/[^a-z0-9]/gi, '_')
+      .toLowerCase()}.mjs`;
     const blob = new Blob([code], { type: 'text/javascript' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -68,31 +80,48 @@ const ExportModal = ({
   return (
     <Modal onClose={onClose}>
       <div className={styles.exportModal}>
-        <h2 className={styles.exportTitle}>Export Shader</h2>
-        <div className={styles.exportControls}>
-          <div className={styles.exportActions}>
+        <div className={cx('grid growShrinkShrinkShrink gap-10')}>
+          <div>
+            <h2 className={styles.exportTitle}>Export Shader</h2>
+          </div>
+          <div className="nowrap m-top-5 secondary px14">
+            {shaderId &&
+              (hasCompiledGlsl ? (
+                <a
+                  href={`/editor/${shaderId}/export`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="linkSpan"
+                >
+                  <span>Live Export Preview</span>{' '}
+                  <FontAwesomeIcon
+                    icon={faUpRightFromSquare}
+                    className="noHover"
+                  />
+                </a>
+              ) : (
+                <span>
+                  Recompile the shader and save to generate the export preview
+                </span>
+              ))}
+          </div>
+          <div>
             <button
               className="buttonauto formbutton size2 secondary"
               onClick={handleCopy}
             >
-              {copied ? 'Copied!' : 'Copy'}
+              <FontAwesomeIcon icon={faClipboard} className="secondary" />
+              {copied ? ' Copied!' : ' Copy'}
             </button>
+          </div>
+          <div>
             <button
               className="buttonauto formbutton size2 secondary"
               onClick={handleDownload}
             >
+              <FontAwesomeIcon icon={faFileArrowDown} className="secondary" />{' '}
               Download
             </button>
-            {shaderId && (
-              <a
-                href={`/editor/${shaderId}/export`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Try it out&nbsp;
-                <FontAwesomeIcon icon={faUpRightFromSquare} />
-              </a>
-            )}
           </div>
         </div>
         <div className={styles.exportEditorWrap}>

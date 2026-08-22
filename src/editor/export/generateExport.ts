@@ -7,6 +7,7 @@ import {
   NodeInput,
   SourceNode,
   DataNode,
+  TextureNode,
   findLinkedNode,
   mangleVar,
 } from '@core/graph';
@@ -14,15 +15,55 @@ import {
   threngine,
   prepareFrogMaterialExport,
 } from '@core/plugins/three/threngine';
+import { AssetsAndGroups } from '@editor/model/Asset';
+import { TextureNodeValueData } from '@core/graph';
 
 export interface GenerateExportParams {
   compileResult: CompileResult;
   graph: Graph;
   grindex: Grindex;
   shaderName: string;
+  assets?: AssetsAndGroups['assets'];
 }
 
-function dataNodeToValueCode(node: DataNode, threeImports: Set<string>): string {
+function textureValueCode(
+  node: TextureNode,
+  assets: AssetsAndGroups['assets'] | undefined,
+  threeImports: Set<string>,
+): string {
+  const { assetId, versionId, properties } = (node.value || {}) as TextureNodeValueData & { assetId?: number; versionId?: number };
+  const version = assetId !== undefined ? assets?.[assetId]?.versions.find((v) => v.id === versionId) : undefined;
+  if (!version?.url) {
+    return 'makePlaceholderTexture()';
+  }
+
+  threeImports.add('TextureLoader');
+  const repeatTexure = properties?.repeatTexure !== false;
+  if (repeatTexure) {
+    threeImports.add('RepeatWrapping');
+  } else {
+    threeImports.add('ClampToEdgeWrapping');
+  }
+
+  const rx = properties?.repeat?.x ?? 1;
+  const ry = properties?.repeat?.y ?? 1;
+  const anisotropy = properties?.anisotropy ?? 16;
+  const wrapConst = repeatTexure ? 'RepeatWrapping' : 'ClampToEdgeWrapping';
+
+  return `(() => {
+  const tex = new TextureLoader().load(${JSON.stringify(version.url)});
+  tex.wrapS = tex.wrapT = ${wrapConst};
+  tex.repeat.set(${rx}, ${ry});
+  tex.anisotropy = ${anisotropy};
+  return tex;
+})()`;
+}
+
+function dataNodeToValueCode(
+  node: DataNode,
+  threeImports: Set<string>,
+  assets?: AssetsAndGroups['assets'],
+): string {
   const v = node.value;
   if (node.type === 'number') {
     return String(parseFloat(v as string));
@@ -53,7 +94,7 @@ function dataNodeToValueCode(node: DataNode, threeImports: Set<string>): string 
     return `new Vector4(${r}, ${g}, ${b}, ${a})`;
   }
   if (node.type === 'texture') {
-    return 'makePlaceholderTexture()';
+    return textureValueCode(node as TextureNode, assets, threeImports);
   }
   if (node.type === 'samplerCube') {
     return 'null /* provide your own CubeTexture */';
@@ -61,9 +102,14 @@ function dataNodeToValueCode(node: DataNode, threeImports: Set<string>): string 
   return 'null';
 }
 
-interface CollectedUniform {
+export interface CollectedEntry {
   name: string;
   valueCode: string;
+}
+
+export interface CollectedResult {
+  uniforms: CollectedEntry[];
+  properties: CollectedEntry[];
 }
 
 export function collectUniforms(
@@ -71,35 +117,46 @@ export function collectUniforms(
   graph: Graph,
   grindex: Grindex,
   threeImports: Set<string>,
-): CollectedUniform[] {
-  const uniforms: CollectedUniform[] = [];
-  const seen = new Set<string>();
+  assets?: AssetsAndGroups['assets'],
+): CollectedResult {
+  const uniforms: CollectedEntry[] = [];
+  const properties: CollectedEntry[] = [];
+  const seenUniforms = new Set<string>();
+  const seenProperties = new Set<string>();
 
   Object.entries(dataInputs || {}).forEach(([nodeId, inputs]) => {
     const node = grindex.nodes[nodeId];
     if (!node) return;
 
     inputs.forEach((input: NodeInput) => {
-      if (input.property) return;
       const edge = grindex.edgesByNode[nodeId]?.to.edgesByInput?.[input.id];
       if (!edge) return;
       const fromNode = grindex.nodes[edge.from];
       if (!fromNode || !('value' in fromNode)) return;
 
-      const name = mangleVar(
-        input.displayName,
-        threngine,
-        node as GraphNode,
-        findLinkedNode(graph, node.id) as SourceNode,
-      );
-      if (!seen.has(name)) {
-        seen.add(name);
-        uniforms.push({ name, valueCode: dataNodeToValueCode(fromNode as DataNode, threeImports) });
+      const valueCode = dataNodeToValueCode(fromNode as DataNode, threeImports, assets);
+
+      if (input.property) {
+        if (!seenProperties.has(input.property)) {
+          seenProperties.add(input.property);
+          properties.push({ name: input.property, valueCode });
+        }
+      } else {
+        const name = mangleVar(
+          input.displayName,
+          threngine,
+          node as GraphNode,
+          findLinkedNode(graph, node.id) as SourceNode,
+        );
+        if (!seenUniforms.has(name)) {
+          seenUniforms.add(name);
+          uniforms.push({ name, valueCode });
+        }
       }
     });
   });
 
-  return uniforms;
+  return { uniforms, properties };
 }
 
 function placeholderTextureFn(): string {
@@ -180,7 +237,7 @@ export interface GenerateExportResult {
 }
 
 export function generateExport(params: GenerateExportParams): GenerateExportResult {
-  const { compileResult, graph, grindex, shaderName } = params;
+  const { compileResult, graph, grindex, shaderName, assets } = params;
 
   const threeImports = new Set<string>();
 
@@ -189,9 +246,11 @@ export function generateExport(params: GenerateExportParams): GenerateExportResu
     ? prepareFrogMaterialExport(compileResult, graph)
     : null;
 
-  const collectedUniforms = collectUniforms(compileResult.dataInputs, graph, grindex, threeImports);
+  const { uniforms: collectedUniforms, properties: collectedProperties } =
+    collectUniforms(compileResult.dataInputs, graph, grindex, threeImports, assets);
 
-  const hasPlaceholderTexture = collectedUniforms.some(
+  const allEntries = [...collectedUniforms, ...collectedProperties];
+  const hasPlaceholderTexture = allEntries.some(
     (u) => u.valueCode === 'makePlaceholderTexture()',
   );
 
@@ -238,6 +297,10 @@ export function generateExport(params: GenerateExportParams): GenerateExportResu
     const vertInjCode = injectionArrayCode(vertexInjections, '    ');
     const hasInjections = fragmentInjections.length > 0 || vertexInjections.length > 0;
 
+    const materialPropertyAssignments = collectedProperties.map(
+      (p) => `  material.${p.name} = ${p.valueCode};`,
+    );
+
     const sortedImports = [...threeImports].sort();
     const threeImportLine = `import { ${sortedImports.join(', ')} } from 'three';`;
 
@@ -281,6 +344,7 @@ export function generateExport(params: GenerateExportParams): GenerateExportResu
       `  material.defines.USE_UV = '';`,
       `  material.defines.USE_UV2 = '';`,
       `  material.defines.USE_TANGENT = '';`,
+      ...(materialPropertyAssignments.length ? [``, ...materialPropertyAssignments] : []),
       ``,
       `  return material;`,
       `}`,

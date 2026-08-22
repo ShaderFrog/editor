@@ -164,6 +164,7 @@ import ConvertShadertoy from './ConvertShadertoy';
 import { truncate } from '@editor/util/string';
 import indexById from '@core/util/indexByid';
 import { stubDefaultShader } from '@editor/api';
+import { useAssetsAndGroups } from '@editor/api/assets';
 import SplitButton, { SplitButtonOption } from './SplitButton';
 const VISIBILITY_OPTIONS: SplitButtonOption<ShaderVisibility>[] = [
   {
@@ -274,6 +275,9 @@ const Editor = ({
   const rawStore = useEditorRawStore();
 
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
+  const { assets: editorAssets } = useAssetsAndGroups() || {
+    assets: undefined,
+  };
 
   // The shader being dragged onto something to replace it
   const [draggedShader, setDraggedShader] = useState<Shader | null>(null);
@@ -1814,7 +1818,14 @@ const Editor = ({
         compiledGlsl: (() => {
           if (!compileResult) return undefined;
           const threeImports = new Set<string>();
-          const uniformEntries = collectUniforms(compileResult.dataInputs, graph, grindex, threeImports);
+          const { uniforms: uniformEntries, properties: propertyEntries } =
+            collectUniforms(
+              compileResult.dataInputs,
+              graph,
+              grindex,
+              threeImports,
+              editorAssets
+            );
           const frogData = prepareFrogMaterialExport(compileResult, graph);
           if (frogData) {
             return {
@@ -1827,12 +1838,14 @@ const Editor = ({
               fragmentInjections: frogData.fragmentInjections,
               vertexInjections: frogData.vertexInjections,
               uniformEntries,
+              propertyEntries,
             };
           }
           return {
             vertex: compileResult.vertexResult,
             fragment: compileResult.fragmentResult,
             uniformEntries,
+            propertyEntries,
           };
         })(),
       };
@@ -1846,6 +1859,10 @@ const Editor = ({
         await onCreateShader(payload);
       }
       log('saved');
+
+      if (payload.compiledGlsl) {
+        setShader({ ...shader, compiledGlsl: payload.compiledGlsl });
+      }
 
       setIsSaving(false);
     },
@@ -2134,6 +2151,13 @@ const Editor = ({
       )}
       {isAuthenticated && isOwnShader ? (
         <SplitButton
+          title={
+            shader.visibility === SHADER_VISIBILITY.PUBLIC
+              ? 'Publish'
+              : shader.visibility === SHADER_VISIBILITY.UNLISTED
+              ? 'Save Unlisted'
+              : 'Save Private'
+          }
           label={
             shader.visibility === SHADER_VISIBILITY.PUBLIC ? (
               <>
@@ -2216,6 +2240,8 @@ const Editor = ({
             grindex={grindex}
             shaderName={shader.name || 'shader'}
             shaderId={shader.id}
+            hasCompiledGlsl={!!shader.compiledGlsl}
+            assets={editorAssets}
           />
         ) : null}
         {isMetadataOpen ? (

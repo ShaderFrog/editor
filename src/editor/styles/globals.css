@@ -38,6 +38,9 @@ a:hover {
   text-shadow: 0 0 20px #d8ffa270;
   text-decoration: underline;
 }
+a:hover .noHover {
+  text-decoration: none;
+}
 
 * {
   box-sizing: border-box;
@@ -117,16 +120,25 @@ a:hover {
 .px12 {
   font-size: 12px !important;
 }
+.px13 {
+  font-size: 13px !important;
+}
+.px14 {
+  font-size: 14px !important;
+}
+.px15 {
+  font-size: 15px !important;
+}
 
 .linkBtn {
   cursor: pointer;
 }
 
 .linkSpan:hover {
-  text-decoration: none;
+  text-decoration: none !important;
 }
 .linkSpan:hover span:not(.noHover) {
-  text-decoration: underline;
+  text-decoration: underline !important;
 }
 
 .y-scroll {
@@ -332,6 +344,18 @@ a:hover {
 .growGrowGrowShrinkShrink {
   grid-auto-flow: row;
   grid-template-columns: 1fr 1fr 1fr min-content min-content;
+}
+.growGrowShrinkShrink {
+  grid-auto-flow: row;
+  grid-template-columns: 1fr 1fr min-content min-content;
+}
+.shrinkShirinkGrow {
+  grid-auto-flow: row;
+  grid-template-columns: min-content min-content 1fr;
+}
+.growShrinkShrinkShrink {
+  grid-auto-flow: row;
+  grid-template-columns: 1fr min-content min-content min-content;
 }
 .gap-5 {
   grid-gap: 5px !important;

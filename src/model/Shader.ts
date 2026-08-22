@@ -40,6 +40,8 @@ export type CompiledGlsl = {
   vertexInjections?: Array<{ search: string; replace: string }>;
   // Uniform name → serialized TS value expression, for export code generation
   uniformEntries?: Array<{ name: string; valueCode: string }>;
+  // Material property name → serialized TS value expression (e.g. map, normalMap)
+  propertyEntries?: Array<{ name: string; valueCode: string }>;
 };
 
 export type Shader = {

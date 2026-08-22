@@ -282,8 +282,8 @@ const Editor = ({
   // The shader being dragged onto something to replace it
   const [draggedShader, setDraggedShader] = useState<Shader | null>(null);
 
-  const [isShowingImport, setShowImport] = useState(false);
-  const [isShowingExport, setShowExport] = useState(false);
+  const [activeDialog, setActiveDialog] = useState<'export' | 'import' | 'fork' | null>(null);
+  const [forkName, setForkName] = useState('');
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
@@ -1793,7 +1793,7 @@ const Editor = ({
   });
 
   const saveOrFork = useCallback(
-    async (btnFork = false) => {
+    async (btnFork = false, customName?: string) => {
       if (!onUpdateShader && !onCreateShader) {
         return;
       }
@@ -1803,7 +1803,7 @@ const Editor = ({
       const payload = {
         // TODO CONVERT OR THROW
         engine: engine.name as 'three',
-        name: shader.name,
+        name: customName ?? shader.name,
         tags: [],
         description: shader.description,
         visibility: shader.visibility ?? SHADER_VISIBILITY.PUBLIC,
@@ -2120,7 +2120,7 @@ const Editor = ({
           className="buttonauto formbutton size2 secondary m-right-5"
           onClick={(e) => {
             e.preventDefault();
-            setShowImport(true);
+            setActiveDialog('import');
           }}
         >
           <FontAwesomeIcon className="secondary" icon={faDownload} /> Import
@@ -2130,7 +2130,7 @@ const Editor = ({
         className="buttonauto formbutton size2 secondary m-right-5"
         onClick={(e) => {
           e.preventDefault();
-          setShowExport(true);
+          setActiveDialog('export');
         }}
       >
         <FontAwesomeIcon className="secondary" icon={faUpload} /> Export
@@ -2141,7 +2141,8 @@ const Editor = ({
           className="buttonauto formbutton size2 secondary m-right-5"
           onClick={(e) => {
             e.preventDefault();
-            saveOrFork(true);
+            setForkName(`Fork of ${shader.name}`);
+            setActiveDialog('fork');
           }}
         >
           <>
@@ -2189,7 +2190,12 @@ const Editor = ({
           onClick={(e) => {
             e.preventDefault();
             onCloseSaveErrors && onCloseSaveErrors();
-            saveOrFork();
+            if (shader.id && !isOwnShader) {
+              setForkName(`Fork of ${shader.name}`);
+              setActiveDialog('fork');
+            } else {
+              saveOrFork();
+            }
           }}
           title={`${isMacintosh() ? `⌘-s` : `Ctrl-s`}`}
         >
@@ -2220,21 +2226,21 @@ const Editor = ({
         onClick={onContainerClick}
         onMouseMove={onMouseMove}
       >
-        {isShowingImport ? (
-          <Modal onClose={() => setShowImport(false)}>
+        {activeDialog === 'import' ? (
+          <Modal onClose={() => setActiveDialog(null)}>
             <ConvertShadertoy
               engine={engine}
               onImport={() => {
                 compile();
-                setShowImport(false);
+                setActiveDialog(null);
               }}
             />
           </Modal>
         ) : null}
 
-        {isShowingExport && compileResult ? (
+        {activeDialog === 'export' && compileResult ? (
           <ExportModal
-            onClose={() => setShowExport(false)}
+            onClose={() => setActiveDialog(null)}
             compileResult={compileResult}
             graph={graph}
             grindex={grindex}
@@ -2243,6 +2249,44 @@ const Editor = ({
             hasCompiledGlsl={!!shader.compiledGlsl}
             assets={editorAssets}
           />
+        ) : null}
+
+        {activeDialog === 'fork' ? (
+          <Modal onClose={() => setActiveDialog(null)}>
+            <div>
+              <h2 className={cx(styles.uiHeader)}>Fork Shader</h2>
+              <div className="m-top-10">
+                <label className="label">
+                  Forked Shader Name
+                  <input
+                    type="text"
+                    className="textinput"
+                    value={forkName}
+                    onChange={(e) => setForkName(e.target.value)}
+                    autoFocus
+                  />
+                </label>
+              </div>
+              <div className="m-top-10 grid col2 gap25">
+                <button
+                  className="buttonauto formbutton size2 secondary"
+                  onClick={() => setActiveDialog(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={isSaving || isDeleting}
+                  className="buttonauto formbutton size2"
+                  onClick={() => {
+                    setActiveDialog(null);
+                    saveOrFork(true, forkName);
+                  }}
+                >
+                  <FontAwesomeIcon icon={faCodeFork} /> Fork
+                </button>
+              </div>
+            </div>
+          </Modal>
         ) : null}
         {isMetadataOpen ? (
           <Modal onClose={() => setMetadataOpen(false)}>

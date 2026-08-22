@@ -15,6 +15,7 @@ import {
   threngine,
   prepareFrogMaterialExport,
 } from '@core/plugins/three/threngine';
+import { ShaderInjection } from '@core/plugins/three/FrogMaterial';
 import { AssetsAndGroups } from '@editor/model/Asset';
 import { TextureNodeValueData } from '@core/graph';
 
@@ -178,14 +179,15 @@ function glslTemplateLiteral(glsl: string): string {
 }
 
 function injectionArrayCode(
-  injections: Array<{ search: string; replace: string }>,
+  injections: ShaderInjection[],
   indent: string,
 ): string {
   if (!injections.length) return '[]';
-  const entries = injections.map(
-    (inj) =>
-      `${indent}  { search: new RegExp(${JSON.stringify(inj.search)}), replace: ${JSON.stringify(inj.replace)} }`,
-  );
+  const entries = injections.map((inj) => {
+    const searchStr =
+      inj.search instanceof RegExp ? inj.search.source : inj.search;
+    return `${indent}  { search: new RegExp(${JSON.stringify(searchStr)}), replace: ${JSON.stringify(inj.replace)} }`;
+  });
   return `[\n${entries.join(',\n')},\n${indent}]`;
 }
 

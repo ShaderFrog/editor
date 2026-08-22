@@ -1,4 +1,5 @@
 import { Edge, GraphNode } from '@core';
+import { ShaderInjection } from '@core/plugins/three/FrogMaterial';
 import { Tag } from './Tag';
 import { ValueOf } from '../util/types';
 
@@ -36,8 +37,8 @@ export type CompiledGlsl = {
   vertexOutput?: string;
   baseMaterialType?: string;
   injectableProps?: Record<string, string>;
-  fragmentInjections?: Array<{ search: string; replace: string }>;
-  vertexInjections?: Array<{ search: string; replace: string }>;
+  fragmentInjections?: ShaderInjection[];
+  vertexInjections?: ShaderInjection[];
   // Uniform name → serialized TS value expression, for export code generation
   uniformEntries?: Array<{ name: string; valueCode: string }>;
   // Material property name → serialized TS value expression (e.g. map, normalMap)

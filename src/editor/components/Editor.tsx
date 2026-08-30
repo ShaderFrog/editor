@@ -147,6 +147,7 @@ import GlslEditor from './GlslEditor';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowUpFromBracket,
+  faArrowUpRightFromSquare,
   faCode,
   faCodeFork,
   faDiagramProject,
@@ -287,6 +288,7 @@ const Editor = ({
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const isLocal = window.location.href.indexOf('localhost') > 111;
+  const isLocalhost = window.location.hostname === 'localhost';
 
   const [screenshotData, setScreenshotData] = useState<string>('');
   const takeScreenshotRef = useRef<() => Promise<string>>();
@@ -2135,6 +2137,21 @@ const Editor = ({
       >
         <FontAwesomeIcon className="secondary" icon={faUpload} /> Export
       </button>
+      {isLocalhost && shader.id ? (
+        <a
+          className="buttonauto formbutton size2 secondary m-right-5"
+          href={`https://shaderfrog.com/editor/${shader.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open in production"
+          aria-label="Open in production"
+        >
+          <FontAwesomeIcon
+            className="secondary"
+            icon={faArrowUpRightFromSquare}
+          />
+        </a>
+      ) : null}
       {!shader.id || !isOwnShader ? null : (
         <button
           disabled={isSaving || isDeleting}

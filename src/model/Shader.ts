@@ -10,6 +10,16 @@ export const SHADER_VISIBILITY = {
 } as const;
 export type ShaderVisibility = ValueOf<typeof SHADER_VISIBILITY>;
 
+// How expensive a shader is to render on the GPU, used to avoid pairing two
+// heavy shaders together in the /infinite crossfade. Unset (null) means
+// unrated.
+export const GPU_COST = {
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+} as const;
+export type GpuCost = ValueOf<typeof GPU_COST>;
+
 export type ShaderUser = {
   name: string;
   isPro: boolean;
@@ -63,6 +73,7 @@ export type Shader = {
   likeCount?: number;
   commentCount?: number;
   compiledGlsl?: CompiledGlsl;
+  gpuCost?: GpuCost | null;
 };
 
 export type UserShader = {

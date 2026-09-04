@@ -67,7 +67,10 @@ import {
 import FlowEditor, { NodeContextActions } from './flow/FlowEditor';
 
 import { EngineContext } from '@core/engine';
-import { prepareFrogMaterialExport } from '@core/plugins/three/threngine';
+import {
+  prepareFrogMaterialExport,
+  extractRawGraphVertexInfo,
+} from '@core/plugins/three/threngine';
 import { collectUniforms } from '../export/generateExport';
 
 import useThrottle from '../hooks/useThrottle';
@@ -1843,9 +1846,21 @@ const Editor = ({
               propertyEntries,
             };
           }
+          // No engine node — this is a raw graph. It has no FrogMaterial
+          // `position:` slot, but its vertex output node's own compiled body
+          // still names the exact node that's actually wired to gl_Position.
+          // Capture that now so consumers that later mix this shader's GLSL
+          // into someone else's position (e.g. /infinite's shader-transition
+          // compositor) know the real position call instead of having to
+          // guess it from the compiled text. See extractRawGraphVertexInfo's
+          // docstring in core's threngine.ts for why guessing goes wrong.
+          const { position, vertexOutput } =
+            extractRawGraphVertexInfo(compileResult);
           return {
             vertex: compileResult.vertexResult,
             fragment: compileResult.fragmentResult,
+            vertexOutput,
+            injectableProps: { position },
             uniformEntries,
             propertyEntries,
           };

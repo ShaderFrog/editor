@@ -26,7 +26,7 @@ import {
   useGlslEditorTabIndex,
 } from './flow/editor-store';
 import { capitalize } from '@editor/util/string';
-import StrategyEditor from './StrategyEditor';
+import NodeConfigEditor from './StrategyEditor';
 import debounce from 'lodash.debounce';
 import { FileTree, findInTree, TreeData } from './FileTree';
 
@@ -110,6 +110,7 @@ const GlslEditor = ({
     compileInfo,
     setCompileInfo,
     updateGraphNode,
+    renameGraphNode,
     compileResult,
     graph,
     engineContext,
@@ -210,6 +211,28 @@ const GlslEditor = ({
             },
           };
         }
+        // Vertex nodes without a linked fragment node get their own folder,
+        // so their config is reachable from the tree too
+        if (stage) {
+          return {
+            ...acc,
+            [node.id]: {
+              id: `${node.id}_folder`,
+              nodeId: node.id,
+              name: node.name,
+              type: 'config' as PaneType,
+              children: [
+                {
+                  id: node.id,
+                  nodeId: node.id,
+                  name: capitalize(stage),
+                  stage,
+                  type: 'code' as PaneType,
+                },
+              ],
+            },
+          };
+        }
         return {
           ...acc,
           [node.id]: {
@@ -263,7 +286,13 @@ const GlslEditor = ({
       <div className={styles.treePanel}>
         <div className={styles.labeledSection}>
           <h3>Module Browser</h3>
-          <FileTree data={treeNodes} selection={selectedTreeId} />
+          <FileTree
+            data={treeNodes}
+            selection={selectedTreeId}
+            onRename={({ node, name }) =>
+              renameGraphNode(node.data.nodeId, name)
+            }
+          />
         </div>
         <div className={styles.labeledSection}>
           <h3>Compiled GLSL</h3>
@@ -413,11 +442,11 @@ const GlslEditor = ({
                 }
               } else {
                 tabContents = (
-                  <StrategyEditor
+                  <NodeConfigEditor
                     node={primaryNode}
                     onSave={onCompile}
                     onGraphChange={onGraphChange}
-                  ></StrategyEditor>
+                  />
                 );
               }
               return (

@@ -22,7 +22,8 @@ import {
 import styles from '../styles/editor.module.css';
 import { useEditorStore } from './flow/editor-store';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCircleXmark } from '@fortawesome/free-solid-svg-icons';
+import { faCircleXmark, faCode } from '@fortawesome/free-solid-svg-icons';
+import { capitalize } from '@editor/util/string';
 
 type StrategyEditorProps<T extends { config: any } = any> = {
   config: T['config'];
@@ -220,16 +221,22 @@ const sectionVisibilities: NodeInputSection[] = [
   'Code',
 ] as const;
 
-const StrategyEditor = ({
-  node,
-  onSave,
-  onGraphChange,
-}: {
+type ConfigEditorProps = {
   node: SourceNode;
   onSave: () => void;
   onGraphChange: () => void;
-}) => {
-  const { graph, engineContext, updateFlowOutput } = useEditorStore();
+};
+
+/**
+ * Config for one stage of a node. Linked fragment and vertex nodes each have
+ * their own strategies, source type, and inputs.
+ */
+const StageConfigEditor = ({
+  node,
+  onSave,
+  onGraphChange,
+}: ConfigEditorProps) => {
+  const { engineContext, updateFlowOutput } = useEditorStore();
 
   const [selectedStrategy, setSelectedStrategy] = useState(
     StrategyType.VARIABLE
@@ -254,60 +261,10 @@ const StrategyEditor = ({
     node.outputs[0].dataType = outputDataType;
   };
 
-  const sibling = findLinkedNode(graph, node.id);
-
-  const otherNodes = (stage: 'fragment' | 'vertex') => {
-    return (
-      <select
-        name="strategy"
-        className="select"
-        value={sibling?.id}
-        onChange={(e) => {
-          const otherId = e.target.value;
-          // TODO: Need to manipulate edges here to create link
-          if (stage === 'vertex') {
-          } else {
-          }
-          onSave();
-        }}
-      >
-        <option>None</option>
-        {graph.nodes
-          .filter(
-            (n) =>
-              n.id !== node.id &&
-              'stage' in n &&
-              n.stage !== stage &&
-              !node.engine
-          )
-          .map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.name} ({(n as SourceNode).stage})
-            </option>
-          ))}
-      </select>
-    );
-  };
-
   const backfillers: Backfillers = node.backfillers || {};
 
   return (
     <>
-      <div className={styles.uiGroup}>
-        <div>
-          <h2 className={styles.uiHeader}>Node Name</h2>
-          <input
-            className="textinput"
-            type="text"
-            value={node.name}
-            onChange={(e) => {
-              node.name = e.target.value;
-              onGraphChange();
-            }}
-          ></input>
-        </div>
-      </div>
-
       <div className={styles.uiGroup}>
         <h2 className={styles.uiHeader}>Node Strategies</h2>
         <div className="secondary">
@@ -397,22 +354,6 @@ const StrategyEditor = ({
           </div>
         </form>
       </div>
-
-      {node.stage ? (
-        <div className={styles.uiGroup}>
-          <h2 className={styles.uiHeader}>Linked Node</h2>
-          <div className="secondary">
-            Enable varyings to connect between vertex and fragment nodes. For
-            vertex nodes, set which fragment node this vertex node, if any, is
-            &quot;linked&quot; to. Without setting this, varyings are always
-            renamed to be unique, so they won&apos;t have the same name as other
-            nodes.
-          </div>
-          <div className={cx(styles.colcolauto, 'm-top-15')}>
-            <div>{otherNodes(node.stage)}</div>
-          </div>
-        </div>
-      ) : null}
 
       <div className={styles.uiGroup}>
         <h2 className={styles.uiHeader}>Source Code Type</h2>
@@ -567,4 +508,121 @@ const StrategyEditor = ({
   );
 };
 
-export default StrategyEditor;
+/**
+ * Config for a node, and its linked sibling if it has one. The name and link
+ * are shared by both nodes. Everything else is per stage, so each stage gets
+ * its own column.
+ */
+const NodeConfigEditor = ({
+  node,
+  onSave,
+  onGraphChange,
+}: ConfigEditorProps) => {
+  const { graph, renameGraphNode } = useEditorStore();
+
+  const sibling = findLinkedNode(graph, node.id);
+  // Fragment on the left, vertex on the right
+  const stageNodes = [node, ...(sibling ? [sibling] : [])].sort((a, b) =>
+    a.stage === 'fragment' ? -1 : b.stage === 'fragment' ? 1 : 0
+  );
+
+  const otherNodes = (stage: 'fragment' | 'vertex') => {
+    return (
+      <select
+        name="strategy"
+        className="select"
+        value={sibling?.id}
+        onChange={(e) => {
+          const otherId = e.target.value;
+          // TODO: Need to manipulate edges here to create link
+          if (stage === 'vertex') {
+          } else {
+          }
+          onSave();
+        }}
+      >
+        <option>None</option>
+        {graph.nodes
+          .filter(
+            (n) =>
+              n.id !== node.id &&
+              'stage' in n &&
+              n.stage !== stage &&
+              !node.engine
+          )
+          .map((n) => (
+            <option key={n.id} value={n.id}>
+              {n.name} ({(n as SourceNode).stage})
+            </option>
+          ))}
+      </select>
+    );
+  };
+
+  return (
+    <>
+      <div className={styles.uiGroup}>
+        <div>
+          <h2 className={styles.uiHeader}>Node Name</h2>
+          {sibling ? (
+            <div className="secondary m-bottom-15">
+              Shared by the linked fragment and vertex nodes.
+            </div>
+          ) : null}
+          <input
+            className="textinput"
+            type="text"
+            value={node.name}
+            onChange={(e) => renameGraphNode(node.id, e.target.value)}
+          ></input>
+        </div>
+      </div>
+
+      {node.stage ? (
+        <div className={styles.uiGroup}>
+          <h2 className={styles.uiHeader}>Linked Node</h2>
+          <div className="secondary">
+            Enable varyings to connect between vertex and fragment nodes. For
+            vertex nodes, set which fragment node this vertex node, if any, is
+            &quot;linked&quot; to. Without setting this, varyings are always
+            renamed to be unique, so they won&apos;t have the same name as other
+            nodes.
+          </div>
+          <div className={cx(styles.colcolauto, 'm-top-15')}>
+            <div>{otherNodes(node.stage)}</div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className={styles.stageColumns}>
+        {stageNodes.map((stageNode) => (
+          <div key={stageNode.id} className={styles.stageColumn}>
+            {/* Always render the header so every column has the same number
+                of subgrid rows */}
+            <h2 className={cx(styles.uiHeader, styles.stageColumnHeader)}>
+              {stageNode.stage ? (
+                <>
+                  <FontAwesomeIcon
+                    icon={faCode}
+                    className={cx(styles.tabIcon, {
+                      [styles.tabFragment]: stageNode.stage === 'fragment',
+                      [styles.tabVertex]: stageNode.stage === 'vertex',
+                    })}
+                  />
+                  {capitalize(stageNode.stage)}
+                </>
+              ) : null}
+            </h2>
+            <StageConfigEditor
+              node={stageNode}
+              onSave={onSave}
+              onGraphChange={onGraphChange}
+            />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+};
+
+export default NodeConfigEditor;

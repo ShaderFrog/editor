@@ -744,6 +744,25 @@ textarea.error {
   color: #ff5f5f;
 }
 
+.stageColumns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+}
+/* Each column is a subgrid spanning the parent's rows, so the matching
+   sections (header + the 4 uiGroups in StageConfigEditor) line up and share a
+   height across the fragment and vertex columns. Update the span if sections
+   are added or removed. */
+.stageColumn {
+  min-width: 0;
+  display: grid;
+  grid-row: span 5;
+  grid-template-rows: subgrid;
+  row-gap: 0;
+}
+.stageColumnHeader {
+  margin: 15px 10px 5px;
+}
+
 .tabControls {
   position: absolute;
   top: 2px;
@@ -919,13 +938,33 @@ textarea.error {
   color: #ccc;
 }
 
-.treeClose {
+.treeInput {
+  width: calc(100% - 4em);
+  padding: 1px 6px;
+  font-size: inherit;
+  line-height: 18px;
+}
+
+.treeActions {
   position: absolute;
   right: 0.75em;
-  color: #aaa;
+  display: flex;
+  gap: 0.75em;
 }
-.treeClose:hover {
+.treeClose,
+.treeConfig {
+  color: #aaa;
+  cursor: pointer;
+}
+.treeClose:hover,
+.treeConfig:hover {
   color: #fff;
+}
+.treeConfig {
+  visibility: hidden;
+}
+.treeLeaf:hover .treeConfig {
+  visibility: visible;
 }
 
 .treePanel div[role='treeitem'] {

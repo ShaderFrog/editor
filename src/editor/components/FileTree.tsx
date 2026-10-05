@@ -41,7 +41,8 @@ export const TreeNode = ({
   const node = treeNode.data;
 
   const { nodeId } = node;
-  const { removeEditorTabPaneId, glslEditorTabs } = useEditorStore();
+  const { removeEditorTabPaneId, glslEditorTabs, addConfigEditorTab } =
+    useEditorStore();
 
   const correspondingPane = glslEditorTabs.find((pane) => {
     const p = pane as PaneState;
@@ -74,21 +75,69 @@ export const TreeNode = ({
           className={styles.treeIcon}
         />
       )}
-      {node.name}
-      {opened ? (
+      {treeNode.isEditing ? (
+        <input
+          autoFocus
+          type="text"
+          className={cx('textinput', styles.treeInput)}
+          defaultValue={node.name}
+          onFocus={(e) => e.currentTarget.select()}
+          onClick={(e) => e.stopPropagation()}
+          onBlur={(e) => {
+            const name = e.currentTarget.value.trim();
+            name ? treeNode.submit(name) : treeNode.reset();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.currentTarget.blur();
+            } else if (e.key === 'Escape') {
+              // In case a blur fires as the input unmounts, don't commit
+              e.currentTarget.value = node.name;
+              treeNode.reset();
+            }
+          }}
+        />
+      ) : (
         <span
-          title="Close tab"
-          className={styles.treeClose}
-          onClick={(e) => {
-            e.preventDefault();
-            // Stop click from bubbling up to tab selection click!
-            e.stopPropagation();
-            removeEditorTabPaneId(correspondingPane!.id);
+          onDoubleClick={(e) => {
+            if (treeNode.isEditable && treeNode.tree.props.onRename) {
+              e.stopPropagation();
+              treeNode.edit();
+            }
           }}
         >
-          <FontAwesomeIcon icon={faClose} className="close" />
+          {node.name}
         </span>
-      ) : null}
+      )}
+      <span className={styles.treeActions}>
+        {treeNode.isLeaf && node.type === 'code' && node.stage ? (
+          <span
+            title={`Edit ${node.stage} configuration`}
+            className={styles.treeConfig}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              addConfigEditorTab(nodeId);
+            }}
+          >
+            <FontAwesomeIcon icon={faGear} />
+          </span>
+        ) : null}
+        {opened ? (
+          <span
+            title="Close tab"
+            className={styles.treeClose}
+            onClick={(e) => {
+              e.preventDefault();
+              // Stop click from bubbling up to tab selection click!
+              e.stopPropagation();
+              removeEditorTabPaneId(correspondingPane!.id);
+            }}
+          >
+            <FontAwesomeIcon icon={faClose} className="close" />
+          </span>
+        ) : null}
+      </span>
     </div>
   );
 };
@@ -111,13 +160,15 @@ export const findInTree = (
 };
 
 export const FileTree = (props: TreeProps<TreeData>) => {
-  const { addEditorTab } = useEditorStore();
+  const { addEditorTab, addConfigEditorTab } = useEditorStore();
   return (
     <Tree
       disableDrag
       rowHeight={28}
       padding={0}
       disableMultiSelection
+      // Only node names can be renamed, not the Fragment/Vertex stage leaves
+      disableEdit={(data) => data.type === 'live_edit' || !!data.stage}
       {...props}
       onSelect={(treeNodes) => {
         if (!treeNodes.length) {
@@ -128,14 +179,13 @@ export const FileTree = (props: TreeProps<TreeData>) => {
         let node = treeNode?.data;
 
         if (node) {
-          addEditorTab(
-            node.nodeId,
-            node.type === 'live_edit'
-              ? 'live_edit'
-              : treeNode.children?.length
-              ? 'config'
-              : 'code'
-          );
+          if (node.type === 'live_edit') {
+            addEditorTab(node.nodeId, 'live_edit');
+          } else if (treeNode.children?.length) {
+            addConfigEditorTab(node.nodeId);
+          } else {
+            addEditorTab(node.nodeId, 'code');
+          }
         }
       }}
     >

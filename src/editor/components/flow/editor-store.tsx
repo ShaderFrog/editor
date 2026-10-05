@@ -21,6 +21,7 @@ import {
   NodeErrors,
   NodeInput,
 } from '@core';
+import { findLinkedNode } from '@core/graph';
 import {
   updateFlowNodeInput,
   updateFlowNodeOutput,
@@ -54,6 +55,8 @@ export type CodePane = {
   type: 'code';
   nodeId: string;
 };
+// Config panes are keyed by the "primary" node of a linked pair (the fragment
+// node, if there is one), and show both stages.
 export type ConfigPane = {
   type: 'config';
   nodeId: string;
@@ -159,6 +162,8 @@ interface EditorState {
   setGraph: (graphOrUpdater: Graph | ((prevGraph: Graph) => Graph)) => void;
   getGraphNode: (nodeId: string) => GraphNode;
   updateGraphNode: (nodeId: string, data: Partial<GraphNode>) => void;
+  // Renames a node, and its linked vertex/fragment sibling if it has one
+  renameGraphNode: (nodeId: string, name: string) => void;
   updateGraphNodeInput: (
     nodeId: string,
     inputId: string,
@@ -195,6 +200,8 @@ interface EditorState {
 
   glslEditorTabs: (PaneState | SplitPaneState)[];
   addEditorTab: (nodeId: string, type: PaneType) => void;
+  // Opens (or focuses) the config tab for a node's linked pair
+  addConfigEditorTab: (nodeId: string) => void;
   addButDontSelectEditorTab: (nodeId: string, type: PaneType) => void;
   removeEditorTabByNodeIds: (nodeIds: Set<string>) => void;
   removeEditorTabPaneId: (paneId: string) => void;
@@ -324,6 +331,22 @@ const createEditorStore = (
           graph: res,
         };
       }),
+    renameGraphNode: (nodeId, name) =>
+      set(({ graph, flowNodes }) => {
+        const linked = findLinkedNode(graph, nodeId);
+        const ids = new Set([nodeId, ...(linked ? [linked.id] : [])]);
+        return {
+          graph: {
+            ...graph,
+            nodes: graph.nodes.map((node) =>
+              ids.has(node.id) ? { ...node, name } : node
+            ),
+          },
+          flowNodes: flowNodes.map((node) =>
+            ids.has(node.id) ? updateFlowNodeData(node, { label: name }) : node
+          ),
+        };
+      }),
     updateGraphNodeInput: (nodeId, inputId, data) =>
       set(({ graph }) => {
         const res = {
@@ -384,6 +407,13 @@ const createEditorStore = (
           };
         }
       }),
+    addConfigEditorTab: (nodeId) => {
+      const { graph, addEditorTab } = get();
+      const node = graph.nodes.find((n) => n.id === nodeId);
+      const linked = findLinkedNode(graph, nodeId);
+      const isVertex = node && 'stage' in node && node.stage === 'vertex';
+      addEditorTab(isVertex && linked ? linked.id : nodeId, 'config');
+    },
     addButDontSelectEditorTab: (nodeId, type) =>
       set(({ glslEditorTabs }) => {
         const id = makeId();

@@ -242,6 +242,7 @@ const Editor = ({
     primarySelectedNodeId,
     setPrimarySelectedNodeId,
     addEditorTab,
+    addConfigEditorTab,
     addButDontSelectEditorTab,
     removeEditorTabByNodeIds,
     setSceneDimensions,
@@ -1450,7 +1451,7 @@ const Editor = ({
         addSelectedNodes([currentNode.id]);
         setPrimarySelectedNodeId(currentNode.id);
 
-        addEditorTab(currentNode.id, 'config');
+        addConfigEditorTab(currentNode.id);
         setEditorTabIndex(1);
       } else if (type === NodeContextActions.DELETE_NODE_ONLY) {
         setFlowNodes((nodes) => nodes.filter((node) => node.id !== nodeId));
@@ -1503,6 +1504,7 @@ const Editor = ({
       setPrimarySelectedNodeId,
       getGraphNode,
       addEditorTab,
+      addConfigEditorTab,
     ]
   );
 

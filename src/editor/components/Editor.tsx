@@ -1596,19 +1596,24 @@ const Editor = ({
   );
 
   // Note if an edge is connected to this node, onEdgesDelete fires to update
-  // edges in the flow and core graph. This does NOT need to modify flow nodes,
-  // this
+  // edges in the flow and core graph. This callback fires once with all of the
+  // deleted nodes (multi-select delete), so merge the trees of every node.
   const onNodesDelete = useCallback(
     (nodes: XyFlowNode[]) => {
-      const graphNode = graph.nodes.find(
-        (node) => node.id === nodes[0].id
-      ) as GraphNode;
+      const nodesToRemoveIds = new Set<string>();
+      const edgesToRemoveIds = new Set<string>();
+      nodes.forEach(({ id }) => {
+        const graphNode = graph.nodes.find((node) => node.id === id);
+        if (!graphNode || graphNode.type === 'output') {
+          return;
+        }
+        const { edgeIds, nodeIds } = findNodeTree(graph, graphNode);
+        nodeIds.forEach((nodeId) => nodesToRemoveIds.add(nodeId));
+        edgeIds.forEach((edgeId) => edgesToRemoveIds.add(edgeId));
+      });
 
-      const { edgeIds: edgesToRemoveIds, nodeIds: nodesToRemoveIds } =
-        findNodeTree(graph, graphNode);
-
-      // Update the flow graph to delete extra nodes and edges, since this
-      // callback is only for a single node.
+      // Update the flow graph to delete the upstream nodes and edges, since
+      // react-flow only removes the selected nodes.
       setFlowNodes((nodes) =>
         nodes.filter((node) => !nodesToRemoveIds.has(node.id))
       );

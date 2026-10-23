@@ -128,8 +128,8 @@
 .react-flow_handle_label {
   min-width: 200px;
   white-space: nowrap;
-  left: 20px;
-  top: -3px;
+  left: 18px;
+  top: -5px;
   pointer-events: none;
   color: rgb(176, 228, 156);
   position: absolute;
@@ -138,16 +138,69 @@
   max-width: 100%;
 }
 
+/**
+ * Input / output handles. Each theme sets the --handle-* variables. The
+ * handle is a ring centered on the node's 2px gradient border, with an inner
+ * dot that fills in when connected.
+ */
+.flownode {
+  --handle-color: #aaa;
+  --handle-core: #222;
+  --handle-glow: rgba(255, 255, 255, 0.6);
+}
 .flownode .react-flow__handle {
   width: 14px;
   height: 14px;
-  transition: 0.1s all ease-out;
+  min-width: 0;
+  min-height: 0;
+  border: 2px solid var(--handle-color);
+  background: var(--handle-core);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55);
+  transition: box-shadow 0.15s ease-out, background 0.15s ease-out,
+    border-color 0.15s ease-out;
 }
+/* Bigger hit area than the visible ring */
+.flownode .react-flow__handle::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+}
+/* Inner dot */
+.flownode .react-flow__handle::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: var(--handle-color);
+  transform: scale(0);
+  transition: transform 0.15s ease-out;
+  pointer-events: none;
+}
+.flownode .react-flow__handle.connected::after {
+  transform: scale(1);
+}
+.flownode .react-flow__handle:hover::after {
+  transform: scale(0.6);
+}
+.flownode .react-flow__handle.connected:hover::after {
+  transform: scale(1);
+}
+.flownode .react-flow__handle:hover,
+.flownode .react-flow__handle.connected {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 6px 1px var(--handle-glow);
+}
+.flownode .react-flow__handle:hover .react-flow_handle_label {
+  color: #fff;
+}
+
+/* .flownode has 2px padding for the gradient border, so -1px puts the
+   handle's center in the middle of that border */
 .flownode .react-flow__handle.target {
-  left: 0px;
+  left: -1px;
 }
 .flownode .react-flow__handle.source {
-  right: 0px;
+  right: -1px;
 }
 
 .flownode .react-flow__handle.linkHandle {
@@ -158,32 +211,35 @@
   pointer-events: none;
 }
 
-.flownode .react-flow__handle .react-flow__handle-left {
-  left: -7px;
-}
-
-.flownode .react-flow__handle .react-flow__handle-right {
-  right: -7px;
-}
-
-.react-flow__handle.connectingto + .react-flow_handle_label {
+.react-flow__handle.connectingto .react-flow_handle_label {
   box-shadow: 0 0 10px 4px rgb(70, 70, 70);
   background: rgb(70, 70, 70);
   border-radius: 4px;
 }
 
-.react-flow__handle.validTarget {
-  box-shadow: 0 5px 5px #fff;
-  border-color: #d4bcbc;
-  background: #bfbfbf;
+.flownode .react-flow__handle.validTarget {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 8px 3px var(--handle-glow);
+  animation: handlePulse 1s ease-in-out infinite alternate;
 }
-.react-flow__handle.invalidTarget {
-  opacity: 0.5;
+.flownode .react-flow__handle.invalidTarget {
+  opacity: 0.35;
 }
 
-.react-flow__handle:not(.invalidTarget).connectingto {
-  box-shadow: 0 0 10px #fff;
+.flownode .react-flow__handle:not(.invalidTarget).connectingto {
+  border-color: #fff;
   background: #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 12px 4px var(--handle-glow);
+  animation: none;
+}
+
+@keyframes handlePulse {
+  from {
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 4px 1px var(--handle-glow);
+  }
+  to {
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 0 10px 4px var(--handle-glow);
+  }
 }
 
 .flownode .body {
@@ -261,6 +317,11 @@
 /* -------------- */
 .flow-node_data .react-flow_handle_label {
   color: #d3f7ff;
+}
+.flow-node_data.flownode {
+  --handle-color: #2ee6ff;
+  --handle-core: #06203a;
+  --handle-glow: rgba(0, 213, 255, 0.7);
 }
 
 .flow-node_data .flowlabel .dataType {
@@ -438,31 +499,13 @@
   stroke: #d4ff00;
 }
 
-.fragment.flownode .react-flow__handle {
-  border-color: #d4ff00;
-  background: #333d00;
-}
-.fragment.flownode .react-flow__handle.connectingto {
-  border-color: #fff;
-  background: #22ff00;
+.fragment.flownode {
+  --handle-color: #c6f22c;
+  --handle-core: #1e2a06;
+  --handle-glow: rgba(160, 255, 60, 0.7);
 }
 .fragment.flownode .react-flow__handle.connectingto .react-flow_handle_label {
   color: #fff;
-}
-
-.fragment .react-flow__handle.connected {
-  background: #8df65c;
-}
-
-.fragment .react-flow__handle.validTarget {
-  box-shadow: 0 0 5px 5px #0f0;
-  outline: 2px solid #0f0;
-}
-
-.fragment .react-flow__handle.validTarget.connectingto {
-  box-shadow: 0 0 5px 2px #efe;
-  border-color: #efe;
-  background: #efe;
 }
 
 /* ------------ */
@@ -558,31 +601,13 @@
   stroke: #992424;
 }
 
-.vertex.flownode .react-flow__handle {
-  border-color: #fa5b5b;
-  background: #3a1919;
-  transition: all 0.2s ease-in;
-}
-.vertex.flownode .react-flow__handle.connectingto {
-  border-color: #fff;
-  background: #ff2525;
+.vertex.flownode {
+  --handle-color: #ff6b5b;
+  --handle-core: #2e0e0e;
+  --handle-glow: rgba(255, 70, 50, 0.7);
 }
 .vertex.flownode .react-flow__handle.connectingto .react-flow_handle_label {
   color: #fff;
-}
-
-.vertex .react-flow__handle.validTarget {
-  box-shadow: 0 0 10px #f00;
-  outline: 2px solid rgb(255, 0, 0);
-}
-.vertex .react-flow__handle.connected {
-  background: #ff2525;
-}
-
-.vertex .react-flow__handle.validTarget.connectingto {
-  box-shadow: 0 0 5px 2px #fee;
-  border-color: #fee;
-  background: #fee;
 }
 
 /**

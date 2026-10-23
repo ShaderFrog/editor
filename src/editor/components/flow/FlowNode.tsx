@@ -933,7 +933,7 @@ const SourceNodeComponent = memo(
             </React.Fragment>
           ))}
 
-          <div className={cx(styles.outputs)}>
+          <div className={cx('outputs', 'flush')}>
             {data.outputs.map((output, index) => (
               <Handle
                 key={output.id}
@@ -945,10 +945,9 @@ const SourceNodeComponent = memo(
                   connected: output.connected,
                 })}
                 style={{
+                  // Line up the first output with the first input row
                   top: `${
-                    (height
-                      ? outputHandleTopWithLabel
-                      : outputHandleTopWithoutLabel) +
+                    (height ? labelHeight : outputHandleTopWithoutLabel + 4) +
                     index * inputHeight
                   }px`,
                 }}

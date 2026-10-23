@@ -33,9 +33,17 @@
   font-size: 14px;
 }
 
+/* Output labels sit to the left of the handle in a dark pill, so they stay
+   readable when they overlap a long input label on the same row */
 .outputLabel {
-  text-align: right;
-  left: -206px;
+  left: auto;
+  right: 20px;
+  min-width: 0;
+  max-width: 180px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 4px 2px rgba(0, 0, 0, 0.35);
 }
 
 .outputs {
@@ -43,6 +51,10 @@
   right: 0;
   width: 200px;
   top: 4px;
+}
+/* Source node outputs are positioned in the same space as the inputs */
+.outputs.flush {
+  top: 0;
 }
 
 .dataType {

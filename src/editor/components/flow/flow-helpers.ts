@@ -155,6 +155,10 @@ export const graphNodeToFlowNode = (
     id: node.id,
     type: node.type,
     position,
+    // Prevent react-flow from ever deleting output nodes. Filtering the remove
+    // change in onNodesChange isn't enough, because react-flow still passes the
+    // node to onNodesDelete
+    ...(node.type === 'output' ? { deletable: false } : {}),
   };
   return isSourceNode(node)
     ? {

@@ -62,9 +62,17 @@ import {
   findLinkedNode,
   CodeNode,
   SourceType,
+  BinaryNode,
+  BinaryNodeType,
+  changeBinaryNodeType,
+  isBinaryNodeType,
+  NodeType,
 } from '@core/graph';
 
-import FlowEditor, { NodeContextActions } from './flow/FlowEditor';
+import FlowEditor, {
+  CHANGE_NODE_TYPE_PREFIX,
+  NodeContextActions,
+} from './flow/FlowEditor';
 
 import { EngineContext } from '@core/engine';
 import {
@@ -843,7 +851,7 @@ const Editor = ({
       addSelectedNodes([node.id]);
       setPrimarySelectedNodeId(node.id);
 
-      if (isDataNode(node)) {
+      if (isDataNode(node) || node.type === NodeType.BINARY) {
         openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
       } else if (node.type === 'source' || node.engine) {
         addEditorTab(node.id, 'code');
@@ -1434,14 +1442,51 @@ const Editor = ({
     }
   }, [setFlowNodes, setFlowEdges, previousMenu, menu, updateAllFlowNodes]);
 
+  // Switch a binary node (add, multiply, etc) to another operator, keeping its
+  // edges, then recompile
+  const onChangeBinaryNodeType = useCallback(
+    (nodeId: string, type: BinaryNodeType) => {
+      const updated = changeBinaryNodeType(
+        getGraphNode(nodeId) as BinaryNode,
+        type
+      );
+      setGraph((graph) => ({
+        ...graph,
+        nodes: graph.nodes.map((node) => (node.id === nodeId ? updated : node)),
+      }));
+      setFlowNodes((nodes) =>
+        nodes.map((node) =>
+          node.id === nodeId
+            ? updateFlowNodeDataInternal(node, {
+                label: updated.name,
+                outputs: node.data.outputs.map((output) => ({
+                  ...output,
+                  name:
+                    updated.outputs.find((o) => o.id === output.id)?.name ||
+                    output.name,
+                })),
+              })
+            : node
+        )
+      );
+      debouncedSetNeedsCompile(true);
+    },
+    [getGraphNode, setGraph, setFlowNodes, debouncedSetNeedsCompile]
+  );
+
   const onNodeContextSelect = useCallback(
     (nodeId: string, type: string) => {
       const currentNode = getGraphNode(nodeId) as SourceNode;
-      if (type === NodeContextActions.EDIT_SOURCE) {
+      const newBinaryType = type.startsWith(CHANGE_NODE_TYPE_PREFIX)
+        ? type.slice(CHANGE_NODE_TYPE_PREFIX.length)
+        : undefined;
+      if (newBinaryType && isBinaryNodeType(newBinaryType)) {
+        onChangeBinaryNodeType(nodeId, newBinaryType);
+      } else if (type === NodeContextActions.EDIT_SOURCE) {
         addSelectedNodes([currentNode.id]);
         setPrimarySelectedNodeId(currentNode.id);
 
-        if (isDataNode(currentNode)) {
+        if (isDataNode(currentNode) || currentNode.type === NodeType.BINARY) {
           openEditorBottomPanel(EDITOR_BOTTOM_PANEL.NODE_CONFIG_EDITOR);
         } else {
           addEditorTab(currentNode.id, 'code');
@@ -1505,6 +1550,7 @@ const Editor = ({
       getGraphNode,
       addEditorTab,
       addConfigEditorTab,
+      onChangeBinaryNodeType,
     ]
   );
 
@@ -2035,6 +2081,9 @@ const Editor = ({
                   <BottomModal onClose={() => closeEditorBottomPanel()}>
                     <ConfigEditor
                       node={primarySelectedNode}
+                      onChangeBinaryNodeType={(type) =>
+                        onChangeBinaryNodeType(primarySelectedNode.id, type)
+                      }
                       onChange={(change) => {
                         updateGraphNode(primarySelectedNode.id, change);
                         if ('name' in change) {

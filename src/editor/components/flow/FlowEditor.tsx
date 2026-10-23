@@ -36,10 +36,12 @@ import {
   faCalculator,
   faCode,
   faCubes,
+  faDivide,
   faFileCode,
   faHashtag,
   faImage,
   faMagnifyingGlass,
+  faMinus,
   faMultiply,
   faPalette,
   faPlus,
@@ -52,6 +54,14 @@ import {
   FlowNodeDataData,
 } from './flow-types';
 import { canMapType } from '@core/graph/data-nodes';
+import {
+  BinaryNode,
+  BinaryNodeType,
+  binaryNodeType,
+  binaryNodeTypes,
+  GraphNode,
+  NodeType,
+} from '@core/graph';
 
 // Terrible hack to make the flow graph full height minus the tab height - I
 // need better layoutting of the tabs + graph
@@ -99,6 +109,22 @@ const edgeTypes = {
   // Then it errors on component assignment. This satisfies seems to work.
 } satisfies EdgeTypes;
 
+export const binaryNodeMenuItems: Record<
+  BinaryNodeType,
+  { display: string; icon: React.ReactNode }
+> = {
+  add: { display: 'Add', icon: <FontAwesomeIcon icon={faPlus} /> },
+  subtract: { display: 'Subtract', icon: <FontAwesomeIcon icon={faMinus} /> },
+  multiply: {
+    display: 'Multiply',
+    icon: <FontAwesomeIcon icon={faMultiply} />,
+  },
+  divide: { display: 'Divide', icon: <FontAwesomeIcon icon={faDivide} /> },
+};
+
+// Context menu values for "Change Node Type" are this prefix + the new type
+export const CHANGE_NODE_TYPE_PREFIX = 'change_type:';
+
 export enum NodeContextActions {
   EDIT_SOURCE = '1',
   EDIT_CONFIG = '5',
@@ -106,10 +132,18 @@ export enum NodeContextActions {
   DELETE_NODE_ONLY = '3',
   DELETE_FULL_NODE_TREE = '4',
 }
-const nodeContextMenuItems = (node?: FlowNode): MenuItem[] => {
+const nodeContextMenuItems = (
+  node?: FlowNode,
+  graphNode?: GraphNode
+): MenuItem[] => {
   if (!node) {
     return [];
   }
+
+  const currentBinaryType =
+    graphNode?.type === NodeType.BINARY
+      ? binaryNodeType(graphNode as BinaryNode)
+      : undefined;
 
   const isData = 'value' in node.data;
   const isEngine = 'engine' in node.data && node.data.engine;
@@ -140,6 +174,24 @@ const nodeContextMenuItems = (node?: FlowNode): MenuItem[] => {
               {
                 display: 'Edit Configuration',
                 value: NodeContextActions.EDIT_CONFIG,
+              },
+            ]
+          : []),
+        ...(graphNode?.type === NodeType.BINARY
+          ? [
+              {
+                display: 'Edit Node Config',
+                value: NodeContextActions.EDIT_SOURCE,
+                key: 'Double Click',
+              },
+              {
+                display: 'Change Node Type',
+                children: binaryNodeTypes
+                  .filter((type) => type !== currentBinaryType)
+                  .map((type) => ({
+                    ...binaryNodeMenuItems[type],
+                    value: CHANGE_NODE_TYPE_PREFIX + type,
+                  })),
               },
             ]
           : []),
@@ -223,6 +275,7 @@ const FlowEditor = ({
     compileResult,
     flowNodes,
     flowEdges,
+    graph,
   } = useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
   const { getNode, setViewport } = useReactFlow();
@@ -377,18 +430,10 @@ const FlowEditor = ({
       display: 'Math',
       value: 'Math',
       icon: <FontAwesomeIcon icon={faCalculator} />,
-      children: [
-        {
-          display: 'Add',
-          value: 'add',
-          icon: <FontAwesomeIcon icon={faPlus} />,
-        },
-        {
-          display: 'Multiply',
-          value: 'multiply',
-          icon: <FontAwesomeIcon icon={faMultiply} />,
-        },
-      ],
+      children: binaryNodeTypes.map((type) => ({
+        ...binaryNodeMenuItems[type],
+        value: type,
+      })),
     },
     ...menuItems,
   ];
@@ -414,9 +459,10 @@ const FlowEditor = ({
   const nodeContextMenu = useMemo(
     () =>
       nodeContextMenuItems(
-        (flowNodes || []).find((node) => node.id === contextNodeId)
+        (flowNodes || []).find((node) => node.id === contextNodeId),
+        graph.nodes.find((node) => node.id === contextNodeId)
       ),
-    [flowNodes, contextNodeId]
+    [flowNodes, graph.nodes, contextNodeId]
   );
 
   const { isOver, setNodeRef } = useDroppable({

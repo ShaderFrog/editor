@@ -1,4 +1,13 @@
-import { GraphNode, NumberNode, Vector2Node } from '@core/graph';
+import {
+  BinaryNode,
+  BinaryNodeType,
+  binaryNodeType,
+  binaryNodeTypes,
+  GraphNode,
+  NodeType,
+  NumberNode,
+  Vector2Node,
+} from '@core/graph';
 import ClearableInput from '../ClearableInput';
 import LabeledInput from '../LabeledInput';
 import React from 'react';
@@ -147,12 +156,51 @@ const NumberConfigEditor = ({
   );
 };
 
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const BinaryTypeEditor = ({
+  node,
+  onChangeBinaryNodeType,
+}: {
+  node: BinaryNode;
+  onChangeBinaryNodeType: (type: BinaryNodeType) => void;
+}) => {
+  const currentType = binaryNodeType(node);
+  return (
+    <div className="grid col3 m-top-15">
+      <label className="label">
+        Change Node Type
+        <select
+          className="select"
+          value=""
+          onChange={(e) =>
+            onChangeBinaryNodeType(e.target.value as BinaryNodeType)
+          }
+        >
+          <option value="" disabled>
+            {currentType ? capitalize(currentType) : 'Select a type'}
+          </option>
+          {binaryNodeTypes
+            .filter((type) => type !== currentType)
+            .map((type) => (
+              <option key={type} value={type}>
+                {capitalize(type)}
+              </option>
+            ))}
+        </select>
+      </label>
+    </div>
+  );
+};
+
 const ConfigEditor = ({
   node,
   onChange,
+  onChangeBinaryNodeType,
 }: {
   node: GraphNode;
   onChange: (data: Record<string, any>) => void;
+  onChangeBinaryNodeType: (type: BinaryNodeType) => void;
 }) => {
   return (
     <>
@@ -169,6 +217,11 @@ const ConfigEditor = ({
         <NumberConfigEditor node={node as NumberNode} onChange={onChange} />
       ) : node.type === 'vector2' ? (
         <Vector2ConfigEditor node={node as Vector2Node} onChange={onChange} />
+      ) : node.type === NodeType.BINARY ? (
+        <BinaryTypeEditor
+          node={node as BinaryNode}
+          onChangeBinaryNodeType={onChangeBinaryNodeType}
+        />
       ) : null}
     </>
   );

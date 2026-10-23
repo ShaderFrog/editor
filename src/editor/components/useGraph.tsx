@@ -24,7 +24,7 @@ import {
 import { Engine, EngineContext } from '@core/engine';
 
 import { makeId } from '../../util/id';
-import { addNode, multiplyNode, sourceNode } from '@core/graph';
+import { binaryNode, isBinaryNodeType, sourceNode } from '@core/graph';
 import { texture2DStrategy, uniformStrategy } from '@core/strategy';
 
 const compileGraphAsync = async (
@@ -239,10 +239,8 @@ const createGraphNode = (
         defaultValue || ['1', '1', '1', '1']
       ),
     ];
-  } else if (nodeDataType === 'multiply') {
-    newGns = [multiplyNode(id, position)];
-  } else if (nodeDataType === 'add') {
-    newGns = [addNode(id, position)];
+  } else if (isBinaryNodeType(nodeDataType)) {
+    newGns = [binaryNode(id, position, nodeDataType)];
   } else if (nodeDataType === 'fragmentandvertex') {
     const fragment = sourceNode(
       makeId(),

@@ -53,8 +53,8 @@ import styles from './flownode.module.css';
 const cx = classnames.bind(styles);
 
 const headerHeight = 30;
-// How much taller the header is when it shows the node's thumbnail
-const thumbnailHeaderExtra = 25;
+// Height of the preview image strip above a node, see THUMBNAIL_HEIGHT
+const previewHeight = 64;
 const labelHeight = 44;
 const inputHeight = 22;
 const outputHandleTopWithLabel = 38;
@@ -128,17 +128,24 @@ const FlowWrap = ({
   data,
   height,
   className,
+  preview,
 }: {
   children: React.ReactNode;
   height?: number;
   data: FlowNodeData;
   className: any;
+  // Image URL to show in a strip above the node
+  preview?: string;
 }) => (
   <div
-    className={cx('flownode', className, { ghost: data.ghost })}
+    className={cx('flownode', className, {
+      ghost: data.ghost,
+      withPreview: !!preview,
+    })}
     style={{
       height:
-        height ||
+        // The preview strip grows the node upwards, see .withPreview
+        (height && preview ? height + previewHeight : height) ||
         `${
           // Nodes where there is no chance the inputs will be taller than the
           // node contents itself, let it auto height
@@ -161,6 +168,7 @@ const FlowWrap = ({
       zIndex: 0,
     }}
   >
+    {preview ? <img className="nodePreview" src={preview} alt="" /> : null}
     <div className="contents">{children}</div>
   </div>
 );
@@ -310,8 +318,7 @@ const Vector2Editor = (props: {
       if (lockedRef.current && Array.isArray(newValue)) {
         const vals = newValue as string[];
         // Use whichever component changed
-        const v =
-          vals[0] !== (data.value as string[])[0] ? vals[0] : vals[1];
+        const v = vals[0] !== (data.value as string[])[0] ? vals[0] : vals[1];
         onChange(nodeId, [v, v]);
       } else {
         onChange(nodeId, newValue);
@@ -845,7 +852,6 @@ const SourceNodeComponent = memo(
     const thumbnail = useEditorStoreSelector(
       (state) => state.nodeThumbnails[id]
     );
-    const headerExtra = thumbnail ? thumbnailHeaderExtra : 0;
 
     const [groups, height] = useMemo<
       [{ name: string; inputs: InputNodeHandle[]; offset: number }[], number]
@@ -890,7 +896,8 @@ const SourceNodeComponent = memo(
     return (
       <FlowWrap
         data={data}
-        height={height + headerHeight + headerExtra}
+        height={height + headerHeight}
+        preview={thumbnail}
         className={cx(data.stage, data.category, { inactive: !data.active })}
       >
         {data.glslError ? (
@@ -898,15 +905,7 @@ const SourceNodeComponent = memo(
             GLSL Error!
           </div>
         ) : null}
-        <div
-          className={cx('flowlabel', {
-            three: !!data.stage,
-            withThumbnail: !!thumbnail,
-          })}
-        >
-          {thumbnail ? (
-            <img className="nodeThumbnail" src={thumbnail} alt="" />
-          ) : null}
+        <div className={cx('flowlabel', { three: !!data.stage })}>
           <div className="title">
             {data.label}{' '}
             {showPosition(id, positionAbsoluteX, positionAbsoluteY)}
@@ -926,10 +925,7 @@ const SourceNodeComponent = memo(
             <FontAwesomeIcon icon={faGear} />
           </button>
         </div>
-        <div
-          className="flowInputs"
-          style={headerExtra ? { top: 27 + headerExtra } : undefined}
-        >
+        <div className="flowInputs">
           {groups.map((group) => (
             <React.Fragment key={group.name}>
               <div

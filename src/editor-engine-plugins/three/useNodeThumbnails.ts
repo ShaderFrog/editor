@@ -30,7 +30,22 @@ import { logger } from '@editor/util/log';
 
 const { log } = logger('three.thumbnails');
 
-const THUMBNAIL_SIZE = 128;
+// Matches the preview strip above graph nodes, in CSS pixels
+export const THUMBNAIL_WIDTH = 236;
+export const THUMBNAIL_HEIGHT = 64;
+// Move the camera closer than the screenshot camera, so the object's surface
+// fills the wide strip instead of the whole object floating in the middle
+const CAMERA_ZOOM = 0.75;
+// The strip is very wide, so set the field of view horizontally. A 45° vertical
+// field of view would see far past the sides of the object.
+const CAMERA_FOV =
+  (2 *
+    Math.atan(
+      Math.tan((45 / 2) * (Math.PI / 180)) /
+        (THUMBNAIL_WIDTH / THUMBNAIL_HEIGHT)
+    ) *
+    180) /
+  Math.PI;
 // Wait for edits to settle before rendering any thumbnails
 const DEBOUNCE_MS = 1000;
 // Pause between thumbnails so the main preview stays smooth
@@ -145,7 +160,7 @@ const renderToCanvas = (
     sceneData: { mesh, helpers },
   } = options;
   const size = renderer.getSize(new Vector2());
-  if (size.x < THUMBNAIL_SIZE || size.y < THUMBNAIL_SIZE) {
+  if (size.x < THUMBNAIL_WIDTH || size.y < THUMBNAIL_HEIGHT) {
     return;
   }
 
@@ -163,28 +178,31 @@ const renderToCanvas = (
   hidden.forEach((obj) => (obj.visible = false));
   scene.add(thumbMesh);
 
-  renderer.setViewport(0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
-  renderer.setScissor(0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+  renderer.setViewport(0, 0, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
+  renderer.setScissor(0, 0, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
   renderer.setScissorTest(true);
   renderer.render(scene, thumbCamera);
 
+  // Copy at the canvas's pixel ratio so the image is sharp on retina screens
+  const pixelRatio = renderer.getPixelRatio();
+  const width = Math.round(THUMBNAIL_WIDTH * pixelRatio);
+  const height = Math.round(THUMBNAIL_HEIGHT * pixelRatio);
   const canvas = document.createElement('canvas');
-  canvas.width = THUMBNAIL_SIZE;
-  canvas.height = THUMBNAIL_SIZE;
+  canvas.width = width;
+  canvas.height = height;
   const source = renderer.domElement;
-  const sourceSize = THUMBNAIL_SIZE * renderer.getPixelRatio();
   canvas
     .getContext('2d')
     ?.drawImage(
       source,
       0,
-      source.height - sourceSize,
-      sourceSize,
-      sourceSize,
+      source.height - height,
+      width,
+      height,
       0,
       0,
-      THUMBNAIL_SIZE,
-      THUMBNAIL_SIZE
+      width,
+      height
     );
 
   scene.remove(thumbMesh);
@@ -229,8 +247,13 @@ const renderNodeThumbnail = async (
   thumbMesh.quaternion.copy(mesh.quaternion);
   thumbMesh.scale.copy(mesh.scale);
 
-  const thumbCamera = new PerspectiveCamera(45, 1, 0.1, 1000);
-  thumbCamera.position.copy(cameraPosition);
+  const thumbCamera = new PerspectiveCamera(
+    CAMERA_FOV,
+    THUMBNAIL_WIDTH / THUMBNAIL_HEIGHT,
+    0.01,
+    1000
+  );
+  thumbCamera.position.copy(cameraPosition).multiplyScalar(CAMERA_ZOOM);
   thumbCamera.lookAt(new Vector3(0, 0, 0));
 
   const shaderUniforms = (): ShaderMaterial['uniforms'] =>
@@ -253,9 +276,9 @@ const renderNodeThumbnail = async (
     }
     if (uniforms.renderResolution) {
       uniforms.renderResolution.value = new Vector2(
-        THUMBNAIL_SIZE,
-        THUMBNAIL_SIZE
-      );
+        THUMBNAIL_WIDTH,
+        THUMBNAIL_HEIGHT
+      ).multiplyScalar(renderer.getPixelRatio());
     }
 
     const canvas = renderToCanvas(options, thumbMesh, thumbCamera);

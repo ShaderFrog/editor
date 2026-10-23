@@ -57,18 +57,28 @@
   grid-template-columns: 1fr auto auto;
 }
 
-.flowlabel.withThumbnail {
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  padding-left: 3px;
+/* The preview strip grows the node upwards instead of down, so the node's
+   layout box, and its handle positions, stay where they were. The node's
+   gradient border and selection outline wrap the strip too. Keep 64px in sync
+   with previewHeight in FlowNode.tsx. */
+.flownode.withPreview {
+  margin-top: -64px;
+  padding-top: 66px;
 }
-.flowlabel .nodeThumbnail {
-  display: block;
-  width: 48px;
-  height: 48px;
-  border-radius: 6px;
+.flownode .nodePreview {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(100% - 4px);
+  height: 64px;
   object-fit: cover;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+  border-radius: 8px 8px 0 0;
+  pointer-events: none;
+}
+.flownode.withPreview .contents,
+.flownode.withPreview .flowlabel {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 .selected .flownode {

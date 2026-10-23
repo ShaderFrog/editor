@@ -17,13 +17,15 @@ import {
   SamplerCubeNode,
   TextureNode,
   compileSource,
-  extractNodePreviewGraph,
   isError,
-  isPreviewableNode,
 } from '@core/graph';
 import { EngineContext } from '@core/engine';
 import { ThreeRuntime, threngine } from '@core/plugins/three/threngine';
 import { createSceneMaterial } from './three-graph';
+import {
+  extractNodePreviewGraph,
+  isPreviewableNode,
+} from '../../editor/components/flow/graph-helpers';
 import { logger } from '@editor/util/log';
 
 const { log } = logger('three.thumbnails');

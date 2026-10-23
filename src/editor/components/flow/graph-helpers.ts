@@ -9,6 +9,10 @@ import {
   consSearchResult,
   mergeSearchResults,
   isDataNode,
+  isSourceNode,
+  collectConnectedNodes,
+  EdgeLink,
+  NodeType,
 } from '@core/graph';
 import { ensure } from '@core/util/ensure';
 
@@ -174,5 +178,100 @@ export const findNodeTree = (graph: Graph, startNode: GraphNode) => {
     edges: elements.edges,
     linkedFragmentNode,
     linkedVertexNode,
+  };
+};
+
+/**
+ * Can this node be rendered on its own as a preview? Only fragment code nodes
+ * have an output that can be plugged into the fragment output.
+ */
+export const isPreviewableNode = (node: GraphNode): node is SourceNode =>
+  isSourceNode(node) &&
+  node.type !== NodeType.OUTPUT &&
+  node.stage === 'fragment' &&
+  node.outputs.length > 0;
+
+/**
+ * Build a standalone graph that renders what a single node looks like: the
+ * node and everything that flows into it, plugged into the graph's output
+ * nodes. Used for node thumbnails.
+ *
+ * Nodes are shallow copied because computing context reassigns node.inputs.
+ */
+export const extractNodePreviewGraph = (
+  graph: Graph,
+  nodeId: string
+): Graph | undefined => {
+  const node = graph.nodes.find((n) => n.id === nodeId);
+  const outputFrag = graph.nodes.find(
+    (n) => n.type === NodeType.OUTPUT && (n as SourceNode).stage === 'fragment'
+  );
+  const outputVert = graph.nodes.find(
+    (n) => n.type === NodeType.OUTPUT && (n as SourceNode).stage === 'vertex'
+  );
+  if (!node || !outputFrag || !outputVert || !isPreviewableNode(node)) {
+    return;
+  }
+
+  // This includes linked vertex nodes and everything that flows into them
+  const upstream = collectConnectedNodes(graph, node);
+
+  // Something has to compute gl_Position. Prefer this node's own vertex
+  // shader, then any vertex shader linked to an upstream fragment node, and
+  // fall back to whatever feeds the vertex output in the full graph.
+  const linkedVertexIds = new Set(
+    graph.edges
+      .filter((e) => e.type === EdgeLink.NEXT_STAGE && e.to in upstream)
+      .map((e) => e.from)
+  );
+  const ownVertex = findLinkedNode(graph, node.id);
+  let vertexSource: GraphNode | undefined =
+    ownVertex && ownVertex.id in upstream
+      ? ownVertex
+      : Object.values(upstream).find((n) => linkedVertexIds.has(n.id));
+
+  let vertexChain: Record<string, GraphNode> = {};
+  if (!vertexSource) {
+    const mainVertEdge = graph.edges.find(
+      (e) => e.to === outputVert.id && e.type !== EdgeLink.NEXT_STAGE
+    );
+    vertexSource = graph.nodes.find((n) => n.id === mainVertEdge?.from);
+    vertexChain = vertexSource
+      ? collectConnectedNodes(graph, vertexSource)
+      : {};
+  }
+
+  const nodeIds = { ...upstream, ...vertexChain };
+  // Reuse the input ids of the existing output edges in case of legacy graphs
+  const outputInput = (outputId: string, fallback: string) =>
+    graph.edges.find((e) => e.to === outputId && e.type !== EdgeLink.NEXT_STAGE)
+      ?.input || fallback;
+  const edges = graph.edges.filter((e) => e.from in nodeIds && e.to in nodeIds);
+
+  edges.push({
+    id: `preview_frag_${node.id}`,
+    from: node.id,
+    to: outputFrag.id,
+    output: node.outputs[0].id,
+    input: outputInput(outputFrag.id, 'filler_frogFragOut'),
+    type: 'fragment',
+  });
+
+  if (vertexSource?.outputs.length) {
+    edges.push({
+      id: `preview_vert_${node.id}`,
+      from: vertexSource.id,
+      to: outputVert.id,
+      output: vertexSource.outputs[0].id,
+      input: outputInput(outputVert.id, 'filler_gl_Position'),
+      type: 'vertex',
+    });
+  }
+
+  return {
+    nodes: [...Object.values(nodeIds), outputFrag, outputVert].map((n) => ({
+      ...n,
+    })),
+    edges,
   };
 };

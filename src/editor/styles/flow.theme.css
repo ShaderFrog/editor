@@ -578,6 +578,7 @@
   background: linear-gradient(to right, #5b0b0b, #c709ae);
 }
 
+
 .vertex.flownode .contents {
   background: radial-gradient(
     ellipse 85% 50px at center calc(100% + 20px),
@@ -710,4 +711,37 @@
 }
 .glslError:hover {
   background: rgba(184, 6, 6, 0.729);
+}
+
+/* ------------ */
+/* Output nodes */
+/* ------------ */
+
+/* Output nodes keep the normal card style, but their body is tinted with the
+   output colors (lime/magenta) so they stand apart from the green/red shader
+   nodes. */
+.flownode.outputNode.fragment .contents,
+.selected .flownode.outputNode.fragment .contents {
+  background: radial-gradient(
+      ellipse 90% 70px at center calc(100% + 10px),
+      rgba(212, 255, 0, 0.45),
+      transparent
+    ),
+    linear-gradient(to bottom, #1f2c09, #141c08);
+}
+.flownode.outputNode.vertex .contents,
+.selected .flownode.outputNode.vertex .contents {
+  background: radial-gradient(
+      ellipse 90% 70px at center calc(100% + 10px),
+      rgba(255, 60, 220, 0.45),
+      transparent
+    ),
+    linear-gradient(to bottom, #2c0926, #1c0818);
+}
+.flownode.outputNode .flowlabel .title {
+  font-weight: 600;
+}
+.flownode.outputNode .outputIcon {
+  margin-right: 7px;
+  font-size: 15px;
 }

@@ -11,6 +11,8 @@ import groupBy from 'lodash.groupby';
 import { Handle, NodeProps, Position, useReactFlow } from '@xyflow/react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  faDisplay,
+  faDrawPolygon,
   faGear,
   faRightLong,
   faTerminal,
@@ -843,10 +845,12 @@ DataNodeComponent.displayName = 'DataNodeComponent';
 const SourceNodeComponent = memo(
   ({
     id,
+    type,
     data,
     positionAbsoluteX,
     positionAbsoluteY,
   }: NodeProps<FlowSourceNode>) => {
+    const isOutput = type === 'output';
     const { onInputBakedToggle, jumpToError } = useFlowGraphContext();
     const { openNodeContextMenu } = useFlowEditorContext();
     const thumbnail = useEditorStoreSelector(
@@ -898,7 +902,10 @@ const SourceNodeComponent = memo(
         data={data}
         height={height + headerHeight}
         preview={thumbnail}
-        className={cx(data.stage, data.category, { inactive: !data.active })}
+        className={cx(data.stage, data.category, {
+          inactive: !data.active,
+          outputNode: isOutput,
+        })}
       >
         {data.glslError ? (
           <div className="glslError" onClick={() => jumpToError(id)}>
@@ -907,6 +914,12 @@ const SourceNodeComponent = memo(
         ) : null}
         <div className={cx('flowlabel', { three: !!data.stage })}>
           <div className="title">
+            {isOutput ? (
+              <FontAwesomeIcon
+                className="outputIcon"
+                icon={data.stage === 'vertex' ? faDrawPolygon : faDisplay}
+              />
+            ) : null}
             {data.label}{' '}
             {showPosition(id, positionAbsoluteX, positionAbsoluteY)}
           </div>

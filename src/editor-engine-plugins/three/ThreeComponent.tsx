@@ -45,7 +45,12 @@ import {
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
 // @ts-ignore
 import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
-import { SourceNode, computeGrindex } from '@core/graph';
+import {
+  SamplerCubeNode,
+  SourceNode,
+  TextureNode,
+  computeGrindex,
+} from '@core/graph';
 import { EngineContext } from '@core/engine';
 import {
   ThreeRuntime,
@@ -77,6 +82,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 import { useThree } from './useThree';
+import { useNodeThumbnails } from './useNodeThumbnails';
 import { usePrevious } from '../../editor/hooks/usePrevious';
 import { useSize } from '../../editor/hooks/useSize';
 import { RoomEnvironment } from './RoomEnvironment';
@@ -85,7 +91,7 @@ import { useAssetsAndGroups } from '@editor/api';
 
 import styles from '../../editor/styles/editor.module.css';
 import clamp from '@editor/util/clamp';
-import { extractProperties } from './three-graph';
+import { createSceneMaterial, extractProperties } from './three-graph';
 import {
   Dropdown,
   DropdownOption,
@@ -334,6 +340,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
   takeScreenshotRef,
   setLoadingMsg,
   onScreenshotCaptured,
+  setNodeThumbnail,
   SocialComponent,
   shader,
   currentUser,
@@ -596,6 +603,24 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
   const { assets, groups } = useAssetsAndGroups() || { assets: {}, groups: {} };
   const [textures, getOrLoadAsset] = useTextures(renderer);
+
+  const loadNodeTexture = useCallback(
+    (node: TextureNode | SamplerCubeNode) => {
+      const value = node.value;
+      if (!value?.assetId || !value?.versionId) {
+        return;
+      }
+      const texture = getOrLoadAsset(assets, {
+        assetId: value.assetId,
+        versionId: value.versionId,
+      });
+      if (texture && node.type === 'texture') {
+        applyNodeProperties(texture, node);
+      }
+      return texture;
+    },
+    [getOrLoadAsset, assets]
+  );
 
   const glResultInitialized = useRef(false);
   const lastFrag = useRef<string | null>(null);
@@ -1160,7 +1185,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
     }
 
     const graph = graphRef.current;
-    const grindex = grindexRef.current;
 
     const {
       sceneData: { mesh },
@@ -1192,64 +1216,14 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
     log('oh hai birfday boi boi boiiiii');
 
-    const material = createFrogMaterialResult(compileResult, ctx, graph);
-
-    // Note this is setting the uniforms of the shader at creation time. The
-    // uniforms are also updated every frame in the useThree() loop.
-    const { uniforms, properties } = extractProperties(
+    const { material, uniforms, properties } = createSceneMaterial(
+      compileResult,
+      ctx,
       graph,
-      grindex,
-      compileResult.dataInputs,
-      (node) => {
-        const value = node.value;
-        if (!value?.assetId || !value?.versionId) {
-          return;
-        }
-        const texture = getOrLoadAsset(assets, {
-          assetId: value.assetId,
-          versionId: value.versionId,
-        });
-        if (texture && node.type === 'texture') {
-          applyNodeProperties(texture, node);
-        }
-        return texture;
-      }
+      loadNodeTexture,
+      sceneConfig,
+      scene.environment
     );
-
-    // This prevents a deluge of warnings from three on the constructor saying
-    // that each of these properties is not a property of the material
-    Object.entries(properties).forEach(([key, value]) => {
-      // @ts-ignore
-      material[key] = value;
-    });
-
-    // FrogMaterial (MeshPhysical/Phong/Toon + onBeforeCompile): user uniforms
-    // must be merged into shader.uniforms inside onBeforeCompile so Three's
-    // WebGL program knows about them. Chain after FrogMaterial's own OBC.
-    const existingOBC = material.onBeforeCompile;
-    material.onBeforeCompile = (shader, renderer) => {
-      existingOBC(shader, renderer);
-      Object.assign(shader.uniforms, uniforms);
-      material.userData.shader = shader;
-    };
-
-    // Copy the sceneConfig properties onto the material. For now this means
-    // that toggling doubleSide etc creates a new material. Also I don't know if
-    // these properties require the core material in threngine to get
-    // re-created. I did it here because there's not currently a way to pass the
-    // scene config into the core graph for compiling.
-    // @ts-expect-error no wireframe
-    material.wireframe = sceneConfig.wireframe;
-    material.side = sceneConfig.doubleSide ? DoubleSide : FrontSide;
-    material.transparent = sceneConfig.transparent;
-
-    // The envMap needs to be set on the material. Note scene.envMap globally
-    // applies to all materials that don't override it. Setting on the
-    // material is required to work for the envMapIntensity property to work.
-    if (scene.environment) {
-      // @ts-expect-error no envmap
-      material.envMap = scene.environment;
-    }
 
     log('🏞 Re-creating Three.js material!', {
       material,
@@ -1262,14 +1236,48 @@ const ThreeComponent: React.FC<SceneProps> = ({
     mesh.material = material;
     shadersUpdated.current = true;
   }, [
-    getOrLoadAsset,
+    loadNodeTexture,
     sceneConfig,
     compileResult,
     ctx,
     textures,
-    assets,
     scene.environment,
   ]);
+
+  // Thumbnails use the same camera angle and time as the shader screenshot
+  const thumbnailCameraPosition = useMemo(
+    () =>
+      SceneAngleVectors[
+        sceneConfig.screenshot?.angle ||
+          SceneDefaultAngles[sceneConfig.previewObject]
+      ](
+        sceneConfig.screenshot?.distance ||
+          5 * CameraDistances[sceneConfig.previewObject]
+      ),
+    [sceneConfig.screenshot, sceneConfig.previewObject]
+  );
+  // Settings that change how every node looks
+  const thumbnailSceneKey = useMemo(() => {
+    const { autoRotate, autoRotateSpeed, showNormals, showTangents, ...rest } =
+      sceneConfig;
+    return JSON.stringify(rest) + (bunnyModel ? 'bunny' : '');
+  }, [sceneConfig, bunnyModel]);
+
+  useNodeThumbnails({
+    ctx,
+    graph,
+    compileResult,
+    renderer,
+    scene,
+    camera,
+    sceneData,
+    cameraPosition: thumbnailCameraPosition,
+    time: (sceneConfig.screenshot?.time || 0) * 0.001,
+    sceneConfig,
+    sceneKey: thumbnailSceneKey,
+    loadNodeTexture,
+    setNodeThumbnail,
+  });
 
   const prevLights = usePrevious(sceneConfig.lights);
   const previousShowHelpers = usePrevious(sceneConfig.showHelpers);

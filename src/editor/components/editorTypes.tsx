@@ -44,6 +44,8 @@ export type SceneProps = {
   assetPrefix: string;
   takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
   onScreenshotCaptured?: (data: string) => void;
+  // Called with a rendered preview image URL of a single node
+  setNodeThumbnail?: (nodeId: string, url: string) => void;
   SocialComponent?: FunctionComponent<{
     shader: Shader;
     currentUser?: CurrentUser | null;

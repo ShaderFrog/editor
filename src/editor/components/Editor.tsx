@@ -284,6 +284,7 @@ const Editor = ({
     compileResult,
     setCompileResult,
     getGraphNode,
+    setNodeThumbnail,
   } = useEditorStore();
   const rawStore = useEditorRawStore();
 
@@ -2176,6 +2177,7 @@ const Editor = ({
           assetPrefix={assetPrefix}
           takeScreenshotRef={takeScreenshotRef}
           onScreenshotCaptured={setScreenshotData}
+          setNodeThumbnail={setNodeThumbnail}
           SocialComponent={SocialComponent}
           shader={shader}
           currentUser={currentUser}

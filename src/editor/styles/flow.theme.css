@@ -57,6 +57,20 @@
   grid-template-columns: 1fr auto auto;
 }
 
+.flowlabel.withThumbnail {
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  padding-left: 3px;
+}
+.flowlabel .nodeThumbnail {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+}
+
 .selected .flownode {
   outline: 3px solid #ccccccdd;
 }

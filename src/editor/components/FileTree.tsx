@@ -13,6 +13,7 @@ import {
   PaneState,
   PaneType,
   useEditorStore,
+  useEditorStoreSelector,
   useIsNodeIdOpen,
 } from './flow/editor-store';
 
@@ -50,6 +51,9 @@ export const TreeNode = ({
   });
 
   const opened = useIsNodeIdOpen(nodeId, node.type);
+  const thumbnail = useEditorStoreSelector(
+    (state) => state.nodeThumbnails[nodeId]
+  );
 
   return (
     <div
@@ -69,6 +73,8 @@ export const TreeNode = ({
     >
       {treeNode.isLeaf ? (
         <FontAwesomeIcon icon={faCode} className={styles.treeIcon} />
+      ) : thumbnail ? (
+        <img className={styles.treeThumbnail} src={thumbnail} alt="" />
       ) : (
         <FontAwesomeIcon
           icon={treeNode.isOpen ? faGear : faChevronRight}

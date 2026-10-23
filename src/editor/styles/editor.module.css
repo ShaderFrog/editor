@@ -922,6 +922,15 @@ textarea.error {
   padding: 0 0.5em 0 0;
 }
 
+.treeThumbnail {
+  width: 18px;
+  height: 18px;
+  margin-right: 0.5em;
+  border-radius: 3px;
+  object-fit: cover;
+  vertical-align: middle;
+}
+
 .treeFragment .treeIcon {
   color: #a0ff5d;
 }

@@ -34,7 +34,11 @@ import { randomBetween } from '@core/util/math';
 import { NODRAG_CLASS } from '../editorTypes';
 import LabeledInput from '../LabeledInput';
 import clamp from '@editor/util/clamp';
-import { EDITOR_BOTTOM_PANEL, useEditorStore } from './editor-store';
+import {
+  EDITOR_BOTTOM_PANEL,
+  useEditorStore,
+  useEditorStoreSelector,
+} from './editor-store';
 
 import {
   FlowSourceNode,
@@ -49,6 +53,8 @@ import styles from './flownode.module.css';
 const cx = classnames.bind(styles);
 
 const headerHeight = 30;
+// How much taller the header is when it shows the node's thumbnail
+const thumbnailHeaderExtra = 25;
 const labelHeight = 44;
 const inputHeight = 22;
 const outputHandleTopWithLabel = 38;
@@ -836,6 +842,10 @@ const SourceNodeComponent = memo(
   }: NodeProps<FlowSourceNode>) => {
     const { onInputBakedToggle, jumpToError } = useFlowGraphContext();
     const { openNodeContextMenu } = useFlowEditorContext();
+    const thumbnail = useEditorStoreSelector(
+      (state) => state.nodeThumbnails[id]
+    );
+    const headerExtra = thumbnail ? thumbnailHeaderExtra : 0;
 
     const [groups, height] = useMemo<
       [{ name: string; inputs: InputNodeHandle[]; offset: number }[], number]
@@ -880,7 +890,7 @@ const SourceNodeComponent = memo(
     return (
       <FlowWrap
         data={data}
-        height={height + headerHeight}
+        height={height + headerHeight + headerExtra}
         className={cx(data.stage, data.category, { inactive: !data.active })}
       >
         {data.glslError ? (
@@ -888,7 +898,15 @@ const SourceNodeComponent = memo(
             GLSL Error!
           </div>
         ) : null}
-        <div className={cx('flowlabel', { three: !!data.stage })}>
+        <div
+          className={cx('flowlabel', {
+            three: !!data.stage,
+            withThumbnail: !!thumbnail,
+          })}
+        >
+          {thumbnail ? (
+            <img className="nodeThumbnail" src={thumbnail} alt="" />
+          ) : null}
           <div className="title">
             {data.label}{' '}
             {showPosition(id, positionAbsoluteX, positionAbsoluteY)}
@@ -908,7 +926,10 @@ const SourceNodeComponent = memo(
             <FontAwesomeIcon icon={faGear} />
           </button>
         </div>
-        <div className="flowInputs">
+        <div
+          className="flowInputs"
+          style={headerExtra ? { top: 27 + headerExtra } : undefined}
+        >
           {groups.map((group) => (
             <React.Fragment key={group.name}>
               <div

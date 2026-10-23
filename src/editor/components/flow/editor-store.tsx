@@ -173,6 +173,9 @@ interface EditorState {
   setCompileResult: (compileResult: CompileResult) => void;
   engineContext: EngineContext | undefined;
   setEngineContext: (engineContext: EngineContext) => void;
+  // Live rendered previews of nodes, as image URLs keyed by node id
+  nodeThumbnails: Record<string, string>;
+  setNodeThumbnail: (nodeId: string, url: string) => void;
 
   // UI state
   menu: ContextMenu | undefined;
@@ -365,6 +368,15 @@ const createEditorStore = (
     setCompileResult: (compileResult) => set(() => ({ compileResult })),
     engineContext: undefined,
     setEngineContext: (engineContext) => set(() => ({ engineContext })),
+    nodeThumbnails: {},
+    setNodeThumbnail: (nodeId, url) =>
+      set(({ nodeThumbnails }) => {
+        const previous = nodeThumbnails[nodeId];
+        if (previous?.startsWith('blob:')) {
+          URL.revokeObjectURL(previous);
+        }
+        return { nodeThumbnails: { ...nodeThumbnails, [nodeId]: url } };
+      }),
     getGraphNode: (nodeId: string) =>
       ensure(get().graph.nodes.find((n) => n.id === nodeId)),
 

@@ -55,7 +55,9 @@ import { canMapType } from '@core/graph/data-nodes';
 
 // Terrible hack to make the flow graph full height minus the tab height - I
 // need better layoutting of the tabs + graph
-const flowStyles = { background: '#111' };
+const flowStyles = {
+  background: 'radial-gradient(ellipse at 50% 40%, #17191c 0%, #0c0d0f 100%)',
+};
 
 const flowKey = (id: string | undefined) => `shaderflog_flow_${id}`;
 
@@ -501,7 +503,7 @@ const FlowEditor = ({
                   variant={BackgroundVariant.Lines}
                   gap={25}
                   size={0.5}
-                  color={isOver ? '#223322' : '#222222'}
+                  color={isOver ? '#2a3d2c' : '#24272b'}
                 />
               </ReactFlow>
             </FlowEventHack>

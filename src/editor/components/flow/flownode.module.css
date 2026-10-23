@@ -17,20 +17,28 @@
 }
 
 :global(.fragment) .inputSection {
-  background: #334433;
+  color: rgba(214, 255, 190, 0.7);
+  background: rgba(140, 255, 80, 0.07);
 }
 :global(.vertex) .inputSection {
-  background: #443333;
+  color: rgba(255, 205, 195, 0.7);
+  background: rgba(255, 80, 60, 0.08);
 }
 
 .inputSection {
-  color: #ddd;
-  background: linear-gradient(#333, #333344);
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   position: absolute;
   right: 0;
   left: 0;
-  padding: 4px 0 3px 12px;
-  font-size: 14px;
+  padding: 3px 0 3px 12px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Output labels sit to the left of the handle in a dark pill, so they stay

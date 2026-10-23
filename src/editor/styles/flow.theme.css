@@ -13,7 +13,7 @@
   border-radius: 10px;
   background: #111;
   color: #fff;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 1);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.6);
   position: relative;
   width: 240px;
   min-height: 80px;
@@ -102,8 +102,13 @@
 }
 
 .react-flow__edgeupdater {
-  opacity: 0.5;
+  opacity: 0;
   r: 4;
+  transition: opacity 0.15s ease-out;
+}
+.react-flow__edge:hover .react-flow__edgeupdater,
+.react-flow__edge.selected .react-flow__edgeupdater {
+  opacity: 0.8;
 }
 
 .react-flow__edge-path-selector:hover {
@@ -120,9 +125,27 @@
   stroke-width: 12;
 }
 
+.react-flow__edge .react-flow__edge-path {
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke-width 0.15s ease-out;
+}
 .react-flow__edge.selected .react-flow__edge-path {
   pointer-events: none;
-  stroke-width: 3;
+  stroke-width: 4;
+}
+.react-flow__edge-path-selector:hover + .react-flow__edge-path {
+  stroke-width: 3.5;
+}
+.react-flow__edge.data .react-flow__edge-path,
+.react-flow__edge-path.data {
+  filter: drop-shadow(0 0 3px rgba(0, 213, 255, 0.55));
+}
+.react-flow__edge.fragment .react-flow__edge-path {
+  filter: drop-shadow(0 0 3px rgba(190, 255, 0, 0.5));
+}
+.react-flow__edge.vertex .react-flow__edge-path {
+  filter: drop-shadow(0 0 3px rgba(255, 70, 60, 0.55));
 }
 
 .react-flow_handle_label {

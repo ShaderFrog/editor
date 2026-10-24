@@ -129,6 +129,29 @@
   background: #565656;
 }
 
+/* Quieter than secondary, for rows of controls that sit below the main
+   actions, like the scene preview toolbar. .active is for toggles and open
+   menus. */
+.formbutton.tertiary {
+  background: #2e2e2e;
+  box-shadow: inset 0 1px 0 #454545;
+  color: #ccc;
+  text-shadow: none;
+}
+.formbutton.tertiary[disabled] {
+  background: #252525;
+  box-shadow: none;
+}
+.formbutton.tertiary:not([disabled]):hover {
+  background: #3d3d3d;
+  color: #fff;
+}
+.formbutton.tertiary.active {
+  background: #444;
+  box-shadow: inset 0 1px 0 #666;
+  color: #fff;
+}
+
 .nodeButton {
   padding: 3px 10px !important;
   background: linear-gradient(rgb(60, 70, 69), rgb(42, 47, 50));

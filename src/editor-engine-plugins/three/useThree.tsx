@@ -11,6 +11,7 @@ import {
   PerspectiveCamera,
   LinearMipmapLinearFilter,
   LinearToneMapping,
+  MathUtils,
 } from 'three';
 
 import { useHoisty } from '../../editor/hoistedRefContext';
@@ -34,12 +35,32 @@ type ScenePersistence = {
   renderer: WebGLRenderer;
 };
 
+// Field of view of the main preview camera. In a pane taller than it is wide,
+// this is used as the horizontal field of view instead, see
+// fovForAspect()
+export const CAMERA_FOV = 75;
+
+/**
+ * Three's PerspectiveCamera.fov is vertical, so in a tall pane the horizontal
+ * view gets narrower and cuts off the sides of the object. Below an aspect of 1,
+ * widen the vertical fov so the horizontal fov stays at CAMERA_FOV. Objects
+ * then fit the same as they would in a square pane, which is what the saved
+ * camera distances were made for.
+ */
+export const fovForAspect = (aspect: number) =>
+  aspect >= 1
+    ? CAMERA_FOV
+    : 2 *
+      MathUtils.radToDeg(
+        Math.atan(Math.tan(MathUtils.degToRad(CAMERA_FOV) / 2) / aspect)
+      );
+
 export const useThree = (callback: Callback, isPaused = false) => {
   const { getRefData } = useHoisty();
   const { sceneData, scene, cubeCamera, camera, renderer } =
     getRefData<ScenePersistence>('three', () => {
       const scene = new Scene();
-      const camera = new PerspectiveCamera(75, 1 / 1, 0.1, 1000);
+      const camera = new PerspectiveCamera(CAMERA_FOV, 1 / 1, 0.1, 1000);
       const cubeRenderTarget = new WebGLCubeRenderTarget(128, {
         generateMipmaps: true,
         minFilter: LinearMipmapLinearFilter,

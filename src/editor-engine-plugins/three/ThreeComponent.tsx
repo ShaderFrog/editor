@@ -78,7 +78,7 @@ import {
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
 
-import { useThree } from './useThree';
+import { useThree, fovForAspect } from './useThree';
 import { useNodeThumbnails } from './useNodeThumbnails';
 import { usePrevious } from '../../editor/hooks/usePrevious';
 import { useSize } from '../../editor/hooks/useSize';
@@ -96,13 +96,24 @@ import {
   AssetAndVersion,
 } from './useTextures';
 import { logger } from '@editor/util/log';
-import ToolbarPicker, { PickerItem } from './ToolbarPicker';
+import {
+  SceneOptions,
+  SceneOptionItem,
+  SceneToolbarToggle,
+} from './SceneOptions';
 
 const cx = classnames.bind(styles);
 
 export const AUTO_ROTATE_LIMIT = 10;
 
-type ScenePanel = 'settings' | 'social' | null;
+type ScenePanel = 'model' | 'background' | 'settings' | 'social' | null;
+
+const scenePanelTitles: Record<NonNullable<ScenePanel>, string> = {
+  model: 'Model',
+  background: 'Background',
+  settings: 'Scene Settings',
+  social: 'Social',
+};
 
 const PREVIEW_MODELS = [
   { value: 'sphere', label: 'Sphere' },
@@ -850,7 +861,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
     return { grouped, sortedGroups, ungrouped };
   }, [cubeMapAssets, groups]);
 
-  const modelPickerItems = useMemo<PickerItem[]>(
+  const modelPickerItems = useMemo<SceneOptionItem[]>(
     () =>
       PREVIEW_MODELS.map((model) => ({
         ...model,
@@ -859,8 +870,10 @@ const ThreeComponent: React.FC<SceneProps> = ({
     [path]
   );
 
-  const backgroundPickerItems = useMemo<PickerItem[]>(() => {
-    const toItem = (asset: (typeof cubeMapAssets)[number]): PickerItem => ({
+  const backgroundPickerItems = useMemo<SceneOptionItem[]>(() => {
+    const toItem = (
+      asset: (typeof cubeMapAssets)[number]
+    ): SceneOptionItem => ({
       value: `asset_${asset.id}`,
       label: asset.name,
       thumbnail: asset.versions[0]?.thumbnail,
@@ -1460,6 +1473,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       const canvasWidth = sceneWrapperSize.width;
       const canvasHeight = sceneWrapperSize.height;
       camera.aspect = canvasWidth / canvasHeight;
+      camera.fov = fovForAspect(camera.aspect);
       camera.updateProjectionMatrix();
       renderer.setSize(canvasWidth, canvasHeight);
     }
@@ -1498,232 +1512,81 @@ const ThreeComponent: React.FC<SceneProps> = ({
   };
 
   const [openPanel, setOpenPanel] = useState<ScenePanel>(getInitialPanel);
+  // Only one panel is open at a time
   const togglePanel = (panel: ScenePanel) =>
     setOpenPanel((p) => (p === panel ? null : panel));
+
+  useEffect(() => {
+    if (!openPanel) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenPanel(null);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [openPanel]);
+
+  const findOption = (items: SceneOptionItem[], value: string) =>
+    items.find(
+      (item): item is Exclude<SceneOptionItem, { header: string }> =>
+        'value' in item && item.value === value
+    );
+  const selectedModel = findOption(modelPickerItems, sceneConfig.previewObject);
+  const selectedBackground = findOption(backgroundPickerItems, backgroundValue);
+
+  const setBackground = (value: string) => {
+    if (value === 'none') {
+      setSceneConfig({
+        ...sceneConfig,
+        bg: null,
+      });
+    } else if (value.startsWith('asset_')) {
+      const assetId = parseInt(value.replace('asset_', ''));
+      const asset = assets[assetId];
+      if (asset && asset.versions[0]) {
+        setSceneConfig({
+          ...sceneConfig,
+          bg: {
+            assetId,
+            versionId: asset.versions[0].id,
+          },
+        });
+      }
+    } else {
+      setSceneConfig({
+        ...sceneConfig,
+        bg: value,
+      });
+    }
+  };
 
   const resolutionConfig = resolutionConfigMapping[sceneConfig.previewObject];
 
   return (
     <div className={styles.scenePane}>
       <div className={styles.sceneToolbar}>
-        <ToolbarPicker
+        <SceneToolbarToggle
           title="Model"
-          layout="grid"
-          showLabel
-          value={sceneConfig.previewObject}
-          items={modelPickerItems}
-          onChange={(previewObject) =>
-            setSceneConfig({
-              ...sceneConfig,
-              previewObject,
-            })
-          }
-          closeOnSelect={false}
-          footer={
-            <>
-              <div className={cx(styles.controlGrid, 'm-top-5')}>
-                {resolutionConfig ? (
-                  <VectorEditor
-                    value={
-                      sceneConfig[resolutionConfig.key] === undefined
-                        ? defaultResolution[resolutionConfig.key]
-                        : sceneConfig[resolutionConfig.key]
-                    }
-                    placeholder={defaultResolution[resolutionConfig.key]}
-                    labels={resolutionConfig.labels}
-                    onChange={(v) =>
-                      setSceneConfig({
-                        ...sceneConfig,
-                        [resolutionConfig.key]: v,
-                      })
-                    }
-                  />
-                ) : null}
-              </div>
-
-              <div className="grid col2 m-top-5">
-                <div className={styles.controlGrid}>
-                  <div>
-                    <input
-                      className="checkbox"
-                      id="dbs"
-                      type="checkbox"
-                      checked={!!sceneConfig.doubleSide}
-                      onChange={(event) =>
-                        setSceneConfig({
-                          ...sceneConfig,
-                          doubleSide: event?.target.checked,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="label noselect" htmlFor="dbs">
-                      <span>Double Side</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className={styles.controlGrid}>
-                  <div>
-                    <input
-                      className="checkbox"
-                      id="trnsp"
-                      type="checkbox"
-                      checked={!!sceneConfig.transparent}
-                      onChange={(event) =>
-                        setSceneConfig({
-                          ...sceneConfig,
-                          transparent: event?.target.checked,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="label noselect" htmlFor="trnsp">
-                      <span>Transparent</span>
-                    </label>
-                  </div>
-                </div>
-                <div className={styles.controlGrid}>
-                  <div>
-                    <input
-                      className="checkbox"
-                      id="Wireframesfs"
-                      type="checkbox"
-                      checked={!!sceneConfig.wireframe}
-                      onChange={(event) =>
-                        setSceneConfig({
-                          ...sceneConfig,
-                          wireframe: event?.target.checked,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="Wireframesfs" className="label noselect">
-                      <span>Wireframe</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className={styles.controlGrid}>
-                  <div>
-                    <input
-                      className="checkbox"
-                      id="nrm"
-                      type="checkbox"
-                      checked={!!sceneConfig.showNormals}
-                      onChange={(event) =>
-                        setSceneConfig({
-                          ...sceneConfig,
-                          showNormals: event?.target.checked,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="label noselect" htmlFor="nrm">
-                      <span>Show Normals</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className={styles.controlGrid}>
-                  <div>
-                    <input
-                      className="checkbox"
-                      id="tng"
-                      type="checkbox"
-                      checked={!!sceneConfig.showTangents}
-                      onChange={(event) =>
-                        setSceneConfig({
-                          ...sceneConfig,
-                          showTangents: event?.target.checked,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="label noselect" htmlFor="tng">
-                      <span>Show Tangents</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </>
-          }
+          label={selectedModel?.label || 'Model'}
+          thumbnail={selectedModel?.thumbnail}
+          active={openPanel === 'model'}
+          onClick={() => togglePanel('model')}
         />
-        <ToolbarPicker
+        <SceneToolbarToggle
           title="Background"
-          showLabel
-          className={styles.bgPicker}
-          value={backgroundValue}
-          items={backgroundPickerItems}
-          onChange={(value) => {
-            if (value === 'none') {
-              setSceneConfig({
-                ...sceneConfig,
-                bg: null,
-              });
-            } else if (value.startsWith('asset_')) {
-              const assetId = parseInt(value.replace('asset_', ''));
-              const asset = assets[assetId];
-              if (asset && asset.versions[0]) {
-                setSceneConfig({
-                  ...sceneConfig,
-                  bg: {
-                    assetId,
-                    versionId: asset.versions[0].id,
-                  },
-                });
-              }
-            } else {
-              setSceneConfig({
-                ...sceneConfig,
-                bg: value,
-              });
-            }
-          }}
-          closeOnSelect={false}
-          header={
-            <div className={styles.blurControl}>
-              <label htmlFor="backgroundBlur" className="label noselect">
-                Blur
-              </label>
-              <input
-                id="backgroundBlur"
-                type="range"
-                className="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={defaultBackgroundBlur(sceneConfig.backgroundBlur)}
-                onChange={(event) =>
-                  setSceneConfig({
-                    ...sceneConfig,
-                    backgroundBlur: parseFloat(event.target.value),
-                  })
-                }
-              />
-              <input
-                type="number"
-                className="textinput"
-                value={defaultBackgroundBlur(sceneConfig.backgroundBlur)}
-                onChange={(event) =>
-                  setSceneConfig({
-                    ...sceneConfig,
-                    backgroundBlur: parseFloat(event.target.value),
-                  })
-                }
-              />
-            </div>
-          }
+          shape="image"
+          label={selectedBackground?.label || 'None'}
+          thumbnail={selectedBackground?.thumbnail}
+          active={openPanel === 'background'}
+          onClick={() => togglePanel('background')}
         />
         <div className={styles.sceneToolbarButtons}>
           <button
-            className={cx(styles.sceneToolbarButton, {
-              [styles.active]: openPanel === 'settings',
+            className={cx('formbutton tertiary', styles.sceneIconButton, {
+              active: openPanel === 'settings',
             })}
             onClick={(e) => {
               e.preventDefault();
@@ -1735,8 +1598,8 @@ const ThreeComponent: React.FC<SceneProps> = ({
           </button>
           {SocialComponent && shader && (
             <button
-              className={cx(styles.sceneToolbarButton, {
-                [styles.active]: openPanel === 'social',
+              className={cx('formbutton tertiary', styles.sceneIconButton, {
+                active: openPanel === 'social',
               })}
               onClick={(e) => {
                 e.preventDefault();
@@ -1748,7 +1611,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
             </button>
           )}
           <button
-            className={styles.sceneToolbarButton}
+            className={cx('formbutton tertiary', styles.sceneIconButton)}
             onClick={(e) => {
               e.preventDefault();
               setScreenshotMode((p) => !p);
@@ -1758,7 +1621,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
             <FontAwesomeIcon icon={faCamera} />
           </button>
           <button
-            className={styles.sceneToolbarButton}
+            className={cx('formbutton tertiary', styles.sceneIconButton)}
             onClick={(e) => {
               e.preventDefault();
               setIsPaused((p) => !p);
@@ -1782,11 +1645,9 @@ const ThreeComponent: React.FC<SceneProps> = ({
         {openPanel && !screenshotMode && (
           <div className={cx(styles.scenePanel, 'condensed')}>
             <div className={styles.scenePanelHeader}>
-              <span>
-                {openPanel === 'settings' ? 'Scene Settings' : 'Social'}
-              </span>
+              <span>{scenePanelTitles[openPanel]}</span>
               <button
-                className={styles.sceneToolbarButton}
+                className={styles.scenePanelClose}
                 onClick={(e) => {
                   e.preventDefault();
                   setOpenPanel(null);
@@ -1797,7 +1658,194 @@ const ThreeComponent: React.FC<SceneProps> = ({
               </button>
             </div>
             <div className={cx(styles.scenePanelBody, 'nowheel')}>
-              {openPanel === 'settings' ? (
+              {openPanel === 'model' ? (
+                <>
+                  <SceneOptions
+                    value={sceneConfig.previewObject}
+                    items={modelPickerItems}
+                    onChange={(previewObject) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        previewObject,
+                      })
+                    }
+                  />
+                  <div className={styles.scenePanelSection}>Object</div>
+                  <div className={cx(styles.controlGrid, 'm-top-5')}>
+                    {resolutionConfig ? (
+                      <VectorEditor
+                        value={
+                          sceneConfig[resolutionConfig.key] === undefined
+                            ? defaultResolution[resolutionConfig.key]
+                            : sceneConfig[resolutionConfig.key]
+                        }
+                        placeholder={defaultResolution[resolutionConfig.key]}
+                        labels={resolutionConfig.labels}
+                        onChange={(v) =>
+                          setSceneConfig({
+                            ...sceneConfig,
+                            [resolutionConfig.key]: v,
+                          })
+                        }
+                      />
+                    ) : null}
+                  </div>
+
+                  <div className="grid col2 m-top-5">
+                    <div className={styles.controlGrid}>
+                      <div>
+                        <input
+                          className="checkbox"
+                          id="dbs"
+                          type="checkbox"
+                          checked={!!sceneConfig.doubleSide}
+                          onChange={(event) =>
+                            setSceneConfig({
+                              ...sceneConfig,
+                              doubleSide: event?.target.checked,
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="label noselect" htmlFor="dbs">
+                          <span>Double Side</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className={styles.controlGrid}>
+                      <div>
+                        <input
+                          className="checkbox"
+                          id="trnsp"
+                          type="checkbox"
+                          checked={!!sceneConfig.transparent}
+                          onChange={(event) =>
+                            setSceneConfig({
+                              ...sceneConfig,
+                              transparent: event?.target.checked,
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="label noselect" htmlFor="trnsp">
+                          <span>Transparent</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className={styles.controlGrid}>
+                      <div>
+                        <input
+                          className="checkbox"
+                          id="Wireframesfs"
+                          type="checkbox"
+                          checked={!!sceneConfig.wireframe}
+                          onChange={(event) =>
+                            setSceneConfig({
+                              ...sceneConfig,
+                              wireframe: event?.target.checked,
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="Wireframesfs"
+                          className="label noselect"
+                        >
+                          <span>Wireframe</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className={styles.controlGrid}>
+                      <div>
+                        <input
+                          className="checkbox"
+                          id="nrm"
+                          type="checkbox"
+                          checked={!!sceneConfig.showNormals}
+                          onChange={(event) =>
+                            setSceneConfig({
+                              ...sceneConfig,
+                              showNormals: event?.target.checked,
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="label noselect" htmlFor="nrm">
+                          <span>Show Normals</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className={styles.controlGrid}>
+                      <div>
+                        <input
+                          className="checkbox"
+                          id="tng"
+                          type="checkbox"
+                          checked={!!sceneConfig.showTangents}
+                          onChange={(event) =>
+                            setSceneConfig({
+                              ...sceneConfig,
+                              showTangents: event?.target.checked,
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="label noselect" htmlFor="tng">
+                          <span>Show Tangents</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : openPanel === 'background' ? (
+                <>
+                  <div className={styles.blurControl}>
+                    <label htmlFor="backgroundBlur" className="label noselect">
+                      Blur
+                    </label>
+                    <input
+                      id="backgroundBlur"
+                      type="range"
+                      className="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={defaultBackgroundBlur(sceneConfig.backgroundBlur)}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          backgroundBlur: parseFloat(event.target.value),
+                        })
+                      }
+                    />
+                    <input
+                      type="number"
+                      className="textinput"
+                      value={defaultBackgroundBlur(sceneConfig.backgroundBlur)}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          backgroundBlur: parseFloat(event.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <SceneOptions
+                    shape="image"
+                    value={backgroundValue}
+                    items={backgroundPickerItems}
+                    onChange={setBackground}
+                  />
+                </>
+              ) : openPanel === 'settings' ? (
                 <>
                   <div className={styles.scenePanelSection}>Lighting</div>
                   {graph.nodes.find(
@@ -1808,81 +1856,57 @@ const ThreeComponent: React.FC<SceneProps> = ({
                       effect without a Three.js material in the graph.
                     </div>
                   )}
-                  <div className={cx(styles.controlGrid, 'm-top-5')}>
-                    <div>
-                      <label htmlFor="Lightingsfs" className="label noselect">
-                        <span>Lighting</span>
-                      </label>
-                    </div>
-                    <div>
-                      <select
-                        id="Lightingsfs"
-                        className="select"
-                        onChange={(event) => {
-                          setSceneConfig({
-                            ...sceneConfig,
-                            lights: event.target.value,
-                          });
-                        }}
-                        value={sceneConfig.lights}
-                      >
-                        <option value={LIGHT_SETTINGS.NONE}>None</option>
-                        <option value={LIGHT_SETTINGS.POINT}>
-                          Single Point Light
-                        </option>
-                        <option value={LIGHT_SETTINGS.THREE_POINT}>
-                          Multiple Point Lights
-                        </option>
-                        <option value={LIGHT_SETTINGS.SPOT}>Spot Lights</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className={cx(styles.controlGrid, 'm-top-5')}>
-                    <div className={cx(styles.controlGrid)}>
-                      <div>
-                        <label
-                          htmlFor="lightIntensity"
-                          className="label noselect"
-                        >
-                          <span>Light Intensity</span>
-                        </label>
-                      </div>
-                      <div>
-                        <input
-                          id="lightIntensity"
-                          type="range"
-                          className="range"
-                          min="0"
-                          max="3"
-                          step="0.1"
-                          value={defaultLightIntensity(
-                            sceneConfig.lightIntensity
-                          )}
-                          onChange={(event) =>
-                            setSceneConfig({
-                              ...sceneConfig,
-                              lightIntensity: parseFloat(event.target.value),
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <input
-                        type="number"
-                        className="textinput"
-                        value={defaultLightIntensity(
-                          sceneConfig.lightIntensity
-                        )}
-                        onChange={(event) =>
-                          setSceneConfig({
-                            ...sceneConfig,
-                            lightIntensity: parseFloat(event.target.value),
-                          })
-                        }
-                      />
-                    </div>
+                  <div className={cx(styles.lightingRow, 'm-top-5')}>
+                    <select
+                      aria-label="Lighting"
+                      className="select"
+                      onChange={(event) => {
+                        setSceneConfig({
+                          ...sceneConfig,
+                          lights: event.target.value,
+                        });
+                      }}
+                      value={sceneConfig.lights}
+                    >
+                      <option value={LIGHT_SETTINGS.NONE}>None</option>
+                      <option value={LIGHT_SETTINGS.POINT}>
+                        Single Point Light
+                      </option>
+                      <option value={LIGHT_SETTINGS.THREE_POINT}>
+                        Multiple Point Lights
+                      </option>
+                      <option value={LIGHT_SETTINGS.SPOT}>Spot Lights</option>
+                    </select>
+                    <label htmlFor="lightIntensity" className="label noselect">
+                      Intensity
+                    </label>
+                    <input
+                      id="lightIntensity"
+                      type="range"
+                      className="range"
+                      min="0"
+                      max="3"
+                      step="0.1"
+                      value={defaultLightIntensity(sceneConfig.lightIntensity)}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          lightIntensity: parseFloat(event.target.value),
+                        })
+                      }
+                    />
+                    <input
+                      type="number"
+                      className="textinput"
+                      aria-label="Light intensity"
+                      value={defaultLightIntensity(sceneConfig.lightIntensity)}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          lightIntensity: parseFloat(event.target.value),
+                        })
+                      }
+                    />
                   </div>
 
                   <div className="bottomDivide m-bottom-5 m-top-5">

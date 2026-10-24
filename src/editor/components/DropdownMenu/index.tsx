@@ -34,29 +34,20 @@ export const useDropdownMenu = () => {
 type DropdownMenuProps = {
   align?: 'left' | 'right';
   className?: string;
-  /** Class for the list of items, for laying them out differently */
-  listClassName?: string;
-  /** Extra content above and below the list of items, like settings */
-  header?: React.ReactNode;
-  footer?: React.ReactNode;
   children: React.ReactNode;
 };
 
 export const DropdownMenu = ({
   align = 'left',
   className,
-  listClassName,
-  header,
-  footer,
   children,
 }: DropdownMenuProps) => (
-  <div className={cx(styles.menu, styles[align], 'nowheel', className)}>
-    {header}
-    <ul className={cx(styles.list, listClassName)} role="listbox">
-      {children}
-    </ul>
-    {footer}
-  </div>
+  <ul
+    className={cx(styles.menu, styles[align], 'nowheel', className)}
+    role="listbox"
+  >
+    {children}
+  </ul>
 );
 
 type DropdownMenuItemProps = {

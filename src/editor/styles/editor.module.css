@@ -53,11 +53,6 @@
   border-bottom: 1px solid #333;
 }
 
-.bgPicker {
-  flex: 0 1 auto;
-  max-width: 200px;
-}
-
 .blurControl {
   display: grid;
   grid-template-columns: auto 1fr 48px;
@@ -65,13 +60,29 @@
   gap: 8px;
 }
 
+/* Lighting dropdown, intensity label, slider, and number on one row */
+.lightingRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) auto minmax(40px, 1fr) 44px;
+  align-items: center;
+  gap: 6px;
+}
+
 .sceneToolbarButtons {
   display: flex;
-  gap: 2px;
+  gap: 4px;
   margin-left: auto;
 }
 
-.sceneToolbarButton {
+/* Look comes from the global "formbutton tertiary" classes */
+.sceneToolbar .sceneIconButton {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 13px;
+}
+
+.scenePanelClose {
   width: 26px;
   height: 26px;
   margin: 0;
@@ -82,27 +93,27 @@
   color: #bbb;
   cursor: pointer;
 }
-.sceneToolbarButton:hover {
+.scenePanelClose:hover {
   background: #333;
-  color: #fff;
-}
-.sceneToolbarButton.active {
-  background: rgba(66, 152, 45, 0.35);
   color: #fff;
 }
 
 .scenePanel {
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  left: 3px;
+  right: 3px;
   z-index: 5;
   max-height: 65%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: rgba(26, 26, 26, 0.94);
-  border-bottom: 1px solid #444;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  border: 1px solid #444;
+  /* Flush against the toolbar, so only the bottom corners are rounded */
+  border-top: 0 none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
 }
 
 .scenePanelHeader {

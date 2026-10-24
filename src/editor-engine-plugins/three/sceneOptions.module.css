@@ -1,0 +1,129 @@
+/* Toolbar toggle. Base look comes from the global "formbutton tertiary"
+   classes, shared with the other scene toolbar buttons. */
+button.toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 180px;
+  height: 28px;
+  padding: 0 8px 0 4px;
+  font-size: 12px;
+  width: auto;
+}
+
+.toggleThumb {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  object-fit: cover;
+}
+.image .toggleThumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+.toggleLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyThumb {
+  display: inline-block;
+  box-sizing: border-box;
+  border: 1px solid #555;
+  background: #111;
+}
+
+/* Options grid inside a scene panel */
+.options {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.options.icon {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.options.image {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 3px;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px 2px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 10px;
+  color: #ccc;
+  cursor: pointer;
+}
+.option:hover {
+  background: #333;
+  color: #fff;
+}
+.option.selected {
+  background: rgba(66, 152, 45, 0.25);
+  border-color: #42982d;
+  color: #fff;
+}
+
+.optionThumb {
+  flex: none;
+  width: 28px;
+  height: 28px;
+}
+.image .optionThumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+/* Image cards put the name over the bottom of the image to save height */
+.image .option {
+  position: relative;
+  padding: 2px;
+}
+.image .optionLabel {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  padding: 6px 3px 1px;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+  font-size: 10px;
+  line-height: 12px;
+  text-align: left;
+  text-shadow: 0 0 2px #000;
+}
+
+.optionLabel {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #888;
+}
+.header:first-child {
+  margin-top: 0;
+}

@@ -51,7 +51,7 @@ function SplitButton<T>({
           e.preventDefault();
           onClick();
         }}
-        title={`${label} (${title || currentOption.label})`}
+        title={title || currentOption.label}
       >
         {label}
       </button>

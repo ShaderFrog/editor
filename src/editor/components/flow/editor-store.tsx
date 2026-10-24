@@ -221,6 +221,9 @@ interface EditorState {
   nodeErrors: Record<string, NodeErrors>;
   setNodeErrors: (nodeId: string, errors: NodeErrors) => void;
   clearNodeErrors: () => void;
+  // Hide errors while the user is typing with auto compile on
+  hideErrors: boolean;
+  setHideErrors: (hideErrors: boolean) => void;
 
   // Compiler results
   setCompileInfo: (compileInfo: Partial<CompileInfo>) => void;
@@ -478,6 +481,8 @@ const createEditorStore = (
       set(() => ({ primarySelectedNodeId })),
 
     // Node errors state
+    hideErrors: false,
+    setHideErrors: (hideErrors) => set(() => ({ hideErrors })),
     nodeErrors: {},
     setNodeErrors: (nodeId, errors) =>
       set((state) => ({

@@ -259,6 +259,7 @@ const Editor = ({
     setSceneDimensions,
     compileInfo,
     setCompileInfo,
+    hideErrors,
     sceneConfig,
     setSceneConfig,
     // Shader
@@ -299,7 +300,9 @@ const Editor = ({
   // The shader being dragged onto something to replace it
   const [draggedShader, setDraggedShader] = useState<Shader | null>(null);
 
-  const [activeDialog, setActiveDialog] = useState<'export' | 'import' | 'fork' | null>(null);
+  const [activeDialog, setActiveDialog] = useState<
+    'export' | 'import' | 'fork' | null
+  >(null);
   const [forkName, setForkName] = useState('');
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -430,8 +433,15 @@ const Editor = ({
   // Compile function, meant to be called manually in places where we want to
   // trigger a compile. I tried making this a useEffect, however this function
   // needs to update "flowElements" at the end, which leads to an infinite loop
+  const latestCompileId = useRef(0);
   const compile = useCallback(() => {
     const { flowNodes, flowEdges, graph, engineContext } = rawStore.getState();
+
+    // Compiles can overlap, like when auto compiling while typing. Only the
+    // most recent compile's result is applied, so an older one that finishes
+    // late can't overwrite it.
+    const compileId = ++latestCompileId.current;
+    const isStale = () => compileId !== latestCompileId.current;
 
     setContexting(false);
     setCompiling(true);
@@ -439,6 +449,9 @@ const Editor = ({
     log('Starting compileGraphAsync()!');
     compileGraphAsync(graph, engine, engineContext!)
       .then((result) => {
+        if (isStale()) {
+          return;
+        }
         if (isError(result)) {
           setNodeErrors(result.nodeId, result);
           updateFlowNodeData(result.nodeId, { glslError: true });
@@ -498,9 +511,14 @@ const Editor = ({
       })
       .catch((err) => {
         console.error('Error compiling!', err);
-        setGuiError(err.message);
+        if (!isStale()) {
+          setGuiError(err.message);
+        }
       })
       .finally(() => {
+        if (isStale()) {
+          return;
+        }
         setNeedsCompile(false);
         setCompiling(false);
         setContexting(false);
@@ -2100,7 +2118,8 @@ const Editor = ({
           </Tab>
           <Tab
             className={cx({
-              [styles.errored]: compileInfo.vertError || compileInfo.fragError,
+              [styles.errored]:
+                !hideErrors && (compileInfo.vertError || compileInfo.fragError),
             })}
           >
             <FontAwesomeIcon icon={faCode} color="#fff" className="m-right-5" />

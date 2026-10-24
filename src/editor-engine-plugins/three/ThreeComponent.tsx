@@ -418,6 +418,17 @@ const ThreeComponent: React.FC<SceneProps> = ({
   // Declared before useThree so the animation loop closure can read it.
   const inOverrideModeRef = useRef(false);
 
+  // The last material that compiled on the GPU, and the compile result it came
+  // from. If a new shader fails to compile, the scene goes back to this one so
+  // the preview keeps showing the last working shader.
+  const lastGoodRef = useRef<{
+    material: Mesh['material'];
+    compileResult: SceneProps['compileResult'];
+  } | null>(null);
+  // The compile result of the material currently on the mesh. This can be
+  // older than the compileResult prop after a failed compile is reverted.
+  const sceneCompileResultRef = useRef<SceneProps['compileResult']>();
+
   const { sceneData, scene, camera, threeDomCbRef, renderer } = useThree(
     (time, controls) => {
       const { mesh } = sceneData;
@@ -483,6 +494,20 @@ const ThreeComponent: React.FC<SceneProps> = ({
               programError: log,
             };
             setGlResult(errResult);
+
+            const lastGood = lastGoodRef.current;
+            if (lastGood && lastGood.material !== mesh.material) {
+              const failed = mesh.material;
+              mesh.material = lastGood.material;
+              sceneCompileResultRef.current = lastGood.compileResult;
+              // The override material is reused for the next live edit
+              if (
+                !Array.isArray(failed) &&
+                !(failed as RawShaderMaterial).isRawShaderMaterial
+              ) {
+                failed.dispose();
+              }
+            }
           } else if (inOverrideModeRef.current) {
             // Don't update fragmentShader/vertexShader — that would overwrite
             // the user's live edits in the GLSL editor.
@@ -500,6 +525,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
               programError: null,
             };
             setGlResult(okResult);
+          }
+
+          if (compiled) {
+            lastGoodRef.current = {
+              material: mesh.material,
+              compileResult: sceneCompileResultRef.current,
+            };
           }
         }
 
@@ -559,11 +591,12 @@ const ThreeComponent: React.FC<SceneProps> = ({
       // Note the uniforms are updated here every frame, but also instantiated
       // in this component at RawShaderMaterial creation time. There might be
       // some logic duplication to worry about.
-      if (compileResult?.dataInputs) {
+      const sceneCompileResult = sceneCompileResultRef.current ?? compileResult;
+      if (sceneCompileResult?.dataInputs) {
         const { uniforms, properties } = extractProperties(
           graph,
           grindex,
-          compileResult.dataInputs,
+          sceneCompileResult.dataInputs,
           (node) => {
             const value = node.value;
             if (!value?.assetId || !value?.versionId) {
@@ -1315,6 +1348,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
       engineMaterial: (ctx.runtime as any).engineMaterial,
     });
 
+    sceneCompileResultRef.current = compileResult;
     mesh.material = material;
     shadersUpdated.current = true;
   }, [

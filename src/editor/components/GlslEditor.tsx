@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SplitPane } from '@andrewray/react-multi-split-pane';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -7,6 +7,8 @@ import {
   faCode,
   faGear,
   faLock,
+  faBolt,
+  faPlay,
 } from '@fortawesome/free-solid-svg-icons';
 
 import {
@@ -14,10 +16,12 @@ import {
   findLinkedNode,
   ShaderStage,
   computeGrindex,
+  NodeErrors,
 } from '@core/graph';
 import { Engine } from '@core/engine';
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
 import CodeEditor from './CodeEditor';
+import SplitButton, { SplitButtonOption } from './SplitButton';
 import { isMacintosh } from '@editor/util/platform';
 import {
   PaneState,
@@ -89,6 +93,44 @@ const nodeTabName = (node: SourceNode | undefined, type: PaneType) =>
 const FINAL_VERTEX = 'output_vertex';
 const FINAL_FRAGMENT = 'output_fragment';
 
+// When auto compiling, how long after the last keystroke to compile, and how
+// long to wait before showing errors, so errors don't flash while typing
+const AUTO_COMPILE_DELAY_MS = 1000;
+const SHOW_ERRORS_DELAY_MS = 3000;
+
+const COMPILE_MODE_OPTIONS: SplitButtonOption<boolean>[] = [
+  {
+    value: true,
+    icon: faBolt,
+    label: 'Auto',
+    description: 'Compile as you type',
+  },
+  {
+    value: false,
+    icon: faPlay,
+    label: 'Manual',
+    description: 'Compile only when you click Compile',
+  },
+];
+
+const AUTO_COMPILE_KEY = 'shaderfrog-auto-compile';
+const NO_ERRORS: Record<string, NodeErrors> = {};
+
+// Defaults to auto. localStorage can throw in private windows or be missing
+// during server rendering.
+const loadAutoCompile = () => {
+  try {
+    return window.localStorage.getItem(AUTO_COMPILE_KEY) !== 'false';
+  } catch (e) {
+    return true;
+  }
+};
+const saveAutoCompile = (autoCompile: boolean) => {
+  try {
+    window.localStorage.setItem(AUTO_COMPILE_KEY, String(autoCompile));
+  } catch (e) {}
+};
+
 /**
  * GLSL Editor
  */
@@ -109,7 +151,7 @@ const GlslEditor = ({
     setGlslEditorActivePaneId,
     glslEditorActivePaneId,
     glslEditorTabs,
-    nodeErrors,
+    nodeErrors: allNodeErrors,
     removeEditorTabPaneId,
     compileInfo,
     setCompileInfo,
@@ -118,10 +160,72 @@ const GlslEditor = ({
     compileResult,
     graph,
     engineContext,
+    hideErrors,
+    setHideErrors,
   } = useEditorStore();
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
 
   const codeEditorTabIndex = useGlslEditorTabIndex();
+
+  // Auto compile mode compiles while the user types, and hides errors until
+  // they stop typing for a bit. Manual mode only compiles on request.
+  const [autoCompile, setAutoCompile] = useState(true);
+  useEffect(() => {
+    setAutoCompile(loadAutoCompile());
+  }, []);
+  const compileTimer = useRef<ReturnType<typeof setTimeout>>();
+  const showErrorsTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  const cancelTimers = useCallback(() => {
+    clearTimeout(compileTimer.current);
+    clearTimeout(showErrorsTimer.current);
+  }, []);
+  useEffect(
+    () => () => {
+      cancelTimers();
+      setHideErrors(false);
+    },
+    [cancelTimers, setHideErrors]
+  );
+
+  // Compile right away, for the compile button and keyboard shortcut. This
+  // cancels any pending auto compile and shows errors immediately.
+  const compileNow = useCallback(() => {
+    cancelTimers();
+    setHideErrors(false);
+    onCompile();
+  }, [cancelTimers, onCompile, setHideErrors]);
+
+  const onSourceChange = useCallback(
+    (nodeId: string, source: string) => {
+      updateGraphNode(nodeId, { source });
+      if (!autoCompile) {
+        return;
+      }
+      cancelTimers();
+      setHideErrors(true);
+      compileTimer.current = setTimeout(onCompile, AUTO_COMPILE_DELAY_MS);
+      showErrorsTimer.current = setTimeout(
+        () => setHideErrors(false),
+        SHOW_ERRORS_DELAY_MS
+      );
+    },
+    [autoCompile, cancelTimers, onCompile, setHideErrors, updateGraphNode]
+  );
+
+  const onAutoCompileChange = (value: boolean) => {
+    setAutoCompile(value);
+    saveAutoCompile(value);
+    // Switching to manual drops a pending auto compile, but shows its errors
+    if (!value) {
+      cancelTimers();
+      setHideErrors(false);
+    }
+  };
+
+  const nodeErrors = hideErrors ? NO_ERRORS : allNodeErrors;
+  const vertError = hideErrors ? null : compileInfo.vertError;
+  const fragError = hideErrors ? null : compileInfo.fragError;
 
   const setVertexOverride = useCallback(
     (vertexShader: string) => {
@@ -255,7 +359,7 @@ const GlslEditor = ({
     {
       id: FINAL_VERTEX,
       nodeId: FINAL_VERTEX,
-      errored: !!compileInfo.vertError,
+      errored: !!vertError,
       stage: 'vertex',
       name: 'Vertex Output',
       type: 'live_edit',
@@ -263,7 +367,7 @@ const GlslEditor = ({
     {
       id: FINAL_FRAGMENT,
       nodeId: FINAL_FRAGMENT,
-      errored: !!compileInfo.fragError,
+      errored: !!fragError,
       stage: 'fragment',
       name: 'Fragment Output',
       type: 'live_edit',
@@ -326,10 +430,8 @@ const GlslEditor = ({
                   className={{
                     [styles.errored]:
                       pane.contents.nodeId in nodeErrors ||
-                      (pane.contents.nodeId === FINAL_VERTEX &&
-                        compileInfo.vertError) ||
-                      (pane.contents.nodeId === FINAL_FRAGMENT &&
-                        compileInfo.fragError),
+                      (pane.contents.nodeId === FINAL_VERTEX && vertError) ||
+                      (pane.contents.nodeId === FINAL_FRAGMENT && fragError),
                   }}
                 >
                   {pane.contents.type === 'live_edit'
@@ -358,13 +460,14 @@ const GlslEditor = ({
             })}
 
             <div className={styles.tabControls}>
-              <button
-                className="buttonauto formbutton size2"
-                onClick={() => onCompile()}
-                title={`${isMacintosh() ? `⌘-'` : `Ctrl+'`}`}
-              >
-                Compile
-              </button>
+              <SplitButton
+                label={`Compile (${autoCompile ? 'Auto' : 'Manual'})`}
+                title={`Compile (${isMacintosh() ? `⌘-'` : `Ctrl+'`})`}
+                options={COMPILE_MODE_OPTIONS}
+                selected={autoCompile}
+                onSelect={onAutoCompileChange}
+                onClick={compileNow}
+              />
             </div>
           </TabGroup>
           <TabPanels>
@@ -426,10 +529,8 @@ const GlslEditor = ({
                     readOnly={readOnly}
                     errors={nodeErrors[primaryNode.id]}
                     onSave={onSaveOrFork}
-                    onCompile={onCompile}
-                    onChange={(value) => {
-                      updateGraphNode(primaryNode.id, { source: value });
-                    }}
+                    onCompile={compileNow}
+                    onChange={(value) => onSourceChange(primaryNode.id, value)}
                   />
                 );
                 if (readOnly) {
@@ -448,7 +549,7 @@ const GlslEditor = ({
                 tabContents = (
                   <NodeConfigEditor
                     node={primaryNode}
-                    onSave={onCompile}
+                    onSave={compileNow}
                     onGraphChange={onGraphChange}
                   />
                 );

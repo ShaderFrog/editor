@@ -68,6 +68,8 @@ import {
   isBinaryNodeType,
   NodeType,
   DataNodeDefaults,
+  NodeErrors,
+  mapGlslErrorsToNodes,
 } from '@core/graph';
 
 import FlowEditor, {
@@ -529,8 +531,58 @@ const Editor = ({
   }, [compiling, needsCompile, compile]);
 
   const setGlResult = useCallback(
-    (result: Partial<CompileInfo>) => setCompileInfo(result),
-    [setCompileInfo]
+    (result: Partial<CompileInfo>) => {
+      setCompileInfo(result);
+
+      // Show GPU compile errors in the editors of the nodes they came from
+      const { compileResult, engineContext, graph } = rawStore.getState();
+      if (!compileResult || !(result.fragError || result.vertError)) {
+        return;
+      }
+      const nodeContexts = {
+        ...engineContext?.nodes,
+        ...compileResult.updatedNodeContext,
+      };
+      // Engine nodes aren't user editable, and are large to search for
+      const engineNodeIds = new Set(
+        graph.nodes
+          .filter((node) => (node as CodeNode).engine)
+          .map((node) => node.id)
+      );
+      const isEditable = (nodeId: string) => !engineNodeIds.has(nodeId);
+
+      const byNode: Record<string, NodeErrors> = {};
+      [
+        mapGlslErrorsToNodes(
+          result.fragmentShader,
+          result.fragError,
+          compileResult.compileResult.fragment,
+          nodeContexts,
+          isEditable
+        ),
+        mapGlslErrorsToNodes(
+          result.vertexShader,
+          result.vertError,
+          compileResult.compileResult.vertex,
+          nodeContexts,
+          isEditable
+        ),
+      ].forEach((mapped) => {
+        Object.values(mapped).forEach(({ nodeId, errors }) => {
+          byNode[nodeId] = {
+            type: 'errors',
+            nodeId,
+            errors: [...(byNode[nodeId]?.errors || []), ...errors],
+          };
+        });
+      });
+
+      Object.values(byNode).forEach((nodeErrors) => {
+        setNodeErrors(nodeErrors.nodeId, nodeErrors);
+        updateFlowNodeData(nodeErrors.nodeId, { glslError: true });
+      });
+    },
+    [setCompileInfo, rawStore, setNodeErrors, updateFlowNodeData]
   );
 
   // Computes and recompiles an entirely new graph

@@ -166,6 +166,56 @@ const CodeEditor = ({
 
     // Highlight error lines
     const nodeErrors = errors?.errors || [];
+    const model = editorRef.current.getModel()!;
+
+    // Show the first error on each line inline after the code, like VSCode's
+    // Error Lens. Hovering the line still shows every full message.
+    const messagesByLine = nodeErrors.reduce<Record<number, string[]>>(
+      (acc, error) => {
+        const line = Math.min(
+          typeof error === 'string' ? 1 : error?.location?.start?.line || 1,
+          model.getLineCount()
+        );
+        const message = (typeof error === 'string' ? error : error.message)
+          .split('\n')[0]
+          .trim();
+        acc[line] = [...(acc[line] || []), message];
+        return acc;
+      },
+      {}
+    );
+    const inlineMessages = Object.entries(messagesByLine).map(
+      ([lineStr, messages]) => {
+        const line = parseInt(lineStr, 10);
+        const first =
+          messages[0].length > 150
+            ? `${messages[0].substring(0, 150)}…`
+            : messages[0];
+        const more =
+          messages.length > 1 ? ` (+${messages.length - 1} more)` : '';
+        return {
+          // Cover the whole line, and grow when typing at the end, so the
+          // message stays after the code while editing
+          range: {
+            startLineNumber: line,
+            startColumn: 1,
+            endLineNumber: line,
+            endColumn: model.getLineMaxColumn(line),
+          },
+          options: {
+            stickiness:
+              monacoRef.current!.editor.TrackedRangeStickiness
+                .GrowsOnlyWhenTypingAfter,
+            after: {
+              content: `${first}${more}`,
+              inlineClassName: 'lineErrorMessage',
+              cursorStops:
+                monacoRef.current!.editor.InjectedTextCursorStops.None,
+            },
+          },
+        };
+      }
+    );
 
     // Highlight the gutter and the code background. deltaDecorations clears
     // the previous decorations apparently. it's deprecated but there's no
@@ -173,28 +223,30 @@ const CodeEditor = ({
     // have a way to clear
     lastDecorators.current = editorRef.current!.deltaDecorations(
       lastDecorators.current,
-
-      (
-        nodeErrors.filter(
-          (error) => typeof error !== 'string'
-        ) as GlslSyntaxError[]
-      ).map((error) => ({
-        range: {
-          startLineNumber: error?.location?.start?.line || 0,
-          startColumn: 0,
-          endLineNumber: error?.location?.end?.line || 0,
-          endColumn: 1000,
-        },
-        options: {
-          isWholeLine: true,
-          inlineClassName: 'lineError',
-          linesDecorationsClassName: 'lineError',
-        },
-      }))
+      [
+        ...(
+          nodeErrors.filter(
+            (error) => typeof error !== 'string'
+          ) as GlslSyntaxError[]
+        ).map((error) => ({
+          range: {
+            startLineNumber: error?.location?.start?.line || 0,
+            startColumn: 1,
+            endLineNumber: error?.location?.end?.line || 0,
+            endColumn: 1000,
+          },
+          options: {
+            isWholeLine: true,
+            inlineClassName: 'lineError',
+            linesDecorationsClassName: 'lineError',
+          },
+        })),
+        ...inlineMessages,
+      ]
     );
 
     monacoRef.current.editor.setModelMarkers(
-      editorRef.current.getModel()!,
+      model,
       'owner',
       nodeErrors.map((error) =>
         typeof error === 'string'
@@ -208,7 +260,7 @@ const CodeEditor = ({
             }
           : {
               startLineNumber: error?.location?.start?.line,
-              startColumn: 0, // error?.location?.start?.column,
+              startColumn: 1, // error?.location?.start?.column,
               endLineNumber: error?.location?.end?.line,
               endColumn: 1000, // error?.location?.end?.column,
               message: error.message,

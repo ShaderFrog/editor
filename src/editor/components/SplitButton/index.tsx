@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faChevronDown,
@@ -6,6 +6,11 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import cx from 'classnames';
 import styles from './splitbutton.module.css';
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  useDropdownMenu,
+} from '../DropdownMenu';
 
 export type SplitButtonOption<T> = {
   value: T;
@@ -33,26 +38,7 @@ function SplitButton<T>({
   onSelect,
   title,
 }: SplitButtonProps<T>) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const close = useCallback(() => setOpen(false), []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) close();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
-    };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open, close]);
+  const { open, setOpen, containerRef } = useDropdownMenu();
 
   const currentOption = options.find((o) => o.value === selected) ?? options[0];
 
@@ -86,13 +72,11 @@ function SplitButton<T>({
       </button>
 
       {open && (
-        <ul className={styles.menu}>
+        <DropdownMenu align="right">
           {options.map((opt) => (
-            <li
+            <DropdownMenuItem
               key={String(opt.value)}
-              className={cx(styles.option, {
-                [styles.selected]: opt.value === selected,
-              })}
+              selected={opt.value === selected}
               onClick={() => {
                 onSelect(opt.value);
                 setOpen(false);
@@ -105,9 +89,9 @@ function SplitButton<T>({
                 <span className={styles.optionLabel}>{opt.label}</span>
                 <span className={styles.optionDesc}>{opt.description}</span>
               </span>
-            </li>
+            </DropdownMenuItem>
           ))}
-        </ul>
+        </DropdownMenu>
       )}
     </div>
   );

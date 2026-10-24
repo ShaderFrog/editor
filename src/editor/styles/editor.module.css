@@ -31,6 +31,99 @@
   width: 100%;
 }
 
+/* Fixed toolbar on top, canvas fills the rest. Settings and social open as an
+   overlay on the canvas so the canvas never changes size. */
+.scenePane {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  /* Separates the black canvas from the black code editor, and marks where
+     the split pane drag handle is */
+  border-left: 1px solid #3e3e3e;
+  box-sizing: border-box;
+}
+
+.sceneToolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: linear-gradient(45deg, #1a1a1a, rgb(41, 41, 41));
+  border-bottom: 1px solid #333;
+}
+
+.bgPicker {
+  flex: 0 1 auto;
+  max-width: 200px;
+}
+
+.sceneToolbarButtons {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.sceneToolbarButton {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 0 none;
+  border-radius: 4px;
+  background: transparent;
+  color: #bbb;
+  cursor: pointer;
+}
+.sceneToolbarButton:hover {
+  background: #333;
+  color: #fff;
+}
+.sceneToolbarButton.active {
+  background: rgba(66, 152, 45, 0.35);
+  color: #fff;
+}
+
+.scenePanel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: 65%;
+  display: flex;
+  flex-direction: column;
+  background: rgba(26, 26, 26, 0.94);
+  border-bottom: 1px solid #444;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.scenePanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 2px 10px;
+  border-bottom: 1px solid #333;
+  font-size: 12px;
+  font-weight: bold;
+  color: #ddd;
+}
+
+.scenePanelBody {
+  overflow-y: auto;
+  padding: 0 10px 8px;
+}
+
+.scenePanelSection {
+  margin-top: 8px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #333;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #888;
+}
+
 .babylonContainer {
   height: 100%;
   width: 100%;
@@ -247,18 +340,6 @@ textarea.error {
     * set.
     */
   overflow: hidden;
-}
-
-.playPause {
-  border: 0 none;
-  background: transparent;
-  margin: 0;
-  padding: 0;
-  color: #ddd;
-  cursor: pointer;
-}
-.playPause:hover {
-  color: #fff;
 }
 
 .activeEngine {
@@ -724,7 +805,7 @@ textarea.error {
  ******************************************************************************/
 
 .subHeaderRow {
-  background: linear-gradient(180deg, #0d0d0d 0%, #222 30%);
+  background: linear-gradient(180deg, #0d0d0d 0%, #222 30%) !important;
 }
 
 .tabBar {
@@ -787,14 +868,6 @@ textarea.error {
 }
 .vertAnnote {
   color: #ff5f5f;
-}
-
-.sceneTabControls {
-  position: absolute;
-  top: 4px;
-  right: 10px;
-  display: flex;
-  gap: 10px;
 }
 
 .inlineClose {

@@ -37,6 +37,7 @@ import { FlowEventHack } from '../../flowEventHack';
 import ContextMenu, { MenuItem } from '../ContextMenu';
 import { FlowEditorContext } from '@editor/editor/flowEditorContext';
 import { isMacintosh } from '@editor/util/platform';
+import { usePointerDownOutside } from '@editor/editor/hooks/usePointerDownOutside';
 
 import editorStyles from '../../styles/editor.module.css';
 import styles from './floweditor.module.css';
@@ -368,6 +369,16 @@ const FlowEditor = ({
   useHotkeys('esc', () => {
     hideMenu();
     setToolbarMenu(undefined);
+  });
+
+  // Close the toolbar dropdowns when clicking anywhere else, like the graph or
+  // the scene. The toolbar is excluded so its buttons can toggle the menus.
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  usePointerDownOutside({
+    refs: [toolbarRef],
+    ignoreSelector: '#x-context-menu',
+    enabled: !!toolbarMenu,
+    onOutside: () => setToolbarMenu(undefined),
   });
   useHotkeys('shift+a', () =>
     setMenu(ContextMenuType.CONTEXT, copyMouse(mouse.current))
@@ -701,7 +712,7 @@ const FlowEditor = ({
   return (
     <FlowEditorContext.Provider value={{ openNodeContextMenu }}>
       <div className={editorStyles.shrinkGrowRows}>
-        <div className={styles.toolbar}>
+        <div ref={toolbarRef} className={styles.toolbar}>
           <button
             className={cx('formbutton tertiary', styles.toolbarButton)}
             onClick={(e) => toggleToolbarMenu('add', e)}

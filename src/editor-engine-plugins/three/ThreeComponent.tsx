@@ -82,6 +82,7 @@ import { useThree, fovForAspect } from './useThree';
 import { useNodeThumbnails } from './useNodeThumbnails';
 import { usePrevious } from '../../editor/hooks/usePrevious';
 import { useSize } from '../../editor/hooks/useSize';
+import { usePointerDownOutside } from '../../editor/hooks/usePointerDownOutside';
 import { RoomEnvironment } from './RoomEnvironment';
 import { SceneProps } from '@editor-components/editorTypes';
 import { useAssetsAndGroups } from '@editor/api';
@@ -1563,6 +1564,16 @@ const ThreeComponent: React.FC<SceneProps> = ({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [openPanel]);
 
+  // Close the open panel when clicking anywhere else, like the scene or the
+  // graph. The toolbar is excluded so its buttons can toggle the panels.
+  const sceneToolbarRef = useRef<HTMLDivElement>(null);
+  const scenePanelRef = useRef<HTMLDivElement>(null);
+  usePointerDownOutside({
+    refs: [sceneToolbarRef, scenePanelRef],
+    enabled: !!openPanel,
+    onOutside: () => setOpenPanel(null),
+  });
+
   const findOption = (items: SceneOptionItem[], value: string) =>
     items.find(
       (item): item is Exclude<SceneOptionItem, { header: string }> =>
@@ -1601,7 +1612,7 @@ const ThreeComponent: React.FC<SceneProps> = ({
 
   return (
     <div className={styles.scenePane}>
-      <div className={styles.sceneToolbar}>
+      <div ref={sceneToolbarRef} className={styles.sceneToolbar}>
         <SceneToolbarToggle
           title="Model"
           label={selectedModel?.label || 'Model'}
@@ -1677,7 +1688,10 @@ const ThreeComponent: React.FC<SceneProps> = ({
       >
         <div ref={threeDomCbRef}></div>
         {openPanel && !screenshotMode && (
-          <div className={cx(styles.scenePanel, 'condensed')}>
+          <div
+            ref={scenePanelRef}
+            className={cx(styles.scenePanel, 'condensed')}
+          >
             <div className={styles.scenePanelHeader}>
               <span>{scenePanelTitles[openPanel]}</span>
               <button

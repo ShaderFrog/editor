@@ -11,7 +11,7 @@ import {
 import { CurrentUser } from '@editor/model';
 import { AnyFn } from '@editor/util/types';
 import { AddEngineNode } from '../editor-types';
-import { CompileInfo } from './flow/editor-store';
+import { CompileInfo, NodeThumbnail } from './flow/editor-store';
 
 export type PreviewLight = 'point' | '3point' | 'spot';
 
@@ -44,8 +44,8 @@ export type SceneProps = {
   assetPrefix: string;
   takeScreenshotRef: MutableRefObject<(() => Promise<string>) | undefined>;
   onScreenshotCaptured?: (data: string) => void;
-  // Called with a rendered preview image URL of a single node
-  setNodeThumbnail?: (nodeId: string, url: string) => void;
+  // Called with a rendered preview image of a single node, or that it failed
+  setNodeThumbnail?: (nodeId: string, thumbnail: NodeThumbnail) => void;
   SocialComponent?: FunctionComponent<{
     shader: Shader;
     currentUser?: CurrentUser | null;

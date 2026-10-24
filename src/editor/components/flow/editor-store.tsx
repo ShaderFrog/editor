@@ -43,6 +43,12 @@ import { Shader } from '@editor/model';
 import { AnySceneConfig } from '../editorTypes';
 import { ensure } from '@/util/ensure';
 
+// A node's preview image, or that it couldn't be rendered (the preview graph
+// doesn't compile, or the node can't be shown on its own)
+export type NodeThumbnail =
+  | { status: 'ready'; url: string }
+  | { status: 'error' };
+
 /*******************************************************************************
  * Types and friends
  ******************************************************************************/
@@ -174,8 +180,10 @@ interface EditorState {
   engineContext: EngineContext | undefined;
   setEngineContext: (engineContext: EngineContext) => void;
   // Live rendered previews of nodes, as image URLs keyed by node id
-  nodeThumbnails: Record<string, string>;
-  setNodeThumbnail: (nodeId: string, url: string) => void;
+  // Rendered preview images of nodes. A node that can be previewed but has no
+  // entry yet is still loading.
+  nodeThumbnails: Record<string, NodeThumbnail>;
+  setNodeThumbnail: (nodeId: string, thumbnail: NodeThumbnail) => void;
 
   // UI state
   menu: ContextMenu | undefined;
@@ -369,13 +377,13 @@ const createEditorStore = (
     engineContext: undefined,
     setEngineContext: (engineContext) => set(() => ({ engineContext })),
     nodeThumbnails: {},
-    setNodeThumbnail: (nodeId, url) =>
+    setNodeThumbnail: (nodeId, thumbnail) =>
       set(({ nodeThumbnails }) => {
         const previous = nodeThumbnails[nodeId];
-        if (previous?.startsWith('blob:')) {
-          URL.revokeObjectURL(previous);
+        if (previous?.status === 'ready' && previous.url.startsWith('blob:')) {
+          URL.revokeObjectURL(previous.url);
         }
-        return { nodeThumbnails: { ...nodeThumbnails, [nodeId]: url } };
+        return { nodeThumbnails: { ...nodeThumbnails, [nodeId]: thumbnail } };
       }),
     getGraphNode: (nodeId: string) =>
       ensure(get().graph.nodes.find((n) => n.id === nodeId)),

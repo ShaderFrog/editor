@@ -27,12 +27,13 @@ import {
   isPreviewableNode,
 } from '../../editor/components/flow/graph-helpers';
 import { logger } from '@editor/util/log';
+import { NodeThumbnail } from '../../editor/components/flow/editor-store';
 
 const { log } = logger('three.thumbnails');
 
 // Matches the preview strip above graph nodes, in CSS pixels
 export const THUMBNAIL_WIDTH = 236;
-export const THUMBNAIL_HEIGHT = 64;
+export const THUMBNAIL_HEIGHT = 128;
 // Move the camera closer than the screenshot camera, so the object's surface
 // fills the wide strip instead of the whole object floating in the middle
 const CAMERA_ZOOM = 0.75;
@@ -81,7 +82,7 @@ type ThumbnailOptions = {
   // Any change to this re-renders all thumbnails
   sceneKey: string;
   loadNodeTexture: (node: TextureNode | SamplerCubeNode) => any;
-  setNodeThumbnail?: (nodeId: string, url: string) => void;
+  setNodeThumbnail?: (nodeId: string, thumbnail: NodeThumbnail) => void;
 };
 
 // A thumbnail can't be rendered yet because a texture is still loading
@@ -324,18 +325,13 @@ export const useNodeThumbnails = (options: ThumbnailOptions) => {
         .filter(isPreviewableNode)
         .map((node) => {
           const preview = extractNodePreviewGraph(graph, node.id);
-          return preview
-            ? {
-                nodeId: node.id,
-                preview,
-                signature: previewSignature(preview, sceneKey),
-              }
-            : undefined;
+          return {
+            nodeId: node.id,
+            preview,
+            signature: preview ? previewSignature(preview, sceneKey) : 'none',
+          };
         })
-        .filter(
-          (item): item is NonNullable<typeof item> =>
-            !!item && renderedRef.current[item.nodeId] !== item.signature
-        );
+        .filter((item) => renderedRef.current[item.nodeId] !== item.signature);
 
       if (queue.length) {
         log(`Rendering ${queue.length} node thumbnails`);
@@ -346,10 +342,12 @@ export const useNodeThumbnails = (options: ThumbnailOptions) => {
           return;
         }
         let result: Awaited<ReturnType<typeof renderNodeThumbnail>>;
-        try {
-          result = await renderNodeThumbnail(optionsRef.current, preview);
-        } catch (e) {
-          log('Error rendering node thumbnail', e);
+        if (preview) {
+          try {
+            result = await renderNodeThumbnail(optionsRef.current, preview);
+          } catch (e) {
+            log('Error rendering node thumbnail', e);
+          }
         }
         if (cancelled()) {
           return;
@@ -360,10 +358,12 @@ export const useNodeThumbnails = (options: ThumbnailOptions) => {
           renderedRef.current[nodeId] = signature;
         }
         if (result instanceof Blob) {
-          optionsRef.current.setNodeThumbnail?.(
-            nodeId,
-            URL.createObjectURL(result)
-          );
+          optionsRef.current.setNodeThumbnail?.(nodeId, {
+            status: 'ready',
+            url: URL.createObjectURL(result),
+          });
+        } else if (result !== PENDING) {
+          optionsRef.current.setNodeThumbnail?.(nodeId, { status: 'error' });
         }
         await wait(BETWEEN_MS);
       }

@@ -38,9 +38,11 @@ import LabeledInput from '../LabeledInput';
 import clamp from '@editor/util/clamp';
 import {
   EDITOR_BOTTOM_PANEL,
+  NodeThumbnail,
   useEditorStore,
   useEditorStoreSelector,
 } from './editor-store';
+import { isPreviewableNode } from './graph-helpers';
 
 import {
   FlowSourceNode,
@@ -56,7 +58,7 @@ const cx = classnames.bind(styles);
 
 const headerHeight = 30;
 // Height of the preview image strip above a node, see THUMBNAIL_HEIGHT
-const previewHeight = 64;
+const previewHeight = 128;
 // Keep in sync with .flownode min-height in flow.theme.css
 const nodeMinHeight = 80;
 const labelHeight = 44;
@@ -127,6 +129,8 @@ const InputHande = ({
   </Handle>
 );
 
+type NodePreview = NodeThumbnail | { status: 'loading' };
+
 const FlowWrap = ({
   children,
   data,
@@ -138,8 +142,8 @@ const FlowWrap = ({
   height?: number;
   data: FlowNodeData;
   className: any;
-  // Image URL to show in a strip above the node
-  preview?: string;
+  // Preview strip shown above the node
+  preview?: NodePreview;
 }) => (
   <div
     className={cx('flownode', className, {
@@ -176,7 +180,15 @@ const FlowWrap = ({
       zIndex: 0,
     }}
   >
-    {preview ? <img className="nodePreview" src={preview} alt="" /> : null}
+    {preview?.status === 'ready' ? (
+      <img className="nodePreview" src={preview.url} alt="" />
+    ) : preview?.status === 'loading' ? (
+      <div className="nodePreview nodePreviewLoading">
+        Loading preview&hellip;
+      </div>
+    ) : preview ? (
+      <div className="nodePreview nodePreviewNone">No preview</div>
+    ) : null}
     <div className="contents">{children}</div>
   </div>
 );
@@ -862,6 +874,15 @@ const SourceNodeComponent = memo(
     const thumbnail = useEditorStoreSelector(
       (state) => state.nodeThumbnails[id]
     );
+    // Nodes that can be previewed always show the preview strip, loading until
+    // the first image is rendered
+    const previewable = useEditorStoreSelector((state) => {
+      const node = state.graph.nodes.find((n) => n.id === id);
+      return !!node && isPreviewableNode(node);
+    });
+    const preview: NodePreview | undefined = previewable
+      ? thumbnail || { status: 'loading' }
+      : undefined;
 
     const [groups, height] = useMemo<
       [{ name: string; inputs: InputNodeHandle[]; offset: number }[], number]
@@ -907,7 +928,7 @@ const SourceNodeComponent = memo(
       <FlowWrap
         data={data}
         height={height + headerHeight}
-        preview={thumbnail}
+        preview={preview}
         className={cx(data.stage, data.category, {
           inactive: !data.active,
           outputNode: isOutput,

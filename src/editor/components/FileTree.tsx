@@ -73,8 +73,8 @@ export const TreeNode = ({
     >
       {treeNode.isLeaf ? (
         <FontAwesomeIcon icon={faCode} className={styles.treeIcon} />
-      ) : thumbnail ? (
-        <img className={styles.treeThumbnail} src={thumbnail} alt="" />
+      ) : thumbnail?.status === 'ready' ? (
+        <img className={styles.treeThumbnail} src={thumbnail.url} alt="" />
       ) : (
         <FontAwesomeIcon
           icon={treeNode.isOpen ? faGear : faChevronRight}

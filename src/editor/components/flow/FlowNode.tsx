@@ -58,7 +58,7 @@ const cx = classnames.bind(styles);
 
 const headerHeight = 30;
 // Height of the preview image strip above a node, see THUMBNAIL_HEIGHT
-const previewHeight = 128;
+export const PREVIEW_HEIGHT = 128;
 // Keep in sync with .flownode min-height in flow.theme.css
 const nodeMinHeight = 80;
 const labelHeight = 44;
@@ -156,7 +156,7 @@ const FlowWrap = ({
         // min height before adding the strip, otherwise a short node (like one
         // with no inputs) gets squeezed to nothing by the strip's padding
         (height && preview
-          ? Math.max(height, nodeMinHeight) + previewHeight
+          ? Math.max(height, nodeMinHeight) + PREVIEW_HEIGHT
           : height) ||
         `${
           // Nodes where there is no chance the inputs will be taller than the

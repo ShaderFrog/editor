@@ -4,7 +4,19 @@
 }
 
 .toolbar {
-  text-align: right;
-  padding: 2px 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 3px 6px;
   background: linear-gradient(#222, #111);
+}
+
+/* Same height as the scene toolbar's .sceneIconButton, a little wider. Look
+   comes from the global "formbutton tertiary" classes */
+.toolbar .toolbarButton {
+  width: auto;
+  min-width: 34px;
+  height: 28px;
+  padding: 0;
+  font-size: 13px;
 }

@@ -1268,8 +1268,15 @@ const Editor = ({
   /**
    * Copy node positions from the flow graph into the domain graph on node move
    */
+  // nodes is every node that was dragged, including multi-selected ones
   const onNodeDragStop: OnNodeDrag = (event, node, nodes) => {
-    updateGraphNode(node.id, { position: node.position });
+    const positions = new Map(nodes.map((n) => [n.id, n.position]));
+    setGraph((graph) => ({
+      ...graph,
+      nodes: graph.nodes.map((n) =>
+        positions.has(n.id) ? { ...n, position: positions.get(n.id)! } : n
+      ),
+    }));
   };
 
   /**

@@ -1,4 +1,11 @@
-import React, { useCallback, MouseEvent, useState, useMemo } from 'react';
+import React, {
+  useCallback,
+  MouseEvent,
+  useState,
+  useMemo,
+  useRef,
+} from 'react';
+import cx from 'classnames';
 import { useDroppable } from '@dnd-kit/core';
 import { useHotkeys } from 'react-hotkeys-hook';
 
@@ -19,7 +26,11 @@ import {
 
 import ConnectionLine from './ConnectionLine';
 import FlowEdgeComponent from './FlowEdge';
-import { DataNodeComponent, SourceNodeComponent } from './FlowNode';
+import {
+  DataNodeComponent,
+  SourceNodeComponent,
+  PREVIEW_HEIGHT,
+} from './FlowNode';
 import { FlowEventHack } from '../../flowEventHack';
 
 import ContextMenu, { MenuItem } from '../ContextMenu';
@@ -43,6 +54,8 @@ import {
   faMultiply,
   faPalette,
   faPlus,
+  faSitemap,
+  faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 
 import {
@@ -51,6 +64,8 @@ import {
   SHADERFROG_FLOW_EDGE_TYPE,
   FlowNodeDataData,
 } from './flow-types';
+import { HandleOffset, layoutFlowNodes } from './flow-helpers';
+import { isPreviewableNode } from './graph-helpers';
 import { canMapType } from '@core/graph/data-nodes';
 import {
   BinaryNode,
@@ -274,9 +289,18 @@ const FlowEditor = ({
     flowNodes,
     flowEdges,
     graph,
+    setFlowNodes,
+    setGraph,
   } = useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
-  const { getNode, fitView } = useReactFlow();
+  const {
+    getNode,
+    getNodes,
+    getInternalNode,
+    fitBounds,
+    deleteElements,
+    screenToFlowPosition,
+  } = useReactFlow();
 
   const isValidConnection = useCallback(
     (c: Connection | Edge) => {
@@ -467,26 +491,217 @@ const FlowEditor = ({
     id: 'droppable',
   });
 
+  const flowContainerRef = useRef<HTMLDivElement | null>(null);
+  const setFlowContainerRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      flowContainerRef.current = el;
+      setNodeRef(el);
+    },
+    [setNodeRef]
+  );
+
+  // Open the add node menu near the top middle of the graph. The new node is
+  // added where the menu opens, so it shows up in view.
+  const openAddNodeMenu = useCallback(() => {
+    const container = flowContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const rect = container.getBoundingClientRect();
+    const real = {
+      x: rect.left + rect.width / 2 - 100,
+      y: rect.top + Math.min(rect.height / 4, 100),
+    };
+    // The menu is absolutely positioned, so place it relative to whatever
+    // element it's positioned against
+    const positioned =
+      getComputedStyle(container).position !== 'static'
+        ? container
+        : container.offsetParent || container;
+    const parentRect = positioned.getBoundingClientRect();
+    setMenu(ContextMenuType.CONTEXT, {
+      real,
+      viewport: { x: real.x - parentRect.left, y: real.y - parentRect.top },
+      projected: screenToFlowPosition(real),
+    });
+  }, [setMenu, screenToFlowPosition]);
+
+  // Preview strips draw above the node with a negative margin (see
+  // .withPreview), so react-flow's node bounds don't include them
+  const topOverflow = useMemo(
+    () =>
+      graph.nodes.reduce<Record<string, number>>((acc, node) => {
+        if (isPreviewableNode(node)) {
+          acc[node.id] = PREVIEW_HEIGHT;
+        }
+        return acc;
+      }, {}),
+    [graph.nodes]
+  );
+
+  // Like react-flow's fitView(), but includes the preview strips
+  const zoomToFit = useCallback(() => {
+    const nodes = getNodes();
+    if (!nodes.length) {
+      return;
+    }
+    const bounds = nodes.reduce(
+      (b, node) => ({
+        minX: Math.min(b.minX, node.position.x),
+        minY: Math.min(b.minY, node.position.y - (topOverflow[node.id] || 0)),
+        maxX: Math.max(b.maxX, node.position.x + (node.measured?.width || 0)),
+        maxY: Math.max(b.maxY, node.position.y + (node.measured?.height || 0)),
+      }),
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+    );
+    fitBounds(
+      {
+        x: bounds.minX,
+        y: bounds.minY,
+        width: bounds.maxX - bounds.minX,
+        height: bounds.maxY - bounds.minY,
+      },
+      { padding: 0.1, duration: 800 }
+    );
+  }, [getNodes, fitBounds, topOverflow]);
+
+  // Animate nodes to their auto-layout positions, then save the positions to
+  // the core graph and fit the result on screen
+  const layoutAnimation = useRef<number>();
+  const autoLayout = useCallback(() => {
+    const handleOffset: HandleOffset = (nodeId, handleId, type) => {
+      const handle = getInternalNode(nodeId)?.internals.handleBounds?.[
+        type
+      ]?.find((h) => h.id === handleId);
+      return handle ? handle.y + handle.height / 2 : undefined;
+    };
+    const targets = layoutFlowNodes(
+      flowNodes,
+      flowEdges,
+      handleOffset,
+      topOverflow
+    );
+    const starts = new Map(flowNodes.map((n) => [n.id, n.position]));
+    const DURATION = 500;
+    const startTime = performance.now();
+
+    if (layoutAnimation.current) {
+      cancelAnimationFrame(layoutAnimation.current);
+    }
+
+    const step = (now: number) => {
+      const t = Math.min((now - startTime) / DURATION, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      setFlowNodes((nodes) =>
+        nodes.map((node) => {
+          const from = starts.get(node.id);
+          const to = targets[node.id];
+          if (!from || !to) {
+            return node;
+          }
+          return {
+            ...node,
+            position: {
+              x: from.x + (to.x - from.x) * ease,
+              y: from.y + (to.y - from.y) * ease,
+            },
+          };
+        })
+      );
+
+      if (t < 1) {
+        layoutAnimation.current = requestAnimationFrame(step);
+      } else {
+        layoutAnimation.current = undefined;
+        setGraph((graph) => ({
+          ...graph,
+          nodes: graph.nodes.map((node) =>
+            targets[node.id] ? { ...node, position: targets[node.id] } : node
+          ),
+        }));
+        // Wait a frame so react-flow has the final node positions
+        requestAnimationFrame(zoomToFit);
+      }
+    };
+    layoutAnimation.current = requestAnimationFrame(step);
+  }, [
+    flowNodes,
+    flowEdges,
+    topOverflow,
+    getInternalNode,
+    setFlowNodes,
+    setGraph,
+    zoomToFit,
+  ]);
+
+  const hasDeletableSelection = useMemo(
+    () =>
+      flowNodes.some((node) => node.selected && node.deletable !== false) ||
+      flowEdges.some((edge) => edge.selected),
+    [flowNodes, flowEdges]
+  );
+
+  // Same path as pressing the delete key, so onNodesDelete/onEdgesDelete fire
+  const deleteSelected = useCallback(() => {
+    deleteElements({
+      nodes: flowNodes.filter((node) => node.selected),
+      edges: flowEdges.filter((edge) => edge.selected),
+    });
+  }, [deleteElements, flowNodes, flowEdges]);
+
   return (
     <FlowEditorContext.Provider value={{ openNodeContextMenu }}>
       <div className={editorStyles.shrinkGrowRows}>
         <div className={styles.toolbar}>
           <button
-            className="buttonauto formbutton size2 tertiary m-right-10"
+            className={cx('formbutton tertiary', styles.toolbarButton)}
             onClick={(e) => {
               e.preventDefault();
-              fitView({ padding: 0.1, duration: 800 });
+              // The editor container hides the menu on any click outside it
+              e.stopPropagation();
+              openAddNodeMenu();
+            }}
+            title="Add Node (Shift+A)"
+          >
+            <FontAwesomeIcon icon={faPlus} />
+          </button>
+          <button
+            className={cx('formbutton tertiary', styles.toolbarButton)}
+            onClick={(e) => {
+              e.preventDefault();
+              autoLayout();
+            }}
+            title="Auto Layout"
+          >
+            <FontAwesomeIcon icon={faSitemap} rotation={90} />
+          </button>
+          <button
+            className={cx('formbutton tertiary', styles.toolbarButton)}
+            onClick={(e) => {
+              e.preventDefault();
+              deleteSelected();
+            }}
+            disabled={!hasDeletableSelection}
+            title="Delete Selected"
+          >
+            <FontAwesomeIcon icon={faTrash} />
+          </button>
+          <button
+            className={cx('formbutton tertiary', styles.toolbarButton)}
+            onClick={(e) => {
+              e.preventDefault();
+              zoomToFit();
             }}
             title="Zoom to Fit"
           >
-            <FontAwesomeIcon icon={faMaximize} size="xl" />
+            <FontAwesomeIcon icon={faMaximize} />
           </button>
         </div>
         <div className={editorStyles.growShrinkRows}>
           <div
             onContextMenu={onContextMenu}
             className={styles.flowContainer}
-            ref={setNodeRef}
+            ref={setFlowContainerRef}
           >
             {menu?.menu === ContextMenuType.CONTEXT ? (
               <ContextMenu

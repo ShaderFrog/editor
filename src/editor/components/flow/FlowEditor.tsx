@@ -1,7 +1,6 @@
 import React, { useCallback, MouseEvent, useState, useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { useHotkeys } from 'react-hotkeys-hook';
-import cx from 'classnames';
 
 import {
   ReactFlow,
@@ -32,7 +31,6 @@ import styles from './floweditor.module.css';
 import { ContextMenuType, MouseData, useEditorStore } from './editor-store';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faArrowsRotate,
   faCalculator,
   faCode,
   faCubes,
@@ -40,7 +38,7 @@ import {
   faFileCode,
   faHashtag,
   faImage,
-  faMagnifyingGlass,
+  faMaximize,
   faMinus,
   faMultiply,
   faPalette,
@@ -278,7 +276,7 @@ const FlowEditor = ({
     graph,
   } = useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
-  const { getNode, setViewport } = useReactFlow();
+  const { getNode, fitView } = useReactFlow();
 
   const isValidConnection = useCallback(
     (c: Connection | Edge) => {
@@ -474,24 +472,14 @@ const FlowEditor = ({
       <div className={editorStyles.shrinkGrowRows}>
         <div className={styles.toolbar}>
           <button
-            className="buttonauto formbutton size2 secondary m-right-10"
+            className="buttonauto formbutton size2 tertiary m-right-10"
             onClick={(e) => {
               e.preventDefault();
-              setViewport(
-                {
-                  x: 0,
-                  y: 0,
-                  zoom: 0.5,
-                },
-                { duration: 800 }
-              );
+              fitView({ padding: 0.1, duration: 800 });
             }}
-            title="Reset Graph View"
+            title="Zoom to Fit"
           >
-            <span className={cx('fa-layers', editorStyles.resetVeiw)}>
-              <FontAwesomeIcon icon={faArrowsRotate} size="xl" />
-              <FontAwesomeIcon icon={faMagnifyingGlass} size="1x" />
-            </span>
+            <FontAwesomeIcon icon={faMaximize} size="xl" />
           </button>
         </div>
         <div className={editorStyles.growShrinkRows}>

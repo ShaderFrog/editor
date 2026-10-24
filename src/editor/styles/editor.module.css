@@ -58,6 +58,13 @@
   max-width: 200px;
 }
 
+.blurControl {
+  display: grid;
+  grid-template-columns: auto 1fr 48px;
+  align-items: center;
+  gap: 8px;
+}
+
 .sceneToolbarButtons {
   display: flex;
   gap: 2px;

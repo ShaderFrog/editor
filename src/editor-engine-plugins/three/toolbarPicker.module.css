@@ -56,7 +56,6 @@
 .list .menu {
   width: 260px;
   max-height: 60vh;
-  overflow-y: auto;
 }
 .list .option {
   align-items: center;
@@ -65,11 +64,13 @@
 }
 
 .grid .menu {
+  min-width: 0;
+}
+.grid .items {
   display: grid;
   grid-template-columns: repeat(5, 76px);
   gap: 2px;
-  min-width: 0;
-  padding: 4px;
+  padding: 0 4px;
 }
 .grid .option {
   flex-direction: column;
@@ -80,6 +81,21 @@
   font-size: 11px;
   text-align: center;
   white-space: nowrap;
+}
+
+/* Settings that live in the menu, like wireframe for the model */
+.settings {
+  flex: none;
+  padding: 4px 12px 6px;
+  cursor: default;
+}
+.settingsTop {
+  margin-bottom: 4px;
+  border-bottom: 1px solid #3e3e3e;
+}
+.settingsBottom {
+  margin-top: 4px;
+  border-top: 1px solid #3e3e3e;
 }
 
 .optionThumb {

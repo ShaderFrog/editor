@@ -1510,6 +1510,141 @@ const ThreeComponent: React.FC<SceneProps> = ({
               previewObject,
             })
           }
+          closeOnSelect={false}
+          footer={
+            <>
+              <div className={cx(styles.controlGrid, 'm-top-5')}>
+                {resolutionConfig ? (
+                  <VectorEditor
+                    value={
+                      sceneConfig[resolutionConfig.key] === undefined
+                        ? defaultResolution[resolutionConfig.key]
+                        : sceneConfig[resolutionConfig.key]
+                    }
+                    placeholder={defaultResolution[resolutionConfig.key]}
+                    labels={resolutionConfig.labels}
+                    onChange={(v) =>
+                      setSceneConfig({
+                        ...sceneConfig,
+                        [resolutionConfig.key]: v,
+                      })
+                    }
+                  />
+                ) : null}
+              </div>
+
+              <div className="grid col2 m-top-5">
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="dbs"
+                      type="checkbox"
+                      checked={!!sceneConfig.doubleSide}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          doubleSide: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label noselect" htmlFor="dbs">
+                      <span>Double Side</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="trnsp"
+                      type="checkbox"
+                      checked={!!sceneConfig.transparent}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          transparent: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label noselect" htmlFor="trnsp">
+                      <span>Transparent</span>
+                    </label>
+                  </div>
+                </div>
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="Wireframesfs"
+                      type="checkbox"
+                      checked={!!sceneConfig.wireframe}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          wireframe: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="Wireframesfs" className="label noselect">
+                      <span>Wireframe</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="nrm"
+                      type="checkbox"
+                      checked={!!sceneConfig.showNormals}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          showNormals: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label noselect" htmlFor="nrm">
+                      <span>Show Normals</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className={styles.controlGrid}>
+                  <div>
+                    <input
+                      className="checkbox"
+                      id="tng"
+                      type="checkbox"
+                      checked={!!sceneConfig.showTangents}
+                      onChange={(event) =>
+                        setSceneConfig({
+                          ...sceneConfig,
+                          showTangents: event?.target.checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label noselect" htmlFor="tng">
+                      <span>Show Tangents</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </>
+          }
         />
         <ToolbarPicker
           title="Background"
@@ -1542,6 +1677,40 @@ const ThreeComponent: React.FC<SceneProps> = ({
               });
             }
           }}
+          closeOnSelect={false}
+          header={
+            <div className={styles.blurControl}>
+              <label htmlFor="backgroundBlur" className="label noselect">
+                Blur
+              </label>
+              <input
+                id="backgroundBlur"
+                type="range"
+                className="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={defaultBackgroundBlur(sceneConfig.backgroundBlur)}
+                onChange={(event) =>
+                  setSceneConfig({
+                    ...sceneConfig,
+                    backgroundBlur: parseFloat(event.target.value),
+                  })
+                }
+              />
+              <input
+                type="number"
+                className="textinput"
+                value={defaultBackgroundBlur(sceneConfig.backgroundBlur)}
+                onChange={(event) =>
+                  setSceneConfig({
+                    ...sceneConfig,
+                    backgroundBlur: parseFloat(event.target.value),
+                  })
+                }
+              />
+            </div>
+          }
         />
         <div className={styles.sceneToolbarButtons}>
           <button
@@ -1622,141 +1791,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
             <div className={cx(styles.scenePanelBody, 'nowheel')}>
               {openPanel === 'settings' ? (
                 <>
-                  <div className={styles.scenePanelSection}>Object</div>
-                  <div className={cx(styles.controlGrid, 'm-top-5')}>
-                    {resolutionConfig ? (
-                      <VectorEditor
-                        value={
-                          sceneConfig[resolutionConfig.key] === undefined
-                            ? defaultResolution[resolutionConfig.key]
-                            : sceneConfig[resolutionConfig.key]
-                        }
-                        placeholder={defaultResolution[resolutionConfig.key]}
-                        labels={resolutionConfig.labels}
-                        onChange={(v) =>
-                          setSceneConfig({
-                            ...sceneConfig,
-                            [resolutionConfig.key]: v,
-                          })
-                        }
-                      />
-                    ) : null}
-                  </div>
-
-                  <div className="grid col2 m-top-5">
-                    <div className={styles.controlGrid}>
-                      <div>
-                        <input
-                          className="checkbox"
-                          id="dbs"
-                          type="checkbox"
-                          checked={!!sceneConfig.doubleSide}
-                          onChange={(event) =>
-                            setSceneConfig({
-                              ...sceneConfig,
-                              doubleSide: event?.target.checked,
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="label noselect" htmlFor="dbs">
-                          <span>Double Side</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className={styles.controlGrid}>
-                      <div>
-                        <input
-                          className="checkbox"
-                          id="trnsp"
-                          type="checkbox"
-                          checked={!!sceneConfig.transparent}
-                          onChange={(event) =>
-                            setSceneConfig({
-                              ...sceneConfig,
-                              transparent: event?.target.checked,
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="label noselect" htmlFor="trnsp">
-                          <span>Transparent</span>
-                        </label>
-                      </div>
-                    </div>
-                    <div className={styles.controlGrid}>
-                      <div>
-                        <input
-                          className="checkbox"
-                          id="Wireframesfs"
-                          type="checkbox"
-                          checked={!!sceneConfig.wireframe}
-                          onChange={(event) =>
-                            setSceneConfig({
-                              ...sceneConfig,
-                              wireframe: event?.target.checked,
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="Wireframesfs"
-                          className="label noselect"
-                        >
-                          <span>Wireframe</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className={styles.controlGrid}>
-                      <div>
-                        <input
-                          className="checkbox"
-                          id="nrm"
-                          type="checkbox"
-                          checked={!!sceneConfig.showNormals}
-                          onChange={(event) =>
-                            setSceneConfig({
-                              ...sceneConfig,
-                              showNormals: event?.target.checked,
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="label noselect" htmlFor="nrm">
-                          <span>Show Normals</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className={styles.controlGrid}>
-                      <div>
-                        <input
-                          className="checkbox"
-                          id="tng"
-                          type="checkbox"
-                          checked={!!sceneConfig.showTangents}
-                          onChange={(event) =>
-                            setSceneConfig({
-                              ...sceneConfig,
-                              showTangents: event?.target.checked,
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="label noselect" htmlFor="tng">
-                          <span>Show Tangents</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className={styles.scenePanelSection}>Lighting</div>
                   {graph.nodes.find(
                     (node) => (node as SourceNode).engine === true
@@ -1977,54 +2011,6 @@ const ThreeComponent: React.FC<SceneProps> = ({
                           }
                         />
                       </div>
-                    </div>
-                  </div>
-
-                  <div className={cx(styles.controlGrid, 'm-top-5')}>
-                    <div className={cx(styles.controlGrid)}>
-                      <div>
-                        <label
-                          htmlFor="backgroundBlur"
-                          className="label noselect"
-                        >
-                          <span>Background Blur</span>
-                        </label>
-                      </div>
-                      <div>
-                        <input
-                          id="backgroundBlur"
-                          type="range"
-                          className="range"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          value={defaultBackgroundBlur(
-                            sceneConfig.backgroundBlur
-                          )}
-                          onChange={(event) =>
-                            setSceneConfig({
-                              ...sceneConfig,
-                              backgroundBlur: parseFloat(event.target.value),
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <input
-                        type="number"
-                        className="textinput"
-                        value={defaultBackgroundBlur(
-                          sceneConfig.backgroundBlur
-                        )}
-                        onChange={(event) =>
-                          setSceneConfig({
-                            ...sceneConfig,
-                            backgroundBlur: parseFloat(event.target.value),
-                          })
-                        }
-                      />
                     </div>
                   </div>
                 </>

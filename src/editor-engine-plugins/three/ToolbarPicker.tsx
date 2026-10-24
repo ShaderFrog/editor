@@ -33,6 +33,11 @@ type ToolbarPickerProps = {
   layout?: 'grid' | 'list';
   /** Show the selected option's label in the toolbar button */
   showLabel?: boolean;
+  /** Keep the menu open after picking, for menus with settings in them */
+  closeOnSelect?: boolean;
+  /** Settings shown above / below the options */
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
   className?: string;
 };
 
@@ -50,6 +55,9 @@ const ToolbarPicker = ({
   title,
   layout = 'list',
   showLabel = false,
+  closeOnSelect = true,
+  header,
+  footer,
   className,
 }: ToolbarPickerProps) => {
   const { open: isOpen, setOpen: setIsOpen, containerRef } = useDropdownMenu();
@@ -82,7 +90,32 @@ const ToolbarPicker = ({
         <FontAwesomeIcon icon={faChevronDown} className={styles.chevron} />
       </button>
       {isOpen && (
-        <DropdownMenu className={styles.menu}>
+        <DropdownMenu
+          className={styles.menu}
+          listClassName={styles.items}
+          header={
+            header ? (
+              <div
+                className={cx(styles.settings, styles.settingsTop, 'condensed')}
+              >
+                {header}
+              </div>
+            ) : null
+          }
+          footer={
+            footer ? (
+              <div
+                className={cx(
+                  styles.settings,
+                  styles.settingsBottom,
+                  'condensed'
+                )}
+              >
+                {footer}
+              </div>
+            ) : null
+          }
+        >
           {items.map((item) =>
             isOption(item) ? (
               <DropdownMenuItem
@@ -91,7 +124,9 @@ const ToolbarPicker = ({
                 className={styles.option}
                 onClick={() => {
                   onChange(item.value);
-                  setIsOpen(false);
+                  if (closeOnSelect) {
+                    setIsOpen(false);
+                  }
                 }}
               >
                 <Thumbnail

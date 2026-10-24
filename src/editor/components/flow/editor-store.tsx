@@ -444,12 +444,12 @@ const createEditorStore = (
         );
         return {
           glslEditorTabs: filtered,
-          glslEditorActivePaneId: glslEditorTabs.some(
-            (p) =>
-              p.type === 'pane' && p.contents.nodeId === glslEditorActivePaneId
+          // If the active tab was removed, fall back to the first remaining one
+          glslEditorActivePaneId: filtered.some(
+            ({ id }) => id === glslEditorActivePaneId
           )
-            ? filtered[0]?.id
-            : glslEditorActivePaneId,
+            ? glslEditorActivePaneId
+            : filtered[0]?.id,
         };
       }),
     removeEditorTabPaneId: (paneId) =>

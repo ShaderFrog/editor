@@ -1391,6 +1391,17 @@ const Editor = ({
     setFlowEdges(newFlowGraph.edges);
     setGraph(newGraph);
 
+    // Close any GLSL editor tabs for the nodes that were replaced, otherwise
+    // the tabs point at nodes that no longer exist
+    const newNodeIds = new Set(newGraph.nodes.map((node) => node.id));
+    removeEditorTabByNodeIds(
+      new Set(
+        graph.nodes
+          .filter((node) => !newNodeIds.has(node.id))
+          .map((node) => node.id)
+      )
+    );
+
     if (incomingOutFragNode) {
       setPrimarySelectedNodeId(incomingOutFragNode.id);
 

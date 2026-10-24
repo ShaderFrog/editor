@@ -78,8 +78,12 @@ const tabName = (name: string, type: PaneType, stage: ShaderStage) => {
   );
 };
 
-const nodeTabName = (node: SourceNode, type: PaneType) =>
-  tabName(node.name, type, node.stage!);
+// The node can be missing if a tab outlived its node, like after replacing the
+// node in the graph. Show a placeholder rather than crash the editor.
+const nodeTabName = (node: SourceNode | undefined, type: PaneType) =>
+  node
+    ? tabName(node.name, type, node.stage!)
+    : tabName('Removed node', type, 'fragment');
 
 // Hard coded fake node IDs for the final output and fragment editor panes
 const FINAL_VERTEX = 'output_vertex';

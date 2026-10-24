@@ -20,6 +20,7 @@ import {
   TextureNodeValueData,
   CompileResult,
   SamplerCubeNodeValueData,
+  DataNodeDefaults,
 } from '@core/graph';
 import { Engine, EngineContext } from '@core/engine';
 
@@ -176,7 +177,8 @@ const createGraphNode = (
   name: string,
   position: { x: number; y: number },
   engine: Engine,
-  defaultValue?: any
+  defaultValue?: any,
+  dataDefaults?: DataNodeDefaults
 ): [Set<string>, Graph, string] => {
   const makeName = (type: string) => name || type;
   const id = makeId();
@@ -194,7 +196,7 @@ const createGraphNode = (
           ? '1'
           : defaultValue,
         {
-          range: ['0', '1'],
+          range: (dataDefaults?.range as [string, string]) || ['0', '1'],
         }
       ),
     ];
@@ -202,7 +204,12 @@ const createGraphNode = (
     newGns = [textureNode(id, makeName('texture'), position, defaultValue)];
   } else if (nodeDataType === 'vector2') {
     newGns = [
-      vectorNode(id, makeName('vec2'), position, defaultValue || ['1', '1']),
+      vectorNode(id, makeName('vec2'), position, defaultValue || ['1', '1'], {
+        range: dataDefaults?.range as
+          | [string, string, string, string]
+          | undefined,
+        locked: dataDefaults?.locked,
+      }),
     ];
   } else if (nodeDataType === 'array') {
     newGns = [

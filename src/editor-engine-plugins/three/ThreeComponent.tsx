@@ -62,6 +62,8 @@ import {
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // @ts-ignore
 import { TeapotGeometry } from 'three/addons/geometries/TeapotGeometry.js';
+// @ts-ignore
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -986,7 +988,13 @@ const ThreeComponent: React.FC<SceneProps> = ({
         );
       }
 
-      // Required attributes to compute tangents. Not on icosahedron!
+      // Three.js materials are compiled with USE_TANGENT, so every mesh needs
+      // a tangent attribute, or the shader normalizes a zero vector and goes
+      // black. computeTangents() needs an index, which icosahedron
+      // (PolyhedronGeometry) doesn't have, so build one.
+      if (!geometry.index) {
+        geometry = mergeVertices(geometry);
+      }
       if (
         geometry.index &&
         geometry.attributes.position &&

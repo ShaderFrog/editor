@@ -67,6 +67,7 @@ import {
   changeBinaryNodeType,
   isBinaryNodeType,
   NodeType,
+  DataNodeDefaults,
 } from '@core/graph';
 
 import FlowEditor, {
@@ -1015,7 +1016,8 @@ const Editor = ({
       name: string,
       position: XYPosition,
       newEdgeData?: Omit<Edge, 'id' | 'from'>,
-      defaultValue?: any
+      defaultValue?: any,
+      dataDefaults?: DataNodeDefaults
     ) => {
       setContexting(true);
 
@@ -1035,7 +1037,8 @@ const Editor = ({
           name,
           position,
           engine,
-          defaultValue
+          defaultValue,
+          dataDefaults
         );
       }
 
@@ -1152,6 +1155,11 @@ const Editor = ({
           )?.defaultValue;
         }
 
+        // Engine-specific node settings for this property, like slider range
+        const dataDefaults = input.property
+          ? engine.propertyDataDefaults?.[input.property]
+          : undefined;
+
         let guessedType = type;
         if (guessIfColorName(input.displayName)) {
           if (input.dataType === 'vector3') {
@@ -1176,14 +1184,15 @@ const Editor = ({
             input: input.id,
             type: guessedType,
           },
-          defaultValue
+          defaultValue,
+          dataDefaults
         );
       }
 
       // Clear the connection info on drag stop
       createNodeOnDragRef.current = null;
     },
-    [graph, screenToFlowPosition, addNodeAtPosition, resetTargets]
+    [graph, engine, screenToFlowPosition, addNodeAtPosition, resetTargets]
   );
 
   /**

@@ -6,6 +6,7 @@ import {
   useEffect,
   ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import classnames from 'classnames';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -34,6 +35,7 @@ const ContextMenu = ({
   onMouseEnter,
   onItemHover,
   leftToRight,
+  fixed,
 }: {
   onSelect: (name: string) => void;
   onClose?: () => void;
@@ -43,6 +45,10 @@ const ContextMenu = ({
   onMouseEnter?: (e: ReactMouseEvent<any>) => void;
   onItemHover?: (name: string) => void;
   leftToRight?: boolean;
+  // Render into document.body with position: fixed, where position is in
+  // client (screen) coordinates. This lets the menu show up over other panes
+  // instead of being clipped by, or hidden behind, its parent.
+  fixed?: boolean;
 }) => {
   // The number is used to calculate the relative offset of the child menu
   const [childMenu, setChildMenu] = useState<[MenuItem[], number]>();
@@ -102,12 +108,13 @@ const ContextMenu = ({
   const hasRight = hasChildren || hasShortcut;
   const menuHelp = menu as MenuItemHelper[];
 
-  return (
+  const contents = (
     <>
       <div
         id="x-context-menu"
         className={cx(styles.contextMenu, {
           [styles.leftToRight]: leftToRight,
+          [styles.fixed]: fixed,
         })}
         style={position ? { top: position.y, left: position.x } : {}}
         onMouseEnter={onMouseEnter}
@@ -188,6 +195,8 @@ const ContextMenu = ({
       </div>
     </>
   );
+
+  return fixed ? createPortal(contents, document.body) : contents;
 };
 
 export default ContextMenu;

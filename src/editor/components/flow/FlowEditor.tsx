@@ -4,6 +4,7 @@ import React, {
   useState,
   useMemo,
   useRef,
+  useEffect,
 } from 'react';
 import cx from 'classnames';
 import { useDroppable } from '@dnd-kit/core';
@@ -231,7 +232,9 @@ type FlowEditorProps =
       menuItems: MenuItem[];
       mouse: React.MutableRefObject<MouseData>;
       onNodeValueChange: (id: string, value: any) => void;
-      onMenuAdd: (type: string) => void;
+      // screenPosition is where to add the node, defaults to where the
+      // context menu opened
+      onMenuAdd: (type: string, screenPosition?: XYPosition) => void;
       onMenuClose: () => void;
       onNodeContextSelect: (nodeId: string, type: string) => void;
       onNodeContextHover: (nodeId: string, type: string) => void;
@@ -293,14 +296,8 @@ const FlowEditor = ({
     setGraph,
   } = useEditorStore();
   const [contextNodeId, setContextNodeId] = useState<string>();
-  const {
-    getNode,
-    getNodes,
-    getInternalNode,
-    fitBounds,
-    deleteElements,
-    screenToFlowPosition,
-  } = useReactFlow();
+  const { getNode, getNodes, getInternalNode, getZoom, fitBounds } =
+    useReactFlow();
 
   const isValidConnection = useCallback(
     (c: Connection | Edge) => {
@@ -346,7 +343,32 @@ const FlowEditor = ({
     [getNode, onNodesChange]
   );
 
-  useHotkeys('esc', () => hideMenu());
+  // Dropdowns opened from the toolbar buttons, positioned below the button
+  const [toolbarMenu, setToolbarMenu] = useState<{
+    type: 'add' | 'delete';
+    position: XYPosition;
+  }>();
+  const toggleToolbarMenu = (
+    type: 'add' | 'delete',
+    e: MouseEvent<HTMLButtonElement>
+  ) => {
+    e.preventDefault();
+    // Keep the click from reaching the editor container, which hides menus,
+    // and the body, where an open menu listens for clicks to close itself
+    e.stopPropagation();
+    hideMenu();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setToolbarMenu((current) =>
+      current?.type === type
+        ? undefined
+        : { type, position: { x: rect.left, y: rect.bottom + 4 } }
+    );
+  };
+
+  useHotkeys('esc', () => {
+    hideMenu();
+    setToolbarMenu(undefined);
+  });
   useHotkeys('shift+a', () =>
     setMenu(ContextMenuType.CONTEXT, copyMouse(mouse.current))
   );
@@ -500,31 +522,24 @@ const FlowEditor = ({
     [setNodeRef]
   );
 
-  // Open the add node menu near the top middle of the graph. The new node is
-  // added where the menu opens, so it shows up in view.
-  const openAddNodeMenu = useCallback(() => {
-    const container = flowContainerRef.current;
-    if (!container) {
-      return;
-    }
-    const rect = container.getBoundingClientRect();
-    const real = {
-      x: rect.left + rect.width / 2 - 100,
-      y: rect.top + Math.min(rect.height / 4, 100),
-    };
-    // The menu is absolutely positioned, so place it relative to whatever
-    // element it's positioned against
-    const positioned =
-      getComputedStyle(container).position !== 'static'
-        ? container
-        : container.offsetParent || container;
-    const parentRect = positioned.getBoundingClientRect();
-    setMenu(ContextMenuType.CONTEXT, {
-      real,
-      viewport: { x: real.x - parentRect.left, y: real.y - parentRect.top },
-      projected: screenToFlowPosition(real),
-    });
-  }, [setMenu, screenToFlowPosition]);
+  // Nodes added from the toolbar go in the middle of the graph
+  const onToolbarAdd = useCallback(
+    (type: string) => {
+      setToolbarMenu(undefined);
+      const container = flowContainerRef.current;
+      if (!container) {
+        return;
+      }
+      const rect = container.getBoundingClientRect();
+      // Offset by roughly half a node so the node is centered, not its corner
+      const zoom = getZoom();
+      onMenuAdd(type, {
+        x: rect.left + rect.width / 2 - 100 * zoom,
+        y: rect.top + rect.height / 2 - 50 * zoom,
+      });
+    },
+    [onMenuAdd, getZoom]
+  );
 
   // Preview strips draw above the node with a negative margin (see
   // .withPreview), so react-flow's node bounds don't include them
@@ -634,20 +649,54 @@ const FlowEditor = ({
     zoomToFit,
   ]);
 
-  const hasDeletableSelection = useMemo(
+  // The delete dropdown has the same delete options as the node's gear menu,
+  // for the one selected node
+  const deletableNode = useMemo(() => {
+    const selected = flowNodes.filter(
+      (node) => node.selected && node.deletable !== false
+    );
+    return selected.length === 1 ? selected[0] : undefined;
+  }, [flowNodes]);
+  const deleteMenu = useMemo(
     () =>
-      flowNodes.some((node) => node.selected && node.deletable !== false) ||
-      flowEdges.some((edge) => edge.selected),
-    [flowNodes, flowEdges]
+      nodeContextMenuItems(
+        deletableNode,
+        graph.nodes.find((node) => node.id === deletableNode?.id)
+      ).filter(
+        (item) =>
+          'value' in item &&
+          [
+            NodeContextActions.DELETE_NODE_AND_DEPENDENCIES,
+            NodeContextActions.DELETE_NODE_ONLY,
+            NodeContextActions.DELETE_FULL_NODE_TREE,
+          ].includes(item.value as NodeContextActions)
+      ),
+    [deletableNode, graph.nodes]
   );
 
-  // Same path as pressing the delete key, so onNodesDelete/onEdgesDelete fire
-  const deleteSelected = useCallback(() => {
-    deleteElements({
-      nodes: flowNodes.filter((node) => node.selected),
-      edges: flowEdges.filter((edge) => edge.selected),
-    });
-  }, [deleteElements, flowNodes, flowEdges]);
+  // Close the delete menu if the selection changes out from under it
+  const deleteMenuNodeId =
+    toolbarMenu?.type === 'delete' ? deletableNode?.id : undefined;
+  useEffect(() => {
+    if (toolbarMenu?.type === 'delete' && !deletableNode) {
+      setToolbarMenu(undefined);
+    }
+  }, [toolbarMenu, deletableNode]);
+
+  // However the delete menu closes, clear the hover previews of what would be
+  // deleted, unless the node was just deleted
+  const previousDeleteMenuNodeId = useRef<string>();
+  useEffect(() => {
+    const previous = previousDeleteMenuNodeId.current;
+    previousDeleteMenuNodeId.current = deleteMenuNodeId;
+    if (
+      previous &&
+      previous !== deleteMenuNodeId &&
+      graph.nodes.some((node) => node.id === previous)
+    ) {
+      onNodeContextHover(previous, '');
+    }
+  }, [deleteMenuNodeId, graph.nodes, onNodeContextHover]);
 
   return (
     <FlowEditorContext.Provider value={{ openNodeContextMenu }}>
@@ -655,12 +704,7 @@ const FlowEditor = ({
         <div className={styles.toolbar}>
           <button
             className={cx('formbutton tertiary', styles.toolbarButton)}
-            onClick={(e) => {
-              e.preventDefault();
-              // The editor container hides the menu on any click outside it
-              e.stopPropagation();
-              openAddNodeMenu();
-            }}
+            onClick={(e) => toggleToolbarMenu('add', e)}
             title="Add Node (Shift+A)"
           >
             <FontAwesomeIcon icon={faPlus} />
@@ -677,12 +721,9 @@ const FlowEditor = ({
           </button>
           <button
             className={cx('formbutton tertiary', styles.toolbarButton)}
-            onClick={(e) => {
-              e.preventDefault();
-              deleteSelected();
-            }}
-            disabled={!hasDeletableSelection}
-            title="Delete Selected"
+            onClick={(e) => toggleToolbarMenu('delete', e)}
+            disabled={!deletableNode}
+            title="Delete Selected Node"
           >
             <FontAwesomeIcon icon={faTrash} />
           </button>
@@ -703,19 +744,44 @@ const FlowEditor = ({
             className={styles.flowContainer}
             ref={setFlowContainerRef}
           >
+            {toolbarMenu?.type === 'add' ? (
+              <ContextMenu
+                fixed
+                menu={addNodeMenuItems}
+                position={toolbarMenu.position}
+                onSelect={onToolbarAdd}
+                onClose={() => setToolbarMenu(undefined)}
+              />
+            ) : toolbarMenu?.type === 'delete' && deletableNode ? (
+              <ContextMenu
+                fixed
+                menu={deleteMenu}
+                position={toolbarMenu.position}
+                onItemHover={(type) =>
+                  onNodeContextHover(deletableNode.id, type)
+                }
+                onSelect={(type) => {
+                  onNodeContextSelect(deletableNode.id, type);
+                  setToolbarMenu(undefined);
+                }}
+                onClose={() => setToolbarMenu(undefined)}
+              />
+            ) : null}
             {menu?.menu === ContextMenuType.CONTEXT ? (
               <ContextMenu
+                fixed
                 menu={addNodeMenuItems}
-                position={menu.position.viewport}
+                position={menu.position.real}
                 onItemHover={onContextItemHover}
                 onSelect={onMenuAdd}
                 onClose={onMenuClose}
               />
             ) : menu?.menu === ContextMenuType.NODE_CONTEXT ? (
               <ContextMenu
+                fixed
                 title="Node Actions"
                 menu={nodeContextMenu}
-                position={menu.position.viewport}
+                position={menu.position.real}
                 onItemHover={onContextItemHover}
                 onSelect={onContextSelect}
                 onClose={onMenuClose}

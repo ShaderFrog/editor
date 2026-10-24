@@ -10,6 +10,12 @@
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
+.contextMenu.fixed {
+  position: fixed;
+  /* Above the scene pane and its panels */
+  z-index: 1000;
+}
+
 .leftToRight {
   right: 0;
 }

@@ -1520,8 +1520,10 @@ const Editor = ({
   );
 
   const onMenuAdd = useCallback(
-    (type: string) => {
-      const pos = screenToFlowPosition(menu?.position?.real as XYPosition);
+    (type: string, screenPosition?: XYPosition) => {
+      const pos = screenToFlowPosition(
+        screenPosition || (menu?.position?.real as XYPosition)
+      );
       addNodeAtPosition(graph, type, '', pos);
       hideMenu();
     },

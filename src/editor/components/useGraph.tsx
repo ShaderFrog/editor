@@ -26,7 +26,11 @@ import { Engine, EngineContext } from '@core/engine';
 
 import { makeId } from '../../util/id';
 import { binaryNode, isBinaryNodeType, sourceNode } from '@core/graph';
-import { texture2DStrategy, uniformStrategy } from '@core/strategy';
+import {
+  namedAttributeStrategy,
+  texture2DStrategy,
+  uniformStrategy,
+} from '@core/strategy';
 
 const compileGraphAsync = async (
   graph: Graph,
@@ -272,7 +276,7 @@ gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
       {
         version: 2,
         preprocess: true,
-        strategies: [uniformStrategy()],
+        strategies: [uniformStrategy(), namedAttributeStrategy('position')],
         uniforms: [],
       },
       `void main() {
@@ -291,7 +295,13 @@ gl_Position = vec4(1.0);
         {
           version: 2,
           preprocess: true,
-          strategies: [uniformStrategy(), texture2DStrategy()],
+          strategies: [
+            uniformStrategy(),
+            texture2DStrategy(),
+            ...(nodeDataType === 'vertex'
+              ? [namedAttributeStrategy('position')]
+              : []),
+          ],
           uniforms: [],
         },
         nodeDataType === 'fragment'

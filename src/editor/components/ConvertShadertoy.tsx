@@ -9,7 +9,11 @@ import { Engine } from '@core/engine';
 import { count, makeId } from '../../util/id';
 
 import { linkNodes } from './useGraph';
-import { texture2DStrategy, uniformStrategy } from '@core';
+import {
+  namedAttributeStrategy,
+  texture2DStrategy,
+  uniformStrategy,
+} from '@core';
 import { generate, parse } from '@shaderfrog/glsl-parser';
 import { Program } from '@shaderfrog/glsl-parser/ast';
 import preprocess from '@shaderfrog/glsl-parser/preprocessor';
@@ -159,7 +163,10 @@ const ConvertShadertoy = ({
               {
                 version: 2,
                 preprocess: true,
-                strategies: [uniformStrategy()],
+                strategies: [
+                  uniformStrategy(),
+                  namedAttributeStrategy('position'),
+                ],
                 uniforms: [],
               },
               engine.importers.shadertoy.code!.defaultShadertoyVertex,

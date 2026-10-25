@@ -17,6 +17,10 @@ import {
   ShaderStage,
   computeGrindex,
   NodeErrors,
+  CodeNode,
+  NodeType,
+  SourceType,
+  detectSourceType,
 } from '@core/graph';
 import { Engine } from '@core/engine';
 import { Tabs, Tab, TabGroup, TabPanel, TabPanels } from './tabs/Tabs';
@@ -26,6 +30,7 @@ import { isMacintosh } from '@editor/util/platform';
 import {
   PaneState,
   PaneType,
+  useEditorRawStore,
   useEditorStore,
   useGlslEditorTabIndex,
 } from './flow/editor-store';
@@ -163,7 +168,9 @@ const GlslEditor = ({
     engineContext,
     hideErrors,
     setHideErrors,
+    updateFlowOutput,
   } = useEditorStore();
+  const rawStore = useEditorRawStore();
   const grindex = useMemo(() => computeGrindex(graph), [graph]);
 
   const codeEditorTabIndex = useGlslEditorTabIndex();
@@ -189,17 +196,55 @@ const GlslEditor = ({
     [cancelTimers, setHideErrors]
   );
 
+  // Work out the source type from the code, so the user doesn't have to pick
+  // it. Debounced because it parses the whole source, and shorter than the
+  // auto compile delay so the compile sees the new type.
+  const detectNodeSourceType = useMemo(
+    () =>
+      debounce((nodeId: string, source: string) => {
+        const node = rawStore
+          .getState()
+          .graph.nodes.find((n) => n.id === nodeId) as CodeNode | undefined;
+        // Engine nodes are always programs, and binary nodes aren't edited here
+        if (!node || node.engine || node.type !== NodeType.SOURCE) {
+          return;
+        }
+        const sourceType = detectSourceType(source);
+        if (
+          !sourceType ||
+          sourceType === (node.sourceType || SourceType.SHADER_PROGRAM)
+        ) {
+          return;
+        }
+        // An expression can be any type, otherwise assume a main function with
+        // vec4 output
+        const dataType =
+          sourceType === SourceType.EXPRESSION ? undefined : 'vector4';
+        updateGraphNode(nodeId, {
+          sourceType,
+          outputs: node.outputs.map((output, i) =>
+            i === 0 ? { ...output, dataType } : output
+          ),
+        });
+        updateFlowOutput(nodeId, node.outputs[0].id, { dataType });
+      }, 250),
+    [rawStore, updateGraphNode, updateFlowOutput]
+  );
+  useEffect(() => () => detectNodeSourceType.cancel(), [detectNodeSourceType]);
+
   // Compile right away, for the compile button and keyboard shortcut. This
   // cancels any pending auto compile and shows errors immediately.
   const compileNow = useCallback(() => {
     cancelTimers();
     setHideErrors(false);
+    detectNodeSourceType.flush();
     onCompile();
-  }, [cancelTimers, onCompile, setHideErrors]);
+  }, [cancelTimers, detectNodeSourceType, onCompile, setHideErrors]);
 
   const onSourceChange = useCallback(
     (nodeId: string, source: string) => {
       updateGraphNode(nodeId, { source });
+      detectNodeSourceType(nodeId, source);
       if (!autoCompile) {
         return;
       }
@@ -211,7 +256,14 @@ const GlslEditor = ({
         SHOW_ERRORS_DELAY_MS
       );
     },
-    [autoCompile, cancelTimers, onCompile, setHideErrors, updateGraphNode]
+    [
+      autoCompile,
+      cancelTimers,
+      detectNodeSourceType,
+      onCompile,
+      setHideErrors,
+      updateGraphNode,
+    ]
   );
 
   const onAutoCompileChange = (value: boolean) => {

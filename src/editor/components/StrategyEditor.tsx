@@ -208,8 +208,8 @@ const sourceTypeText: Record<SourceType, any> = {
   ),
   'Function Body Fragment': (
     <>
-      A snippet of code that&apos;s valid inside of a function body, but not at
-      the top level scope.
+      More than one statement of code that&apos;s valid inside of a function
+      body, but not at the top level scope.
     </>
   ),
   'Shader Program': <>A full shader program (default).</>,
@@ -236,7 +236,7 @@ const StageConfigEditor = ({
   onSave,
   onGraphChange,
 }: ConfigEditorProps) => {
-  const { engineContext, updateFlowOutput } = useEditorStore();
+  const { engineContext } = useEditorStore();
 
   const [selectedStrategy, setSelectedStrategy] = useState(
     StrategyType.VARIABLE
@@ -248,18 +248,7 @@ const StageConfigEditor = ({
     return null;
   }
   const { inputs } = node;
-
-  const handleSourceTypeChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    node.sourceType = event.target.value as typeof node.sourceType;
-    // With an expression it can be any type - so remove the type, otherwise
-    // assume main function with vec4 output
-    const outputDataType =
-      node.sourceType === SourceType.EXPRESSION ? undefined : 'vector4';
-    updateFlowOutput(node.id, node.outputs[0].id, { dataType: outputDataType });
-    node.outputs[0].dataType = outputDataType;
-  };
+  const sourceType = node.sourceType || SourceType.SHADER_PROGRAM;
 
   const backfillers: Backfillers = node.backfillers || {};
 
@@ -358,24 +347,17 @@ const StageConfigEditor = ({
       <div className={styles.uiGroup}>
         <h2 className={styles.uiHeader}>Source Code Type</h2>
         <div className="secondary m-bottom-25">
-          What type of code is in this node.
+          What type of code is in this node. It&apos;s detected from the source
+          code as you edit it. Expressions and function body fragments get
+          inputs for the variables and functions they use but don&apos;t
+          declare.
         </div>
-        {Object.values(SourceType).map((value) => (
-          <div key={value} className="m-top-5">
-            <label>
-              <input
-                type="radio"
-                value={value}
-                checked={node.sourceType === value || !node.sourceType}
-                onChange={handleSourceTypeChange}
-              />
-              <b>{value}</b>
-              <span className="secondary m-left-5">
-                {sourceTypeText[value]}
-              </span>
-            </label>
-          </div>
-        ))}
+        <div>
+          <b>{sourceType}</b>
+          <span className="secondary m-left-5">
+            {sourceTypeText[sourceType]}
+          </span>
+        </div>
       </div>
 
       <div className={styles.uiGroup}>

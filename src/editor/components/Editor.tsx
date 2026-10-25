@@ -1307,12 +1307,11 @@ const Editor = ({
     const activeNodeIds = new Set([linkedFragmentNode.id]);
 
     // TODO: This is not actually guaranteed to be a fragment, user could select
-    // vertex node to replace
-    const currentFragFromEdge = graph.edges.find(
-      (edge) => edge.from === linkedFragmentNode.id
-    );
-    const currentToFragNode = graph.nodes.find(
-      (node) => node.id === currentFragFromEdge?.to
+    // vertex node to replace. The output can plug into more than one node, so
+    // keep every edge out of it.
+    const currentFragFromEdges = graph.edges.filter(
+      (edge) =>
+        edge.type !== EdgeLink.NEXT_STAGE && edge.from === linkedFragmentNode.id
     );
 
     // We want to replace the current output vertex edge with the incoming one,
@@ -1320,17 +1319,14 @@ const Editor = ({
     // second branch below), we can rely on the edge coming out of that. If
     // the current tree has a lot of fragment and vertex nodes, and there's an
     // edge that plugs into the *output* node (the first case), use that.
-    const currentVertFromEdge =
-      edgeToVertexOutput ||
-      graph.edges.find(
-        (edge) =>
-          // Don't find the link, rather find the output. Link is removed later
-          edge.type !== EdgeLink.NEXT_STAGE &&
-          edge.from === linkedVertexNode?.id
-      );
-    const currentToVertNode = graph.nodes.find(
-      (node) => node.id === currentVertFromEdge?.to
-    );
+    const currentVertFromEdges = edgeToVertexOutput
+      ? [edgeToVertexOutput]
+      : graph.edges.filter(
+          (edge) =>
+            // Don't find the link, rather find the output. Link is removed later
+            edge.type !== EdgeLink.NEXT_STAGE &&
+            edge.from === linkedVertexNode?.id
+        );
 
     // TODO: Guessing for how nodes are parented to a group, and remove those
     // instead of all the inputs to a node
@@ -1396,69 +1392,66 @@ const Editor = ({
       ),
     };
 
-    // Connect our incoming graph's output contract node with our current
-    // graph's active toNode input
-    const newFragOutEdge =
-      incomingOutFragNode &&
-      incomingFragOutput &&
-      currentFragFromEdge &&
-      currentToFragNode
-        ? makeEdge(
-            // id, from, to, output, input, type
-            makeId(),
-            incomingOutFragNode.id,
-            currentToFragNode.id,
-            incomingFragOutput.id,
-            currentFragFromEdge.input,
-            // See TODO in edge. These should be seprate fields on the edge
-            (incomingOutFragNode as SourceNode).stage ||
-              incomingOutFragNode.outputs?.[0]?.dataType
-          )
-        : null;
-    const newVertOutEdge =
-      incomingOutVertNode &&
-      incomingVertOutput &&
-      currentVertFromEdge &&
-      currentToVertNode
-        ? makeEdge(
-            // id, from, to, output, input, type
-            makeId(),
-            incomingOutVertNode.id,
-            currentToVertNode.id,
-            incomingVertOutput.id,
-            currentVertFromEdge.input,
-            // See TODO in edge. These should be seprate fields on the edge
-            (incomingOutVertNode as SourceNode).stage ||
-              incomingOutVertNode.outputs?.[0]?.dataType
-          )
-        : null;
+    // Connect our incoming graph's output contract node to every input the
+    // current node's output plugged into
+    const keptNodes = graph.nodes.filter(
+      (node) =>
+        // Remove the currently selected node, which we're replacing
+        !activeNodeIds.has(node.id) &&
+        // And its friends
+        !nodesToRemoveIds.has(node.id) &&
+        // And its next stage node if present
+        node.id !== linkedVertexNode?.id
+    );
+    const keptNodeIds = new Set(keptNodes.map((node) => node.id));
+    const reconnectEdges = (
+      fromNode: GraphNode | undefined,
+      output: GraphNode['outputs'][0] | undefined,
+      currentEdges: Edge[]
+    ): Edge[] =>
+      fromNode && output
+        ? currentEdges
+            .filter((edge) => keptNodeIds.has(edge.to))
+            .map((edge) =>
+              makeEdge(
+                // id, from, to, output, input, type
+                makeId(),
+                fromNode.id,
+                edge.to,
+                output.id,
+                edge.input,
+                // See TODO in edge. These should be seprate fields on the edge
+                (fromNode as SourceNode).stage || output.dataType
+              )
+            )
+        : [];
+    const newFragOutEdges = reconnectEdges(
+      incomingOutFragNode,
+      incomingFragOutput,
+      currentFragFromEdges
+    );
+    const newVertOutEdges = reconnectEdges(
+      incomingOutVertNode,
+      incomingVertOutput,
+      currentVertFromEdges
+    );
+    const replacedEdgeIds = new Set(
+      [...currentFragFromEdges, ...currentVertFromEdges].map((edge) => edge.id)
+    );
 
     const newGraph: Graph = {
-      nodes: [
-        ...graph.nodes.filter(
-          (node) =>
-            // Remove the currently selected node, which we're replacing
-            !activeNodeIds.has(node.id) &&
-            // And its friends
-            !nodesToRemoveIds.has(node.id) &&
-            // And its next stage node if present
-            node.id !== linkedVertexNode?.id
-        ),
-        ...filteredIncomingGraph.nodes,
-      ],
+      nodes: [...keptNodes, ...filteredIncomingGraph.nodes],
       // And remove all their edges
       edges: [
         ...graph.edges.filter(
           (edge) =>
-            edge.id !== currentFragFromEdge?.id &&
-            edge.id !== currentVertFromEdge?.id &&
-            !edgesToRemoveById.has(edge.id)
+            !replacedEdgeIds.has(edge.id) && !edgesToRemoveById.has(edge.id)
         ),
         // And add in the incoming edges
         ...filteredIncomingGraph.edges,
         // Add the contract connector
-        ...(newFragOutEdge ? [newFragOutEdge] : []),
-        ...(newVertOutEdge ? [newVertOutEdge] : []),
+        ...newFragOutEdges,
+        ...newVertOutEdges,
       ],
     };
 
